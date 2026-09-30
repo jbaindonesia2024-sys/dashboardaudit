@@ -1588,6 +1588,30 @@
         initTodayDate();
         populateDropdowns();
         refreshUI();
-    </script>
+refreshUI();
+  </script>
+
+  <!-- Firebase SDK versi CDN Compat (Paling Stabil untuk HTML Biasa) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    // Konfigurasi Firebase Kamu
+    const firebaseConfig = {
+      apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
+      authDomain: "dashboard-audit-e34bd.firebaseapp.com",
+      projectId: "dashboard-audit-e34bd",
+      storageBucket: "dashboard-audit-e34bd.firebasestorage.app",
+      messagingSenderId: "32648456405",
+      appId: "1:32648456405:web:b5f29449c7f9e2ec8fda5c",
+      measurementId: "G-D9JPHK8KPQ",
+      databaseURL: "https://dashboard-audit-e34bd-default-rtdb.firebaseio.com"
+    };
+
+    // Inisialisasi Firebase & Database
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+  </script>
+</body>
 </body>
 </html>
