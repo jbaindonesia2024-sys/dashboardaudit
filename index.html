@@ -161,6 +161,7 @@
         .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-align: center; }
         .bg-high { background: #fee2e2; color: #991b1b; }
         .bg-progress { background: #e0f2fe; color: #0369a1; }
+        .bg-approved { background: #dcfce7; color: #15803d; }
         
         /* Interactive Approval Buttons */
         .btn-approval-not { background: var(--danger); color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
@@ -547,32 +548,31 @@
             document.getElementById('p-tgl-terbit-display').value = formatIndonesianDate(today);
         }
 
-        let dbPenomoran = JSON.parse(localStorage.getItem('audit_penomoran_v8')) || [
-            { 
-                id: 1,
-                jenis: "Reguler",
-                noSPP: "01/SPP/JBA-IA/IX/2026", 
-                noLHA: "001/IA/JBA/LHA/IX/2026", 
-                noPICA: "001/IA/JBA/PICA/IX/2026", 
-                tanggalStart: formatIndonesianDate(new Date()),
-                tglSelesai: new Date().toISOString().slice(0, 10),
-                dueDateProject: addBusinessDays(new Date().toISOString().slice(0, 10), 4),
-                judul: "Cabang Bandung", 
-                regionalHead: "Tan Hung Pau",
-                jabatanRegionalHead: "Regional Head 1",
-                periodeAudit: "Q3 2026",
-                tglPelaksanaan: "15 September 2026 - 25 September 2026",
-                auditor: "Budi Auditor",
-                auditMembers: "Andi, Siti",
-                emailAuditee: "head.bandung@jba.co.id",
-                statusManager: "Not Approved"
-            }
-        ];
-
+        // Variabel Data In-Memory
+        let dbPenomoran = [];
         let auditDatabase = [];
         let fraudDatabase = [];
         let selectedRegulerObj = null;
         let selectedFraudObj = null;
+
+        // FUNGSI HELPER FIREBASE SAVE
+        function syncPenomoranToFirebase() {
+            if (typeof database !== 'undefined') {
+                database.ref('dbPenomoran').set(dbPenomoran);
+            }
+        }
+
+        function syncAuditDbToFirebase() {
+            if (typeof database !== 'undefined') {
+                database.ref('auditDatabase').set(auditDatabase);
+            }
+        }
+
+        function syncFraudDbToFirebase() {
+            if (typeof database !== 'undefined') {
+                database.ref('fraudDatabase').set(fraudDatabase);
+            }
+        }
 
         function switchTab(tabId, evt) {
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-fraud'));
@@ -655,7 +655,8 @@
             };
 
             dbPenomoran.push(newDoc);
-            localStorage.setItem('audit_penomoran_v8', JSON.stringify(dbPenomoran));
+            syncPenomoranToFirebase();
+
             document.getElementById('form-penomoran').reset();
             initTodayDate();
 
@@ -690,7 +691,7 @@
             const confirmed = confirm("Apakah sudah dilakukan review terhadap project audit yang dilakukan?");
             if (confirmed) {
                 doc.statusManager = "Approved by Manager";
-                localStorage.setItem('audit_penomoran_v8', JSON.stringify(dbPenomoran));
+                syncPenomoranToFirebase();
                 refreshUI();
             }
         }
@@ -805,7 +806,7 @@
         function deleteDocumentNumber(id) {
             if (confirm("Apakah Anda yakin ingin menghapus nomor dokumen terbit ini?")) {
                 dbPenomoran = dbPenomoran.filter(item => item.id !== id);
-                localStorage.setItem('audit_penomoran_v8', JSON.stringify(dbPenomoran));
+                syncPenomoranToFirebase();
                 populateDropdowns();
                 refreshUI();
             }
@@ -987,7 +988,7 @@
                         </button>
                     </div>
 
-                    ${!isApproved ? '<span style="font-size: 12px; color: #ef4444; align-self: center; font-weight: 600;">⚠️ LHA & PICA hanya dapat di-download setelah status Approved by Manager.</span>' : ''}
+                    ${!isApproved ? '<span style="font-size: 12px; color: #ef4444; align-self: center; font-weight: 600;">⚠️️ LHA & PICA hanya dapat di-download setelah status Approved by Manager.</span>' : ''}
                     
                     <!-- DROPDOWN MODEL SELECTION -->
                     <div id="dropdown-project-box" class="dropdown-select-box">
@@ -1142,7 +1143,7 @@
                                                             <span class="attachment-link" onclick="handleAttachmentClick('\${t.attachment.type}', '\${t.attachment.data}', '\${t.attachment.name}')">
                                                                 📎 \${t.attachment.name}
                                                             </span>
-                                                            <button class="btn-delete-attach" onclick="deleteAttachment('\${t.noTemuan}')" title="Hapus Lampiran Ini">🗑️ Hapus</button>
+                                                            <button class="btn-delete-attach" onclick="deleteAttachment('\${t.noTemuan}')" title="Hapus Lampiran Ini">🗑️️ Hapus</button>
                                                         </div>
                                                     \` : \`
                                                         <label class="btn-upload-file">
@@ -1448,8 +1449,13 @@
                     setTimeout(() => {
                         progressContainer.style.display = 'none';
                         if (parsedData.length > 0) {
-                            if (isFraud) fraudDatabase = parsedData;
-                            else auditDatabase = parsedData;
+                            if (isFraud) {
+                                fraudDatabase = fraudDatabase.filter(x => x.noSPP !== activeObj.noSPP).concat(parsedData);
+                                syncFraudDbToFirebase();
+                            } else {
+                                auditDatabase = auditDatabase.filter(x => x.noSPP !== activeObj.noSPP).concat(parsedData);
+                                syncAuditDbToFirebase();
+                            }
 
                             document.getElementById(`info-file-name${suffix}`).innerText = file.name;
                             document.getElementById(`info-file-rows${suffix}`).innerText = parsedData.length;
@@ -1524,7 +1530,7 @@
         function refreshUI() {
             updateExecutiveDashboard();
 
-            // 1. Render Table Penomoran (Gunakan Helper Render)
+            // 1. Render Table Penomoran
             renderPenomoranRows(dbPenomoran);
 
             // 2. Render Table Summary Audit (Rata Tengah)
@@ -1586,32 +1592,48 @@
         }
 
         initTodayDate();
-        populateDropdowns();
-        refreshUI();
-refreshUI();
-  </script>
+    </script>
 
-  <!-- Firebase SDK versi CDN Compat (Paling Stabil untuk HTML Biasa) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Firebase SDK versi CDN Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <script>
-    // Konfigurasi Firebase Kamu
-    const firebaseConfig = {
-      apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
-      authDomain: "dashboard-audit-e34bd.firebaseapp.com",
-      projectId: "dashboard-audit-e34bd",
-      storageBucket: "dashboard-audit-e34bd.firebasestorage.app",
-      messagingSenderId: "32648456405",
-      appId: "1:32648456405:web:b5f29449c7f9e2ec8fda5c",
-      measurementId: "G-D9JPHK8KPQ",
-      databaseURL: "https://console.firebase.google.com/u/2/project/dashboard-audit-e34bd/database/dashboard-audit-e34bd-default-rtdb/data/~2F?utm_source=gemini"
-    };
+    <script>
+        // Konfigurasi Firebase Realtime Database
+        const firebaseConfig = {
+            apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
+            authDomain: "dashboard-audit-e34bd.firebaseapp.com",
+            projectId: "dashboard-audit-e34bd",
+            storageBucket: "dashboard-audit-e34bd.firebasestorage.app",
+            messagingSenderId: "32648456405",
+            appId: "1:32648456405:web:b5f29449c7f9e2ec8fda5c",
+            measurementId: "G-D9JPHK8KPQ",
+            databaseURL: "https://dashboard-audit-e34bd-default-rtdb.asia-southeast1.firebasedatabase.app"
+        };
 
-    // Inisialisasi Firebase & Database
-    firebase.initializeApp(firebaseConfig);
-    const database = firebase.database();
-  </script>
-</body>
+        // Inisialisasi Firebase & Database
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // REALTIME LISTENER FIREBASE (Multi-Device Sync)
+        database.ref('dbPenomoran').on('value', (snapshot) => {
+            const data = snapshot.val();
+            dbPenomoran = data || [];
+            populateDropdowns();
+            refreshUI();
+        });
+
+        database.ref('auditDatabase').on('value', (snapshot) => {
+            const data = snapshot.val();
+            auditDatabase = data || [];
+            refreshUI();
+        });
+
+        database.ref('fraudDatabase').on('value', (snapshot) => {
+            const data = snapshot.val();
+            fraudDatabase = data || [];
+            refreshUI();
+        });
+    </script>
 </body>
 </html>
