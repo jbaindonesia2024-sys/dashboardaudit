@@ -33,6 +33,12 @@
         .header h1 { font-size: 22px; margin-bottom: 4px; }
         .header p { font-size: 13px; color: #94a3b8; }
 
+        /* User Profile Header Badge */
+        .user-profile-badge {
+            display: inline-flex; align-items: center; gap: 8px; font-size: 12px;
+            background: #334155; color: #f8fafc; padding: 6px 12px; border-radius: 20px;
+        }
+
         /* Navigation Tabs */
         .nav-tabs { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; }
         .tab-btn { padding: 10px 18px; border: none; background: #e2e8f0; color: var(--text-muted); font-weight: 600; cursor: pointer; border-radius: 6px 6px 0 0; transition: all 0.2s; font-size: 13px; }
@@ -161,11 +167,15 @@
         .code-tag-pica { color: #16a34a; background: #f0fdf4; border-color: #bbf7d0; }
 
         /* Modals Overlay & Card */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 9999; justify-content: center; align-items: center; }
         .modal-card { background: white; padding: 20px; border-radius: 8px; width: 450px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
         .modal-header h4 { font-size: 15px; font-weight: 700; }
         .btn-close-modal { background: none; border: none; font-size: 18px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
+
+        /* Auth Login Modal Overlay */
+        .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 99999; display: flex; justify-content: center; align-items: center; }
+        .auth-card { background: #ffffff; padding: 32px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
 
         /* Simple Bar Charts */
         .bar-item { margin-bottom: 12px; }
@@ -176,10 +186,40 @@
 </head>
 <body>
 
+    <!-- MODAL LOGIN FIREBASE AUTH -->
+    <div id="auth-login-overlay" class="auth-overlay">
+        <div class="auth-card">
+            <h2 style="font-size: 20px; color: #0f172a; margin-bottom: 6px; text-align: center;">Portal Audit Internal</h2>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Silakan login dengan akun tim audit kamu</p>
+            
+            <form id="form-login-firebase" onsubmit="handleUserLogin(event)">
+                <div style="margin-bottom: 12px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">EMAIL AUDITOR</label>
+                    <input type="email" id="login-email" class="form-control" placeholder="nama@jba.co.id" required>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">PASSWORD</label>
+                    <input type="password" id="login-password" class="form-control" placeholder="••••••••" required>
+                </div>
+                <button type="submit" class="btn btn-success" style="width: 100%;">🔑 Masuk ke Dashboard</button>
+            </form>
+            <div style="margin-top: 14px; text-align: center;">
+                <button onclick="mintaResetPassword()" style="background: none; border: none; color: var(--primary); font-size: 11px; cursor: pointer; text-decoration: underline;">Lupa Password?</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Header Portal -->
     <div class="header">
         <h1>PORTAL INTERNAL AUDIT & ANTI FRAUD ANALYTICS</h1>
         <p>Penomoran Dokumen Otomatis, Synchronized Audit Summary, Surat Tugas Generator & Anti Fraud Portal</p>
+        <div id="user-badge-header" style="margin-top: 12px; display: none; align-items: center; justify-content: space-between;">
+            <span class="user-profile-badge">👤 Logged in: <b id="display-user-email">-</b></span>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="userUbahPasswordMandiri()" style="background: #475569; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🔑 Ubah Pass</button>
+                <button onclick="handleUserLogout()" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Logout 🚪</button>
+            </div>
+        </div>
     </div>
 
     <!-- Tab Navigation -->
@@ -254,7 +294,6 @@
     <!-- ==================== TAB 2: PENOMORAN DOKUMEN ==================== -->
     <div id="tab-penomoran" class="tab-content">
         <div class="grid-container">
-            <!-- SISI KIRI: FORM GENERATE NOMOR DOKUMEN -->
             <div class="card">
                 <h3 id="form-penomoran-title">Form Penomoran Dokumen & Surat Tugas</h3>
                 <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
@@ -276,7 +315,6 @@
                         <input type="text" id="p-judul" class="form-control" placeholder="Contoh: Cabang Jakarta / Hub Bandung" required>
                     </div>
 
-                    <!-- CHECKBOX BACK DATE & SECTION INPUT MANUAL -->
                     <div class="form-group" style="background: #f8fafc; padding: 10px; border: 1px dashed var(--border); border-radius: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--primary-dark);">
                             <input type="checkbox" id="p-is-backdate" onchange="toggleBackDateFields()">
@@ -338,7 +376,6 @@
                         </div>
                     </div>
 
-                    <!-- CONTAINER DINAMIS TANGGAL TERBIT SURAT TUGAS -->
                     <div class="form-group">
                         <label>Tanggal Surat Terbit</label>
                         <div id="tgl-terbit-container">
@@ -361,14 +398,12 @@
                 </form>
             </div>
 
-            <!-- SISI KANAN: REGISTER NOMOR DOKUMEN & ACTION BUTTONS -->
             <div class="card">
                 <div class="card-header">
                     <h3>Register Penomoran Dokumen Terbit</h3>
                     <button class="btn-action btn-excel" onclick="exportPenomoranExcel()">📊 Download Register (Excel)</button>
                 </div>
 
-                <!-- FITUR SEARCH REGISTER DOKUMEN TERBIT -->
                 <div style="margin-bottom: 12px;">
                     <input type="text" id="search-penomoran" class="form-control" placeholder="🔍 Cari berdasarkan jenis, No. Surat, LHA/PICA, atau nama Cabang..." onkeyup="filterPenomoranTable()">
                 </div>
@@ -559,10 +594,11 @@
                     <thead>
                         <tr>
                             <th>Timestamp</th>
+                            <th>User (Email)</th>
                             <th>Kategori / Modul</th>
                             <th>Aktivitas / Tindakan</th>
                             <th>Detail Dokumen</th>
-                            <th>Status / Keterangan</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="table-log-body"></tbody>
@@ -573,7 +609,6 @@
 
     <!-- JAVASCRIPT SYSTEM LOGIC -->
     <script>
-        // MAPPING REGIONAL HEAD BESERTA EMAIL
         const regionalMap = {
             "reg1": { name: "Irfan Baharudin", title: "Regional Head 1", email: "irfan.baharudin@jba.co.id" },
             "reg2": { name: "Syafi Munawir Almaki", title: "Regional Head 2", email: "syafi.almaki@jba.co.id" },
@@ -625,19 +660,20 @@
             container.innerHTML = `<input type="text" id="p-tgl-terbit-display" class="form-control" value="${formatIndonesianDate(today)}" readonly>`;
         }
 
-        // Variabel Data In-Memory
         let dbPenomoran = [];
         let auditDatabase = [];
         let fraudDatabase = [];
         let activityLogs = [];
         let selectedRegulerObj = null;
         let selectedFraudObj = null;
+        let currentUserEmail = "";
 
-        // FUNGSI LOGGING SYSTEM
+        // FUNGSI LOGGING SYSTEM TERINTEGRASI DENGAN USER EMAIL
         function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
             const newLog = {
                 id: Date.now(),
                 timestamp: new Date().toLocaleString('id-ID'),
+                userEmail: currentUserEmail || "System/Guest",
                 kategori: kategori,
                 aktivitas: aktivitas,
                 detailDoc: detailDoc,
@@ -649,7 +685,6 @@
             }
         }
 
-        // FUNGSI HELPER FIREBASE SAVE
         function syncPenomoranToFirebase() {
             if (typeof database !== 'undefined') {
                 database.ref('dbPenomoran').set(dbPenomoran);
@@ -681,22 +716,18 @@
             refreshUI();
         }
 
-        // FUNGSI TOGGLE BACK DATE (MEMBUKA TANGGAL SURAT UNTUK MANUAL INPUT)
         function toggleBackDateFields() {
             const isChecked = document.getElementById('p-is-backdate').checked;
             document.getElementById('backdate-fields').style.display = isChecked ? 'block' : 'none';
             
             const container = document.getElementById('tgl-terbit-container');
             if (isChecked) {
-                // Berubah menjadi Input Date Manual
                 container.innerHTML = `<input type="date" id="p-tgl-terbit-manual" class="form-control" required>`;
             } else {
-                // Kembali menjadi Read-Only Tanggal Hari ini
                 initTodayDate();
             }
         }
 
-        // GENERATE ATAU EDIT NOMOR DOKUMEN
         function generateDocumentNumber(e) {
             e.preventDefault();
 
@@ -720,7 +751,6 @@
 
             const isBackdate = document.getElementById('p-is-backdate').checked;
 
-            // MENGAMBIL TANGGAL TERBIT SESUAI MODE
             let tglTerbit = "";
             if (isBackdate) {
                 const manualVal = document.getElementById('p-tgl-terbit-manual').value;
@@ -742,7 +772,6 @@
 
                 if (!autoSPP) return alert("Error: Nomor SPP wajib diisi untuk mode Back Date!");
 
-                // CHECK DUPLIKASI NOMOR
                 const exists = dbPenomoran.some(item => 
                     item.id != editId && (
                         (item.noSPP && item.noSPP.toLowerCase() === autoSPP.toLowerCase()) ||
@@ -752,7 +781,7 @@
                 );
 
                 if (exists) {
-                    alert("⚠️ ERROR DUPLIKASI DOKUMEN:\nNomor SPP, PICA, atau LHA yang Anda masukkan sudah pernah di-input untuk project lain dalam sistem!");
+                    alert("⚠️ ERROR DUPLIKASI DOKUMEN:\nNomor SPP, PICA, atau LHA yang Anda masukkan sudah pernah di-input untuk project lain!");
                     return;
                 }
             } else {
@@ -778,7 +807,6 @@
             }
 
             if (editId) {
-                // EDIT MODE
                 const docIdx = dbPenomoran.findIndex(x => x.id == editId);
                 if (docIdx !== -1) {
                     dbPenomoran[docIdx] = {
@@ -797,13 +825,13 @@
                         auditMembers: auditMembers,
                         tanggalStart: tglTerbit,
                         emailAuditee: email,
-                        ccEmail: ccEmail
+                        ccEmail: ccEmail,
+                        updated_by: currentUserEmail
                     };
                     logActivity("Penomoran Dokumen", "Revisi / Edit Project", autoSPP);
                     alert("Data Penomoran Project Berhasil Diperbarui!");
                 }
             } else {
-                // NEW MODE
                 const newDoc = {
                     id: Date.now(),
                     jenis: jenis,
@@ -823,6 +851,7 @@
                     emailAuditee: email,
                     ccEmail: ccEmail,
                     hasSignedSPP: false,
+                    created_by: currentUserEmail,
                     statusManager: "Not Approved"
                 };
 
@@ -861,7 +890,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // FUNGSI HAPUS NOMOR DOKUMEN DARI REGISTER & FIREBASE
         function deleteDocumentNumber(id) {
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
@@ -888,7 +916,6 @@
             document.getElementById('btn-cancel-edit').style.display = "none";
         }
 
-        // FUNGSI POPUP UPLOAD SPP BASAH & SUBMIT
         function openUploadSppModal(id) {
             document.getElementById('modal-spp-doc-id').value = id;
             document.getElementById('modal-spp-file').value = "";
@@ -917,7 +944,6 @@
             }
         }
 
-        // FUNGSI EMAIL SURAT TUGAS DENGAN TO & CC
         function sendSignedSPP_Email(id) {
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
@@ -963,6 +989,7 @@
             const query = document.getElementById('search-log').value.toLowerCase();
             const filteredLogs = activityLogs.filter(log => {
                 return log.timestamp.toLowerCase().includes(query) ||
+                       (log.userEmail && log.userEmail.toLowerCase().includes(query)) ||
                        log.kategori.toLowerCase().includes(query) ||
                        log.aktivitas.toLowerCase().includes(query) ||
                        log.detailDoc.toLowerCase().includes(query);
@@ -1090,6 +1117,7 @@
             const exportData = activityLogs.map((l, idx) => ({
                 "No": idx + 1,
                 "Waktu System": l.timestamp,
+                "User Email": l.userEmail || "-",
                 "Modul": l.kategori,
                 "Tindakan / Aktivitas": l.aktivitas,
                 "Nomor Dokumen / Item": l.detailDoc,
@@ -1144,7 +1172,6 @@
             }
         }
 
-        // MEMBUKA TAB BARU DETAIL DOKUMEN AUDIT
         function openAuditDetailWindow(noSPP, jenis) {
             logActivity("Portal Navigasi", "Buka Halaman Detail Project (Tab Baru)", noSPP);
             const docObj = dbPenomoran.find(x => x.noSPP === noSPP);
@@ -1165,7 +1192,6 @@
                     .header { background: #1e293b; color: white; padding: 18px 24px; border-radius: 8px; margin-bottom: 20px; }
                     .card { background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
                     
-                    /* Toolbar 4 Main Download / Action Buttons */
                     .download-toolbar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
                     .btn-dl { border: none; padding: 9px 16px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; color: white; transition: 0.2s; display: inline-flex; align-items: center; gap: 6px; }
                     .btn-send-pica { background: #0284c7; }
@@ -1221,7 +1247,6 @@
                     <p>${noSPP} | ${docObj ? docObj.judul : ''}</p>
                 </div>
 
-                <!-- TOOLBAR 4 TOMBOL UTAMA -->
                 <div class="download-toolbar">
                     <button class="btn-dl btn-send-pica" onclick="sendPICA_Email()">📧 Kirim PICA</button>
                     <button class="btn-dl btn-dl-excel" ${!isApproved ? 'disabled title="Document belum di-approve oleh Manager"' : ''} onclick="downloadPICA_Excel()">📊 Download PICA</button>
@@ -1744,7 +1769,6 @@
             document.getElementById('kpi-exec-rate').innerText = (auditDatabase.length + fraudDatabase.length) > 0 ? "85%" : "0%";
         }
 
-        // RENDER REGISTER PENOMORAN
         function renderPenomoranRows(dataList) {
             const tbodyPenomoran = document.getElementById('table-penomoran-body');
             if (dataList.length === 0) {
@@ -1779,13 +1803,14 @@
         function renderLogRows(logs) {
             const tbodyLog = document.getElementById('table-log-body');
             if (logs.length === 0) {
-                tbodyLog.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Belum ada riwayat aktivitas recorded.</td></tr>`;
+                tbodyLog.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Belum ada riwayat aktivitas recorded.</td></tr>`;
                 return;
             }
             tbodyLog.innerHTML = logs.map(l => `
                 <tr>
                     <td style="white-space: nowrap;"><b>${l.timestamp}</b></td>
-                    <td><span class="badge bg-progress">${l.kategori}</span></td>
+                    <td><span class="badge bg-progress">${l.userEmail || '-'}</span></td>
+                    <td><span class="badge bg-high">${l.kategori}</span></td>
                     <td><b>${l.aktivitas}</b></td>
                     <td><span class="code-tag">${l.detailDoc}</span></td>
                     <td><span class="badge bg-approved">${l.status}</span></td>
@@ -1798,7 +1823,6 @@
             renderPenomoranRows(dbPenomoran);
             renderLogRows(activityLogs);
 
-            // Render Table Summary Audit
             const tbodyAudit = document.getElementById('table-audit-body');
             const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
 
@@ -1833,7 +1857,6 @@
                 }).join('');
             }
 
-            // Render Table Anti Fraud
             const tbodyFraud = document.getElementById('table-fraud-body');
             const fraudProjects = dbPenomoran.filter(x => x.jenis === 'Investigasi');
 
@@ -1856,17 +1879,16 @@
             }
         }
 
-        // Inisialisasi awal
         initTodayDate();
         autoFillAuditeeEmail();
     </script>
 
-    <!-- Firebase SDK versi CDN Compat -->
+    <!-- Firebase SDK versi CDN Compat (App, Database, & Auth) -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 
     <script>
-        // Konfigurasi Firebase Realtime Database
         const firebaseConfig = {
             apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
             authDomain: "dashboard-audit-e34bd.firebaseapp.com",
@@ -1878,35 +1900,104 @@
             databaseURL: "https://dashboard-audit-e34bd-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
 
-        // Inisialisasi Firebase & Database
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
 
-        // REALTIME LISTENER FIREBASE (Multi-Device Sync)
-        database.ref('dbPenomoran').on('value', (snapshot) => {
-            const data = snapshot.val();
-            dbPenomoran = data || [];
-            populateDropdowns();
-            refreshUI();
+        // 1. PROSES LOGIN USER
+        function handleUserLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+
+            auth.signInWithEmailAndPassword(email, pass)
+                .then((userCredential) => {
+                    document.getElementById('auth-login-overlay').style.display = 'none';
+                    document.getElementById('form-login-firebase').reset();
+                })
+                .catch((error) => {
+                    alert("Gagal Login: " + error.message);
+                });
+        }
+
+        // 2. STATE LISTENER DETEKSI STATUS AUTH USER
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUserEmail = user.email;
+                document.getElementById('display-user-email').innerText = user.email;
+                document.getElementById('user-badge-header').style.display = 'flex';
+                document.getElementById('auth-login-overlay').style.display = 'none';
+                
+                listenDatabaseRealtime();
+            } else {
+                currentUserEmail = "";
+                document.getElementById('user-badge-header').style.display = 'none';
+                document.getElementById('auth-login-overlay').style.display = 'flex';
+            }
         });
 
-        database.ref('auditDatabase').on('value', (snapshot) => {
-            const data = snapshot.val();
-            auditDatabase = data || [];
-            refreshUI();
-        });
+        // 3. FUNGSI LOGOUT USER
+        function handleUserLogout() {
+            if (confirm("Apakah Anda yakin ingin keluar dari akun?")) {
+                auth.signOut();
+            }
+        }
 
-        database.ref('fraudDatabase').on('value', (snapshot) => {
-            const data = snapshot.val();
-            fraudDatabase = data || [];
-            refreshUI();
-        });
+        // 4. MINTA RESET PASSWORD (LUPA PASSWORD)
+        function mintaResetPassword() {
+            const email = prompt("Masukkan email akun audit Anda untuk menerima link reset password:");
+            if (email) {
+                auth.sendPasswordResetEmail(email)
+                    .then(() => {
+                        alert("Link reset password telah dikirim ke email " + email + ". Silakan periksa inbox/spam email Anda.");
+                    })
+                    .catch((error) => {
+                        alert("Gagal mengirim email reset: " + error.message);
+                    });
+            }
+        }
 
-        database.ref('activityLogs').on('value', (snapshot) => {
-            const data = snapshot.val();
-            activityLogs = data || [];
-            refreshUI();
-        });
+        // 5. UBAH PASSWORD MANDIRI
+        function userUbahPasswordMandiri() {
+            const user = auth.currentUser;
+            const passwordBaru = prompt("Masukkan Password Baru Anda (Minimal 6 Karakter):");
+
+            if (passwordBaru && passwordBaru.length >= 6) {
+                user.updatePassword(passwordBaru)
+                    .then(() => {
+                        alert("Password berhasil diperbarui! Gunakan password baru ini untuk login berikutnya.");
+                    })
+                    .catch((error) => {
+                        alert("Gagal mengubah password: " + error.message + "\n(Saran: Logout lalu login kembali sebelum mengubah password).");
+                    });
+            } else if (passwordBaru) {
+                alert("Password kurang panjang! Minimal 6 karakter.");
+            }
+        }
+
+        // 6. MEMBACA REALTIME DATABASE SETELAH LOGGED IN
+        function listenDatabaseRealtime() {
+            database.ref('dbPenomoran').on('value', (snapshot) => {
+                dbPenomoran = snapshot.val() || [];
+                populateDropdowns();
+                refreshUI();
+            });
+
+            database.ref('auditDatabase').on('value', (snapshot) => {
+                auditDatabase = snapshot.val() || [];
+                refreshUI();
+            });
+
+            database.ref('fraudDatabase').on('value', (snapshot) => {
+                fraudDatabase = snapshot.val() || [];
+                refreshUI();
+            });
+
+            database.ref('activityLogs').on('value', (snapshot) => {
+                activityLogs = snapshot.val() || [];
+                refreshUI();
+            });
+        }
     </script>
 </body>
 </html>
