@@ -38,6 +38,7 @@
         .tab-btn { padding: 10px 18px; border: none; background: #e2e8f0; color: var(--text-muted); font-weight: 600; cursor: pointer; border-radius: 6px 6px 0 0; transition: all 0.2s; font-size: 13px; }
         .tab-btn.active { background: var(--primary); color: white; }
         .tab-btn.active-fraud { background: var(--purple-dark); color: white; }
+        .tab-btn.active-log { background: #475569; color: white; }
 
         /* Tab Content Sections */
         .tab-content { display: none; }
@@ -79,6 +80,20 @@
         .btn-warning { background: #d97706; color: white; }
         .btn-warning:hover { background: #b45309; }
 
+        /* Icon Buttons Compact Style for Table */
+        .btn-tbl-icon { padding: 6px 10px; font-size: 13px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; color: white; transition: 0.2s; }
+        .btn-tbl-edit { background: #64748b; }
+        .btn-tbl-edit:hover { background: #475569; }
+        .btn-tbl-print { background: #0284c7; }
+        .btn-tbl-print:hover { background: #0369a1; }
+        .btn-tbl-upload { background: #d97706; }
+        .btn-tbl-upload:hover { background: #b45309; }
+        .btn-tbl-send { background: #16a34a; }
+        .btn-tbl-send:hover { background: #15803d; }
+        .btn-tbl-send:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed !important; }
+        .btn-tbl-delete { background: #ef4444; }
+        .btn-tbl-delete:hover { background: #dc2626; }
+
         /* Action Buttons & Horizontal Controls Bar */
         .controls-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
         .control-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
@@ -91,41 +106,13 @@
         .btn-pdf:hover { background: #b91c1c; }
 
         /* Summary Audit 3-Column Header Grid Layout */
-        .summary-header-grid {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr;
-            gap: 16px;
-            align-items: start;
-        }
-        @media (max-width: 992px) {
-            .summary-header-grid { grid-template-columns: 1fr; }
-        }
+        .summary-header-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; align-items: start; }
+        @media (max-width: 992px) { .summary-header-grid { grid-template-columns: 1fr; } }
 
-        .instruction-box {
-            background: #f0f9ff;
-            border: 1px dashed #bae6fd;
-            border-radius: 6px;
-            padding: 12px;
-            font-size: 11px;
-            color: #0369a1;
-        }
-        .instruction-box h4 {
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 6px;
-            color: #0284c7;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .instruction-box ol {
-            padding-left: 16px;
-            margin: 0;
-            line-height: 1.4;
-        }
-        .instruction-box li {
-            margin-bottom: 4px;
-        }
+        .instruction-box { background: #f0f9ff; border: 1px dashed #bae6fd; border-radius: 6px; padding: 12px; font-size: 11px; color: #0369a1; }
+        .instruction-box h4 { font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #0284c7; display: flex; align-items: center; gap: 4px; }
+        .instruction-box ol { padding-left: 16px; margin: 0; line-height: 1.4; }
+        .instruction-box li { margin-bottom: 4px; }
 
         /* Upload Progress & Info Box */
         .upload-section { background: #eff6ff; border: 1px dashed #93c5fd; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; position: relative; height: 100%; justify-content: center; }
@@ -152,10 +139,7 @@
 
         /* Summary Audit Table Center Aligned */
         .table-center-audit th, 
-        .table-center-audit td {
-            text-align: center !important;
-            vertical-align: middle !important;
-        }
+        .table-center-audit td { text-align: center !important; vertical-align: middle !important; }
 
         /* Badges & Code Tags */
         .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-align: center; }
@@ -175,6 +159,13 @@
         .code-tag-spp { color: #854d0e; background: #fefce8; border-color: #fef08a; }
         .code-tag-lha { color: #dc2626; background: #fef2f2; border-color: #fecdd3; }
         .code-tag-pica { color: #16a34a; background: #f0fdf4; border-color: #bbf7d0; }
+
+        /* Modals Overlay & Card */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-card { background: white; padding: 20px; border-radius: 8px; width: 450px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .modal-header h4 { font-size: 15px; font-weight: 700; }
+        .btn-close-modal { background: none; border: none; font-size: 18px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
 
         /* Simple Bar Charts */
         .bar-item { margin-bottom: 12px; }
@@ -197,6 +188,7 @@
         <button class="tab-btn" onclick="switchTab('tab-penomoran', event)">🔢 Penomoran Dokumen</button>
         <button class="tab-btn" onclick="switchTab('tab-audit', event)">📂 Summary Audit</button>
         <button class="tab-btn" onclick="switchTab('tab-antifraud', event)" style="border-bottom: 2px solid var(--purple);">🛡️ Anti Fraud</button>
+        <button class="tab-btn" onclick="switchTab('tab-activitylog', event)">📜 Activity Log</button>
     </div>
 
     <!-- ==================== TAB 1: EXECUTIVE SUMMARY ==================== -->
@@ -264,11 +256,13 @@
         <div class="grid-container">
             <!-- SISI KIRI: FORM GENERATE NOMOR DOKUMEN -->
             <div class="card">
-                <h3>Form Penomoran Dokumen & Surat Tugas</h3>
+                <h3 id="form-penomoran-title">Form Penomoran Dokumen & Surat Tugas</h3>
                 <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
                     Isi form di bawah ini untuk menerbitkan nomor dan template Surat Perintah Penugasan resmi.
                 </p>
                 <form id="form-penomoran" onsubmit="generateDocumentNumber(event)">
+                    <input type="hidden" id="edit-doc-id" value="">
+
                     <div class="form-group">
                         <label>Jenis Surat Tugas / Audit</label>
                         <select id="p-jenis" class="form-control" required>
@@ -282,12 +276,34 @@
                         <input type="text" id="p-judul" class="form-control" placeholder="Contoh: Cabang Jakarta / Hub Bandung" required>
                     </div>
 
+                    <!-- CHECKBOX BACK DATE & SECTION INPUT MANUAL -->
+                    <div class="form-group" style="background: #f8fafc; padding: 10px; border: 1px dashed var(--border); border-radius: 6px;">
+                        <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--primary-dark);">
+                            <input type="checkbox" id="p-is-backdate" onchange="toggleBackDateFields()">
+                            <span> Back Date (Input Manual Nomor Dokumen)</span>
+                        </label>
+                        <div id="backdate-fields" style="display: none; margin-top: 10px;">
+                            <div class="form-group">
+                                <label>Nomor SPP (Manual)</label>
+                                <input type="text" id="p-manual-spp" class="form-control" placeholder="Contoh: 01/SPP/JBA-IA/I/2026">
+                            </div>
+                            <div class="form-group">
+                                <label>Nomor PICA (Manual)</label>
+                                <input type="text" id="p-manual-pica" class="form-control" placeholder="Contoh: 001/IA/JBA/PICA/I/2026">
+                            </div>
+                            <div class="form-group">
+                                <label>Nomor LHA (Manual)</label>
+                                <input type="text" id="p-manual-lha" class="form-control" placeholder="Contoh: 001/IA/JBA/LHA/I/2026">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Regional Head</label>
-                        <select id="p-regional" class="form-control" required>
-                            <option value="reg1" selected>Tan Hung Pau [Regional 1]</option>
-                            <option value="reg2">Syafi Munawir Almaki [Regional 2]</option>
-                            <option value="reg3">Irfan Baharuddin [Regional 3]</option>
+                        <select id="p-regional" class="form-control" onchange="autoFillAuditeeEmail()" required>
+                            <option value="reg1" selected>Irfan Baharudin [Regional Head 1]</option>
+                            <option value="reg2">Syafi Munawir Almaki [Regional Head 2]</option>
+                            <option value="reg3">Tan Hung Pau [Regional Head 3 & 4]</option>
                         </select>
                     </div>
 
@@ -322,17 +338,26 @@
                         </div>
                     </div>
 
+                    <!-- CONTAINER DINAMIS TANGGAL TERBIT SURAT TUGAS -->
                     <div class="form-group">
-                        <label>Tanggal Surat Terbit (Auto Tanggal Sistem)</label>
-                        <input type="text" id="p-tgl-terbit-display" class="form-control" readonly>
+                        <label>Tanggal Surat Terbit</label>
+                        <div id="tgl-terbit-container">
+                            <input type="text" id="p-tgl-terbit-display" class="form-control" readonly>
+                        </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Email Auditee / Target (Outlook Reminder)</label>
+                        <label>Email Auditee / Target (Auto-filled dari Regional Head)</label>
                         <input type="email" id="p-email" class="form-control" placeholder="auditee@jba.co.id" required>
                     </div>
 
-                    <button type="submit" class="btn btn-success" style="margin-top: 10px;">⚡ Generate Nomor Dokumen</button>
+                    <div class="form-group">
+                        <label>CC Email (Salinan Surat Tugas)</label>
+                        <input type="text" id="p-cc-email" class="form-control" placeholder="manager.auditee@jba.co.id, regional.head@jba.co.id">
+                    </div>
+
+                    <button type="submit" id="btn-submit-penomoran" class="btn btn-success" style="margin-top: 10px;">⚡ Generate Nomor Dokumen</button>
+                    <button type="button" id="btn-cancel-edit" class="btn btn-danger" style="margin-top: 6px; display: none;" onclick="resetPenomoranForm()">✕ Batal Edit</button>
                 </form>
             </div>
 
@@ -348,7 +373,7 @@
                     <input type="text" id="search-penomoran" class="form-control" placeholder="🔍 Cari berdasarkan jenis, No. Surat, LHA/PICA, atau nama Cabang..." onkeyup="filterPenomoranTable()">
                 </div>
 
-                <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+                <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
                     <table>
                         <thead>
                             <tr>
@@ -368,15 +393,34 @@
         </div>
     </div>
 
+    <!-- MODAL POP-UP UPLOAD SPP BASAH -->
+    <div id="modal-upload-spp" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4>📤 Upload Surat Tugas (Tanda Tangan Basah)</h4>
+                <button class="btn-close-modal" onclick="closeUploadSppModal()">✕</button>
+            </div>
+            <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
+                Unggah dokumen/gambar Surat Perintah Penugasan yang telah ditandatangani basah.
+            </p>
+            <input type="hidden" id="modal-spp-doc-id">
+            <div class="form-group">
+                <label>Pilih File Image / PDF Surat Tugas</label>
+                <input type="file" id="modal-spp-file" class="form-control" accept="image/*, application/pdf">
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-danger" style="width: auto; padding: 6px 12px; font-size: 12px;" onclick="closeUploadSppModal()">Batal</button>
+                <button class="btn btn-success" style="width: auto; padding: 6px 16px; font-size: 12px;" onclick="submitUploadSppSigned()">Submit Upload</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ==================== TAB 3: SUMMARY AUDIT ==================== -->
     <div id="tab-audit" class="tab-content">
         <div class="card" style="border-left: 5px solid var(--primary);">
             <h3 style="margin-bottom: 12px;">📂 Summary Audit Management</h3>
             
-            <!-- SECTION ATAS: 3 BAGIAN HEADER GRID -->
             <div class="summary-header-grid">
-                
-                <!-- BAGIAN 1: TATA CARA PENGGUNAAN FITUR UPLOAD -->
                 <div class="instruction-box">
                     <h4>ℹ️ Petunjuk Penggunaan Fitur Upload</h4>
                     <ol>
@@ -386,7 +430,6 @@
                     </ol>
                 </div>
 
-                <!-- BAGIAN 2: FITUR PEMILIHAN PROJECT REGULER TERDAFTAR -->
                 <div class="control-group">
                     <label>Target Project Audit Reguler:</label>
                     <select id="audit-select-nomor" class="form-control" onchange="syncRegulerProject()">
@@ -394,7 +437,6 @@
                     </select>
                 </div>
 
-                <!-- BAGIAN 3: FITUR TOMBOL UPLOAD SUMMARY -->
                 <div class="upload-section">
                     <div class="file-input-wrapper">
                         <label for="audit-file-input" class="btn-upload">📁 Upload Summary Audit</label>
@@ -412,7 +454,6 @@
                         <span class="file-name">✅ <span id="info-file-name-reguler">-</span> (<span id="info-file-rows-reguler">0</span> temuan)</span>
                     </div>
                 </div>
-
             </div>
         </div>
 
@@ -422,7 +463,6 @@
                 Menampilkan daftar project terdaftar dari Halaman Penomoran Dokumen. Klik nomor dokumen untuk membuka detail di tab baru.
             </p>
             <div class="table-responsive">
-                <!-- TABEL DIATUR RATA TENGAH (HEADER & ISI) -->
                 <table class="table-center-audit">
                     <thead>
                         <tr>
@@ -504,13 +544,48 @@
         </div>
     </div>
 
+    <!-- ==================== TAB 5: ACTIVITY LOG ==================== -->
+    <div id="tab-activitylog" class="tab-content">
+        <div class="card">
+            <div class="card-header">
+                <h3>📜 System Activity Log</h3>
+                <button class="btn-action btn-excel" onclick="exportActivityLogExcel()">📊 Export Log (Excel)</button>
+            </div>
+            <div style="margin-bottom: 12px;">
+                <input type="text" id="search-log" class="form-control" placeholder="🔍 Cari riwayat berdasarkan aktivitas, user, atau nomor dokumen..." onkeyup="filterLogTable()">
+            </div>
+            <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Kategori / Modul</th>
+                            <th>Aktivitas / Tindakan</th>
+                            <th>Detail Dokumen</th>
+                            <th>Status / Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-log-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- JAVASCRIPT SYSTEM LOGIC -->
     <script>
+        // MAPPING REGIONAL HEAD BESERTA EMAIL
         const regionalMap = {
-            "reg1": { name: "Tan Hung Pau", title: "Regional Head 1" },
-            "reg2": { name: "Syafi Munawir Almaki", title: "Regional Head 2" },
-            "reg3": { name: "Irfan Baharuddin", title: "Regional Head 3" }
+            "reg1": { name: "Irfan Baharudin", title: "Regional Head 1", email: "irfan.baharudin@jba.co.id" },
+            "reg2": { name: "Syafi Munawir Almaki", title: "Regional Head 2", email: "syafi.almaki@jba.co.id" },
+            "reg3": { name: "Tan Hung Pau", title: "Regional Head 3 & 4", email: "tan.pau@jba.co.id" }
         };
+
+        function autoFillAuditeeEmail() {
+            const selectedKey = document.getElementById('p-regional').value;
+            if (regionalMap[selectedKey]) {
+                document.getElementById('p-email').value = regionalMap[selectedKey].email;
+            }
+        }
 
         function toRoman(num) {
             const romanMap = [
@@ -524,6 +599,7 @@
         }
 
         function formatIndonesianDate(dateObj) {
+            if (!dateObj || isNaN(dateObj.getTime())) return "-";
             const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
             return `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
         }
@@ -545,15 +621,33 @@
 
         function initTodayDate() {
             const today = new Date();
-            document.getElementById('p-tgl-terbit-display').value = formatIndonesianDate(today);
+            const container = document.getElementById('tgl-terbit-container');
+            container.innerHTML = `<input type="text" id="p-tgl-terbit-display" class="form-control" value="${formatIndonesianDate(today)}" readonly>`;
         }
 
         // Variabel Data In-Memory
         let dbPenomoran = [];
         let auditDatabase = [];
         let fraudDatabase = [];
+        let activityLogs = [];
         let selectedRegulerObj = null;
         let selectedFraudObj = null;
+
+        // FUNGSI LOGGING SYSTEM
+        function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
+            const newLog = {
+                id: Date.now(),
+                timestamp: new Date().toLocaleString('id-ID'),
+                kategori: kategori,
+                aktivitas: aktivitas,
+                detailDoc: detailDoc,
+                status: status
+            };
+            activityLogs.unshift(newLog);
+            if (typeof database !== 'undefined') {
+                database.ref('activityLogs').set(activityLogs);
+            }
+        }
 
         // FUNGSI HELPER FIREBASE SAVE
         function syncPenomoranToFirebase() {
@@ -575,23 +669,38 @@
         }
 
         function switchTab(tabId, evt) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-fraud'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-fraud', 'active-log'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
             if(evt && evt.target) {
-                if(tabId === 'tab-antifraud') {
-                    evt.target.classList.add('active-fraud');
-                } else {
-                    evt.target.classList.add('active');
-                }
+                if(tabId === 'tab-antifraud') evt.target.classList.add('active-fraud');
+                else if(tabId === 'tab-activitylog') evt.target.classList.add('active-log');
+                else evt.target.classList.add('active');
             }
             document.getElementById(tabId).classList.add('active');
             refreshUI();
         }
 
+        // FUNGSI TOGGLE BACK DATE (MEMBUKA TANGGAL SURAT UNTUK MANUAL INPUT)
+        function toggleBackDateFields() {
+            const isChecked = document.getElementById('p-is-backdate').checked;
+            document.getElementById('backdate-fields').style.display = isChecked ? 'block' : 'none';
+            
+            const container = document.getElementById('tgl-terbit-container');
+            if (isChecked) {
+                // Berubah menjadi Input Date Manual
+                container.innerHTML = `<input type="date" id="p-tgl-terbit-manual" class="form-control" required>`;
+            } else {
+                // Kembali menjadi Read-Only Tanggal Hari ini
+                initTodayDate();
+            }
+        }
+
+        // GENERATE ATAU EDIT NOMOR DOKUMEN
         function generateDocumentNumber(e) {
             e.preventDefault();
 
+            const editId = document.getElementById('edit-doc-id').value;
             const jenis = document.getElementById('p-jenis').value;
             const judul = document.getElementById('p-judul').value;
             const regKey = document.getElementById('p-regional').value;
@@ -609,64 +718,235 @@
             const m2 = document.getElementById('p-member2').value;
             const auditMembers = [m1, m2].filter(x => x.trim() !== "").join(", ") || "-";
 
-            const tglTerbit = document.getElementById('p-tgl-terbit-display').value;
-            const email = document.getElementById('p-email').value;
+            const isBackdate = document.getElementById('p-is-backdate').checked;
 
-            const today = new Date();
-            const monthRoman = toRoman(today.getMonth() + 1);
-            const yearStr = today.getFullYear();
+            // MENGAMBIL TANGGAL TERBIT SESUAI MODE
+            let tglTerbit = "";
+            if (isBackdate) {
+                const manualVal = document.getElementById('p-tgl-terbit-manual').value;
+                if (!manualVal) return alert("Error: Tanggal Surat Terbit wajib diisi untuk mode Back Date!");
+                tglTerbit = formatIndonesianDate(new Date(manualVal));
+            } else {
+                tglTerbit = document.getElementById('p-tgl-terbit-display').value;
+            }
+
+            const email = document.getElementById('p-email').value;
+            const ccEmail = document.getElementById('p-cc-email').value;
 
             let autoSPP = "", autoLHA = "-", autoPICA = "-";
 
-            if (jenis === "Investigasi") {
-                const existingInvestigasi = dbPenomoran.filter(x => x.jenis === "Investigasi");
-                const nextSeq = existingInvestigasi.length + 1;
-                const xyzSeq = String(nextSeq).padStart(3, '0');
-                autoSPP = `${xyzSeq}/FOC-SRT TUGAS/${monthRoman}/${yearStr}`;
-            } else {
-                const existingReguler = dbPenomoran.filter(x => x.jenis === "Reguler");
-                const nextSeq = existingReguler.length + 1;
-                const xySeq = String(nextSeq).padStart(2, '0');
-                const xyzSeq = String(nextSeq).padStart(3, '0');
+            if (isBackdate) {
+                autoSPP = document.getElementById('p-manual-spp').value.trim();
+                autoPICA = document.getElementById('p-manual-pica').value.trim();
+                autoLHA = document.getElementById('p-manual-lha').value.trim();
 
-                autoSPP = `${xySeq}/SPP/JBA-IA/${monthRoman}/${yearStr}`;
-                autoPICA = `${xyzSeq}/IA/JBA/PICA/${monthRoman}/${yearStr}`;
-                autoLHA = `${xyzSeq}/IA/JBA/LHA/${monthRoman}/${yearStr}`;
+                if (!autoSPP) return alert("Error: Nomor SPP wajib diisi untuk mode Back Date!");
+
+                // CHECK DUPLIKASI NOMOR
+                const exists = dbPenomoran.some(item => 
+                    item.id != editId && (
+                        (item.noSPP && item.noSPP.toLowerCase() === autoSPP.toLowerCase()) ||
+                        (autoPICA && item.noPICA && item.noPICA.toLowerCase() === autoPICA.toLowerCase()) ||
+                        (autoLHA && item.noLHA && item.noLHA.toLowerCase() === autoLHA.toLowerCase())
+                    )
+                );
+
+                if (exists) {
+                    alert("⚠️ ERROR DUPLIKASI DOKUMEN:\nNomor SPP, PICA, atau LHA yang Anda masukkan sudah pernah di-input untuk project lain dalam sistem!");
+                    return;
+                }
+            } else {
+                const today = new Date();
+                const monthRoman = toRoman(today.getMonth() + 1);
+                const yearStr = today.getFullYear();
+
+                if (jenis === "Investigasi") {
+                    const existingInvestigasi = dbPenomoran.filter(x => x.jenis === "Investigasi");
+                    const nextSeq = existingInvestigasi.length + 1;
+                    const xyzSeq = String(nextSeq).padStart(3, '0');
+                    autoSPP = `${xyzSeq}/FOC-SRT TUGAS/${monthRoman}/${yearStr}`;
+                } else {
+                    const existingReguler = dbPenomoran.filter(x => x.jenis === "Reguler");
+                    const nextSeq = existingReguler.length + 1;
+                    const xySeq = String(nextSeq).padStart(2, '0');
+                    const xyzSeq = String(nextSeq).padStart(3, '0');
+
+                    autoSPP = `${xySeq}/SPP/JBA-IA/${monthRoman}/${yearStr}`;
+                    autoPICA = `${xyzSeq}/IA/JBA/PICA/${monthRoman}/${yearStr}`;
+                    autoLHA = `${xyzSeq}/IA/JBA/LHA/${monthRoman}/${yearStr}`;
+                }
             }
 
-            const newDoc = {
-                id: Date.now(),
-                jenis: jenis,
-                noSPP: autoSPP,
-                noLHA: autoLHA,
-                noPICA: autoPICA,
-                tanggalStart: tglTerbit,
-                tglSelesai: tglSelesai,
-                dueDateProject: dueDateProject,
-                judul: judul,
-                regionalHead: regionalHead,
-                jabatanRegionalHead: jabatanRegionalHead,
-                periodeAudit: periode,
-                tglPelaksanaan: tglPelaksanaan,
-                auditor: auditor,
-                auditMembers: auditMembers,
-                emailAuditee: email,
-                statusManager: "Not Approved"
-            };
+            if (editId) {
+                // EDIT MODE
+                const docIdx = dbPenomoran.findIndex(x => x.id == editId);
+                if (docIdx !== -1) {
+                    dbPenomoran[docIdx] = {
+                        ...dbPenomoran[docIdx],
+                        jenis: jenis,
+                        noSPP: autoSPP,
+                        noLHA: autoLHA,
+                        noPICA: autoPICA,
+                        judul: judul,
+                        regionalHead: regionalHead,
+                        jabatanRegionalHead: jabatanRegionalHead,
+                        periodeAudit: periode,
+                        tglPelaksanaan: tglPelaksanaan,
+                        dueDateProject: dueDateProject,
+                        auditor: auditor,
+                        auditMembers: auditMembers,
+                        tanggalStart: tglTerbit,
+                        emailAuditee: email,
+                        ccEmail: ccEmail
+                    };
+                    logActivity("Penomoran Dokumen", "Revisi / Edit Project", autoSPP);
+                    alert("Data Penomoran Project Berhasil Diperbarui!");
+                }
+            } else {
+                // NEW MODE
+                const newDoc = {
+                    id: Date.now(),
+                    jenis: jenis,
+                    noSPP: autoSPP,
+                    noLHA: autoLHA,
+                    noPICA: autoPICA,
+                    tanggalStart: tglTerbit,
+                    tglSelesai: tglSelesai,
+                    dueDateProject: dueDateProject,
+                    judul: judul,
+                    regionalHead: regionalHead,
+                    jabatanRegionalHead: jabatanRegionalHead,
+                    periodeAudit: periode,
+                    tglPelaksanaan: tglPelaksanaan,
+                    auditor: auditor,
+                    auditMembers: auditMembers,
+                    emailAuditee: email,
+                    ccEmail: ccEmail,
+                    hasSignedSPP: false,
+                    statusManager: "Not Approved"
+                };
 
-            dbPenomoran.push(newDoc);
+                dbPenomoran.push(newDoc);
+                logActivity("Penomoran Dokumen", `Penerbitan Nomor (${isBackdate ? 'Back Date' : 'Otomatis'})`, autoSPP);
+                alert(`Nomor Dokumen ${jenis} Berhasil Diterbitkan!\nNo. Surat: ${autoSPP}\nDue Date Project: ${dueDateProject}`);
+            }
+
             syncPenomoranToFirebase();
-
-            document.getElementById('form-penomoran').reset();
-            initTodayDate();
-
+            resetPenomoranForm();
             populateDropdowns();
             refreshUI();
-
-            alert(`Nomor Dokumen ${jenis} Berhasil Diterbitkan!\nNo. Surat: ${autoSPP}\nDue Date Project: ${dueDateProject}`);
         }
 
-        // FUNGSI FILTER SEARCH PENOMORAN DOKUMEN TERBIT
+        function editDocumentNumber(id) {
+            const doc = dbPenomoran.find(x => x.id === id);
+            if (!doc) return;
+
+            document.getElementById('edit-doc-id').value = doc.id;
+            document.getElementById('p-jenis').value = doc.jenis;
+            document.getElementById('p-judul').value = doc.judul;
+            document.getElementById('p-periode').value = doc.periodeAudit;
+            document.getElementById('p-auditor').value = doc.auditor;
+            
+            const members = (doc.auditMembers || '').split(', ');
+            document.getElementById('p-member1').value = members[0] || '';
+            document.getElementById('p-member2').value = members[1] || '';
+            
+            document.getElementById('p-email').value = doc.emailAuditee || '';
+            document.getElementById('p-cc-email').value = doc.ccEmail || '';
+
+            document.getElementById('form-penomoran-title').innerText = "⚙️ Edit Project Penomoran Dokumen";
+            document.getElementById('btn-submit-penomoran').innerText = "💾 Simpan Perubahan";
+            document.getElementById('btn-cancel-edit').style.display = "block";
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // FUNGSI HAPUS NOMOR DOKUMEN DARI REGISTER & FIREBASE
+        function deleteDocumentNumber(id) {
+            const doc = dbPenomoran.find(x => x.id === id);
+            if (!doc) return;
+
+            if (confirm(`Apakah Anda yakin ingin menghapus nomor dokumen project "${doc.judul}" (${doc.noSPP})?`)) {
+                dbPenomoran = dbPenomoran.filter(item => item.id !== id);
+                syncPenomoranToFirebase();
+                logActivity("Penomoran Dokumen", "Hapus Nomor Surat / Project", doc.noSPP);
+                populateDropdowns();
+                refreshUI();
+                alert("Nomor surat tugas/project berhasil dihapus!");
+            }
+        }
+
+        function resetPenomoranForm() {
+            document.getElementById('form-penomoran').reset();
+            document.getElementById('edit-doc-id').value = "";
+            document.getElementById('p-is-backdate').checked = false;
+            toggleBackDateFields();
+            autoFillAuditeeEmail();
+
+            document.getElementById('form-penomoran-title').innerText = "Form Penomoran Dokumen & Surat Tugas";
+            document.getElementById('btn-submit-penomoran').innerText = "⚡ Generate Nomor Dokumen";
+            document.getElementById('btn-cancel-edit').style.display = "none";
+        }
+
+        // FUNGSI POPUP UPLOAD SPP BASAH & SUBMIT
+        function openUploadSppModal(id) {
+            document.getElementById('modal-spp-doc-id').value = id;
+            document.getElementById('modal-spp-file').value = "";
+            document.getElementById('modal-upload-spp').style.display = 'flex';
+        }
+
+        function closeUploadSppModal() {
+            document.getElementById('modal-upload-spp').style.display = 'none';
+        }
+
+        function submitUploadSppSigned() {
+            const id = document.getElementById('modal-spp-doc-id').value;
+            const fileInput = document.getElementById('modal-spp-file');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                return alert("Pilih berkas Surat Tugas yang sudah ditandatangani basah!");
+            }
+
+            const doc = dbPenomoran.find(x => x.id == id);
+            if (doc) {
+                doc.hasSignedSPP = true;
+                syncPenomoranToFirebase();
+                logActivity("Penomoran Dokumen", "Upload SPP Tanda Tangan Basah", doc.noSPP);
+                closeUploadSppModal();
+                refreshUI();
+                alert("Surat Tugas bertanda tangan basah berhasil di-submit! Tombol Kirim Email Surat Tugas kini aktif.");
+            }
+        }
+
+        // FUNGSI EMAIL SURAT TUGAS DENGAN TO & CC
+        function sendSignedSPP_Email(id) {
+            const doc = dbPenomoran.find(x => x.id === id);
+            if (!doc) return;
+
+            let toEmail = doc.emailAuditee || "auditee@jba.co.id";
+            let ccEmail = doc.ccEmail || "";
+
+            let subject = encodeURIComponent(`[SURAT PENUGASAN INTERNAL AUDIT] ${doc.judul} - ${doc.noSPP}`);
+            let body = encodeURIComponent(
+                `Yth. Tim Auditee / Management ${doc.judul},\n\n` +
+                `Bersama email ini kami sampaikan Surat Perintah Penugasan Internal Audit resmi yang telah ditandatangani:\n\n` +
+                ` Nomor Surat        : ${doc.noSPP}\n` +
+                ` Cabang / Hub       : ${doc.judul}\n` +
+                ` Periode Audit      : ${doc.periodeAudit}\n` +
+                ` Tanggal Pelaksanaan: ${doc.tglPelaksanaan}\n` +
+                ` Lead Auditor       : ${doc.auditor}\n\n` +
+                `Mohon dapat memproses dan memfasilitasi kebutuhan data audit terkait.\n\n` +
+                `Terima Kasih,\nInternal Audit Department`
+            );
+
+            let mailtoUrl = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+            if (ccEmail.trim() !== "") {
+                mailtoUrl += `&cc=${encodeURIComponent(ccEmail)}`;
+            }
+
+            logActivity("Penomoran Dokumen", "Pengiriman Email Surat Tugas (Outlook)", doc.noSPP);
+            window.location.href = mailtoUrl;
+        }
+
         function filterPenomoranTable() {
             const query = document.getElementById('search-penomoran').value.toLowerCase();
             const filteredData = dbPenomoran.filter(item => {
@@ -677,6 +957,17 @@
                        item.judul.toLowerCase().includes(query);
             });
             renderPenomoranRows(filteredData);
+        }
+
+        function filterLogTable() {
+            const query = document.getElementById('search-log').value.toLowerCase();
+            const filteredLogs = activityLogs.filter(log => {
+                return log.timestamp.toLowerCase().includes(query) ||
+                       log.kategori.toLowerCase().includes(query) ||
+                       log.aktivitas.toLowerCase().includes(query) ||
+                       log.detailDoc.toLowerCase().includes(query);
+            });
+            renderLogRows(filteredLogs);
         }
 
         function toggleManagerApproval(id) {
@@ -691,6 +982,7 @@
             const confirmed = confirm("Apakah sudah dilakukan review terhadap project audit yang dilakukan?");
             if (confirmed) {
                 doc.statusManager = "Approved by Manager";
+                logActivity("Summary Audit", "Otorisasi Approval Manager", doc.noSPP);
                 syncPenomoranToFirebase();
                 refreshUI();
             }
@@ -700,6 +992,7 @@
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return alert("Dokumen tidak ditemukan!");
 
+            logActivity("Penomoran Dokumen", "Cetak / Print Surat Tugas", doc.noSPP);
             const daftarAuditor = doc.auditMembers !== "-" ? `${doc.auditor}, ${doc.auditMembers}` : `${doc.auditor}`;
 
             const printHTML = `
@@ -763,57 +1056,10 @@
             win.document.close();
         }
 
-        function triggerAuditorReminder(id) {
-            const docObj = dbPenomoran.find(x => x.id === id);
-            if (!docObj) return alert("Dokumen tidak ditemukan!");
-
-            let subject = encodeURIComponent(`[REMINDER MANAGER] Due Date Project Audit - ${docObj.judul}`);
-            let body = encodeURIComponent(
-                `Yth. ${docObj.auditor},\n\n` +
-                `Mengingatkan kembali mengenai due date penyelesaian project audit berikut:\n\n` +
-                ` Nomor Surat        : ${docObj.noSPP}\n` +
-                ` Judul Project      : ${docObj.judul}\n` +
-                ` Tgl Pelaksanaan    : ${docObj.tglPelaksanaan}\n` +
-                ` Due Date (HK+4)    : ${docObj.dueDateProject || '-'}\n\n` +
-                `Mohon untuk melengkapi laporan hasil audit sebelum batas waktu yang ditentukan.\n\n` +
-                `Terima Kasih,\nAudit Manager`
-            );
-
-            window.location.href = `mailto:auditor@jba.co.id?subject=${subject}&body=${body}`;
-        }
-
-        function triggerRowOutlookReminder(noSPP) {
-            const activeObj = dbPenomoran.find(x => x.noSPP === noSPP);
-            if (!activeObj) return alert("Data project tidak ditemukan!");
-
-            let targetEmail = activeObj.emailAuditee || "auditee@jba.co.id";
-            let subject = encodeURIComponent(`[REMINDER AUDIT REGULER] ${activeObj.judul} - ${activeObj.noSPP}`);
-            let body = encodeURIComponent(
-                `Yth. Tim Auditee / Management ${activeObj.judul},\n\n` +
-                `Menginformasikan pelaksanaan Audit Reguler (${activeObj.noSPP}) telah terdaftar.\n\n` +
-                ` Nomor Surat      : ${activeObj.noSPP}\n` +
-                ` Cabang / Hub     : ${activeObj.judul}\n` +
-                ` Periode Audit    : ${activeObj.periodeAudit}\n` +
-                ` Due Date Project : ${activeObj.dueDateProject || '-'}\n` +
-                ` Lead Auditor     : ${activeObj.auditor}\n\n` +
-                `Mohon dapat berkoordinasi terkait kelengkapan dokumen data audit.\n\n` +
-                `Terima Kasih,\nInternal Audit Department`
-            );
-
-            window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
-        }
-
-        function deleteDocumentNumber(id) {
-            if (confirm("Apakah Anda yakin ingin menghapus nomor dokumen terbit ini?")) {
-                dbPenomoran = dbPenomoran.filter(item => item.id !== id);
-                syncPenomoranToFirebase();
-                populateDropdowns();
-                refreshUI();
-            }
-        }
-
         function exportPenomoranExcel() {
             if (dbPenomoran.length === 0) return alert("Belum ada register nomor dokumen!");
+            logActivity("Penomoran Dokumen", "Export Register Penomoran (Excel)", "All Data");
+
             const exportData = dbPenomoran.map((p, idx) => ({
                 "No": idx + 1,
                 "Tipe Project": p.jenis,
@@ -829,6 +1075,7 @@
                 "Audit Members": p.auditMembers,
                 "Tanggal Terbit": p.tanggalStart,
                 "Email Auditee": p.emailAuditee,
+                "CC Email": p.ccEmail || "-",
                 "Status Manager": p.statusManager
             }));
 
@@ -836,6 +1083,23 @@
             const workbook = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(workbook, worksheet, "Register_Penomoran");
             XLSX.writeFile(workbook, `Register_Penomoran_Dokumen_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function exportActivityLogExcel() {
+            if (activityLogs.length === 0) return alert("Belum ada riwayat aktivitas terdaftar!");
+            const exportData = activityLogs.map((l, idx) => ({
+                "No": idx + 1,
+                "Waktu System": l.timestamp,
+                "Modul": l.kategori,
+                "Tindakan / Aktivitas": l.aktivitas,
+                "Nomor Dokumen / Item": l.detailDoc,
+                "Status": l.status
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Activity_Log");
+            XLSX.writeFile(workbook, `Activity_Log_AuditSystem_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function populateDropdowns() {
@@ -880,8 +1144,9 @@
             }
         }
 
-        // FUNGSI MEMBUKA TAB BARU DETAIL DOKUMEN AUDIT DENGAN 4 TOMBOL UTAMA
+        // MEMBUKA TAB BARU DETAIL DOKUMEN AUDIT
         function openAuditDetailWindow(noSPP, jenis) {
+            logActivity("Portal Navigasi", "Buka Halaman Detail Project (Tab Baru)", noSPP);
             const docObj = dbPenomoran.find(x => x.noSPP === noSPP);
             const masterDb = jenis === 'Investigasi' ? fraudDatabase : auditDatabase;
             const allProjectsList = dbPenomoran.filter(x => x.jenis === jenis);
@@ -915,7 +1180,6 @@
                     .btn-add-proj:hover { background: #334155; }
                     .btn-dl:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed !important; border: 1px solid #94a3b8; }
                     
-                    /* Selected Projects Badges Container */
                     .selected-projects-list { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #f1f5f9; padding: 8px 12px; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; margin-top: 6px; }
                     .project-chip { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px; }
                     .btn-remove-chip { background: #ef4444; color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
@@ -924,7 +1188,6 @@
                     .meta-item label { font-size: 11px; text-transform: uppercase; color: #0284c7; font-weight: 700; display: block; }
                     .meta-item span { font-size: 14px; font-weight: 700; }
                     
-                    /* TABEL DETAIL: HEADER CENTER, ISI LEFT */
                     .table-responsive { overflow-x: auto; }
                     table.table-detail { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
                     table.table-detail th { background: #f1f5f9; padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: center !important; font-weight: 700; font-size: 11px; text-transform: uppercase; white-space: nowrap; }
@@ -937,7 +1200,6 @@
                     .status-approved { background: #dcfce7; color: #15803d; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; }
                     .status-pending { background: #fee2e2; color: #991b1b; padding: 4px 8px; border-radius: 4px; font-weight: 700; font-size: 12px; }
 
-                    /* Attachment Controls */
                     .attachment-box { display: flex; flex-direction: column; gap: 4px; font-size: 11px; }
                     .attachment-link { color: #0284c7; text-decoration: underline; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
                     .btn-delete-attach { color: #ef4444; background: none; border: none; font-size: 11px; cursor: pointer; padding: 0; margin-left: 4px; font-weight: bold; }
@@ -945,10 +1207,8 @@
                     .btn-upload-file { background: #f1f5f9; border: 1px dashed #cbd5e1; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600; text-align: center; display: inline-block; }
                     .btn-upload-file:hover { background: #e2e8f0; }
 
-                    /* Modal Dropdown Selection */
                     .dropdown-select-box { display: none; margin-top: 8px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
 
-                    /* Floating Image Modal Overlay */
                     .image-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); z-index: 9999; justify-content: center; align-items: center; }
                     .image-modal-card { background: white; padding: 16px; border-radius: 8px; max-width: 90%; max-height: 90%; display: flex; flex-direction: column; align-items: flex-end; }
                     .image-modal-card img { max-width: 100%; max-height: 80vh; border-radius: 6px; object-fit: contain; }
@@ -963,45 +1223,26 @@
 
                 <!-- TOOLBAR 4 TOMBOL UTAMA -->
                 <div class="download-toolbar">
-                    <!-- TOMBOL 1: KIRIM PICA -->
-                    <button class="btn-dl btn-send-pica" onclick="sendPICA_Email()">
-                        📧 Kirim PICA
-                    </button>
-
-                    <!-- TOMBOL 2: DOWNLOAD PICA -->
-                    <button class="btn-dl btn-dl-excel" ${!isApproved ? 'disabled title="Document belum di-approve oleh Manager"' : ''} onclick="downloadPICA_Excel()">
-                        📊 Download PICA
-                    </button>
-
-                    <!-- TOMBOL 3: DOWNLOAD LHA -->
-                    <button class="btn-dl btn-dl-pdf" ${!isApproved ? 'disabled title="Document belum di-approve oleh Manager"' : ''} onclick="downloadLHA_PDF()">
-                        📄 Download LHA
-                    </button>
-
-                    <!-- TOMBOL 4: DOWNLOAD PPT & TAMBAH PROJECT -->
+                    <button class="btn-dl btn-send-pica" onclick="sendPICA_Email()">📧 Kirim PICA</button>
+                    <button class="btn-dl btn-dl-excel" ${!isApproved ? 'disabled title="Document belum di-approve oleh Manager"' : ''} onclick="downloadPICA_Excel()">📊 Download PICA</button>
+                    <button class="btn-dl btn-dl-pdf" ${!isApproved ? 'disabled title="Document belum di-approve oleh Manager"' : ''} onclick="downloadLHA_PDF()">📄 Download LHA</button>
                     <div style="display: inline-flex; gap: 4px; align-items: center;">
-                        <button class="btn-dl btn-dl-ppt" onclick="exportExecutivePPT()">
-                            📙 Download PPT
-                        </button>
-                        <button class="btn-dl btn-add-proj" onclick="toggleAddProjectDropdown()" title="Tambah Project Gabungan ke PPT (Maksimal 3)">
-                            +
-                        </button>
+                        <button class="btn-dl btn-dl-ppt" onclick="exportExecutivePPT()">📙 Download PPT</button>
+                        <button class="btn-dl btn-add-proj" onclick="toggleAddProjectDropdown()" title="Tambah Project Gabungan ke PPT (Maksimal 3)">+</button>
                     </div>
 
-                    ${!isApproved ? '<span style="font-size: 12px; color: #ef4444; align-self: center; font-weight: 600;">⚠️️ LHA & PICA hanya dapat di-download setelah status Approved by Manager.</span>' : ''}
+                    ${!isApproved ? '<span style="font-size: 12px; color: #ef4444; align-self: center; font-weight: 600;">⚠️ LHA & PICA hanya dapat di-download setelah status Approved by Manager.</span>' : ''}
                     
-                    <!-- DROPDOWN MODEL SELECTION -->
                     <div id="dropdown-project-box" class="dropdown-select-box">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Pilih Project Tambahan (Maksimal 3 Project):</label>
                         <div style="display: flex; gap: 8px;">
                             <select id="select-extra-project" style="padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 12px; flex: 1;">
-                                ${allProjectsList.map(p => `<option value="${p.noSPP}">[${p.noSPP}]${p.judul}</option>`).join('')}
+                                ${allProjectsList.map(p => `<option value="${p.noSPP}">[${p.noSPP}] ${p.judul}</option>`).join('')}
                             </select>
                             <button class="btn-dl btn-dl-excel" style="padding: 6px 12px; font-size: 11px;" onclick="confirmAddProject()">+ Tambahkan</button>
                         </div>
                     </div>
 
-                    <!-- BADGES PROJECT TERPILIH UNTUK PPT -->
                     <div class="selected-projects-list">
                         <span style="font-size: 11px; font-weight: bold; color: #475569;">Project Gabungan PPT:</span>
                         <div id="chips-container" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
@@ -1022,7 +1263,6 @@
                     <div class="table-responsive" id="table-detail-container"></div>
                 </div>
 
-                <!-- FLOATING IMAGE MODAL -->
                 <div id="floating-image-modal" class="image-modal-overlay">
                     <div class="image-modal-card">
                         <button class="btn-close-modal" onclick="closeImageModal()">✕ Tutup Preview</button>
@@ -1077,10 +1317,9 @@
                         renderChips();
                     }
 
-                    // FUNGSI 1: KIRIM PICA VIA EMAIL
                     function sendPICA_Email() {
                         const targetEmail = activeDocObj.emailAuditee || "auditee@jba.co.id";
-                        const sanitizedSPP = currentMainSPP.replace(/\\//g, '_');
+                        const ccEmail = activeDocObj.ccEmail || "";
                         const projectLink = window.location.href;
 
                         let subject = encodeURIComponent(\`[DISTRIBUSI LAPORAN PICA] \${activeDocObj.judul || '-'} - \${currentMainSPP}\`);
@@ -1098,10 +1337,13 @@
                             \`Terima kasih,\nInternal Audit Department\`
                         );
 
-                        window.location.href = \`mailto:\${targetEmail}?subject=\${subject}&body=\${body}\`;
+                        let mailtoUrl = \`mailto:\${targetEmail}?subject=\${subject}&body=\${body}\`;
+                        if (ccEmail.trim() !== "") {
+                            mailtoUrl += \`&cc=\${encodeURIComponent(ccEmail)}\`;
+                        }
+                        window.location.href = mailtoUrl;
                     }
 
-                    // RENDER TABEL DETAIL TEMUAN
                     function renderDetailTable() {
                         const items = masterDbList.filter(x => x.noSPP === currentMainSPP);
                         const container = document.getElementById('table-detail-container');
@@ -1143,7 +1385,7 @@
                                                             <span class="attachment-link" onclick="handleAttachmentClick('\${t.attachment.type}', '\${t.attachment.data}', '\${t.attachment.name}')">
                                                                 📎 \${t.attachment.name}
                                                             </span>
-                                                            <button class="btn-delete-attach" onclick="deleteAttachment('\${t.noTemuan}')" title="Hapus Lampiran Ini">🗑️️ Hapus</button>
+                                                            <button class="btn-delete-attach" onclick="deleteAttachment('\${t.noTemuan}')" title="Hapus Lampiran Ini">🗑️ Hapus</button>
                                                         </div>
                                                     \` : \`
                                                         <label class="btn-upload-file">
@@ -1166,12 +1408,11 @@
                         \`;
                     }
 
-                    // UPLOAD LAMPIRAN ROW AUDIT (MAX 2MB)
                     function uploadRowAttachment(evt, noTemuan) {
                         const file = evt.target.files[0];
                         if (!file) return;
 
-                        const maxSize = 2 * 1024 * 1024; // 2 MB Limit
+                        const maxSize = 2 * 1024 * 1024;
                         if (file.size > maxSize) {
                             alert("Ukuran file terlalu besar! Maksimal ukuran lampiran adalah 2 MB.");
                             return;
@@ -1197,7 +1438,6 @@
                         reader.readAsDataURL(file);
                     }
 
-                    // HAPUS LAMPIRAN
                     function deleteAttachment(noTemuan) {
                         if (confirm("Apakah Anda yakin ingin menghapus lampiran ini?")) {
                             const targetItem = masterDbList.find(x => x.noSPP === currentMainSPP && x.noTemuan === noTemuan);
@@ -1208,7 +1448,6 @@
                         }
                     }
 
-                    // PREVIEW FLOATING / AUTOMATIC DOWNLOAD
                     function handleAttachmentClick(type, dataUrl, fileName) {
                         if (type === 'image') {
                             document.getElementById('modal-img-preview').src = dataUrl;
@@ -1227,7 +1466,6 @@
                         document.getElementById('floating-image-modal').style.display = 'none';
                     }
 
-                    // FUNGSI 3: DOWNLOAD LHA PDF
                     function downloadLHA_PDF() {
                         const { jsPDF } = window.jspdf;
                         const doc = new jsPDF('landscape');
@@ -1237,7 +1475,6 @@
                         doc.save("LHA_${noSPP.replace(/\//g,'_')}.pdf");
                     }
 
-                    // FUNGSI 2: DOWNLOAD PICA EXCEL
                     function downloadPICA_Excel() {
                         const items = masterDbList.filter(x => x.noSPP === currentMainSPP);
                         const worksheet = XLSX.utils.json_to_sheet(items.length ? items : [${JSON.stringify(docObj || {})}]);
@@ -1246,7 +1483,6 @@
                         XLSX.writeFile(workbook, "PICA_${noSPP.replace(/\//g,'_')}.xlsx");
                     }
 
-                    // FUNGSI 4: EXPORT EXECUTIVE PPT
                     function exportExecutivePPT() {
                         let combinedData = [];
                         let projectDetails = [];
@@ -1366,6 +1602,8 @@
             if (!activeObj) return alert("Pilih project terlebih dahulu!");
 
             let targetEmail = activeObj.emailAuditee || "auditee@jba.co.id";
+            let ccEmail = activeObj.ccEmail || "";
+
             let subject = encodeURIComponent(`[REMINDER AUDIT ${type.toUpperCase()}] ${activeObj.judul} - ${activeObj.noSPP}`);
             let body = encodeURIComponent(
                 `Yth. Tim Auditee / Management ${activeObj.judul},\n\n` +
@@ -1380,7 +1618,13 @@
                 `Terima Kasih,\nInternal Audit Department`
             );
 
-            window.location.href = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+            let mailtoUrl = `mailto:${targetEmail}?subject=${subject}&body=${body}`;
+            if (ccEmail.trim() !== "") {
+                mailtoUrl += `&cc=${encodeURIComponent(ccEmail)}`;
+            }
+
+            logActivity(type === 'Investigasi' ? 'Anti Fraud' : 'Summary Audit', 'Kirim Email Reminder Project', activeObj.noSPP);
+            window.location.href = mailtoUrl;
         }
 
         function handleFileUpload(event, type) {
@@ -1457,6 +1701,7 @@
                                 syncAuditDbToFirebase();
                             }
 
+                            logActivity(type === 'Investigasi' ? 'Anti Fraud' : 'Summary Audit', `Upload File Laporan (${parsedData.length} Temuan)`, activeObj.noSPP);
                             document.getElementById(`info-file-name${suffix}`).innerText = file.name;
                             document.getElementById(`info-file-rows${suffix}`).innerText = parsedData.length;
                             fileInfoBadge.style.display = 'block';
@@ -1475,6 +1720,7 @@
 
         function generatePDF_Fraud() {
             if (!selectedFraudObj) return alert("Pilih project terlebih dahulu!");
+            logActivity("Anti Fraud", "Export Laporan Investigasi PDF", selectedFraudObj.noSPP);
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('landscape');
             doc.text(`LAPORAN INVESTIGASI ANTI FRAUD - ${selectedFraudObj.judul}`, 14, 15);
@@ -1483,6 +1729,7 @@
 
         function generateExcel_Fraud() {
             if (!selectedFraudObj) return alert("Pilih project terlebih dahulu!");
+            logActivity("Anti Fraud", "Export Risk Matrix Excel", selectedFraudObj.noSPP);
             const items = fraudDatabase.filter(x => x.noSPP === selectedFraudObj.noSPP);
             const worksheet = XLSX.utils.json_to_sheet(items.length ? items : [selectedFraudObj]);
             const workbook = XLSX.utils.book_new();
@@ -1497,7 +1744,7 @@
             document.getElementById('kpi-exec-rate').innerText = (auditDatabase.length + fraudDatabase.length) > 0 ? "85%" : "0%";
         }
 
-        // FUNGSI RENDER ROWS TABEL PENOMORAN DOKUMEN (MENDUKUNG SEARCH FILTER)
+        // RENDER REGISTER PENOMORAN
         function renderPenomoranRows(dataList) {
             const tbodyPenomoran = document.getElementById('table-penomoran-body');
             if (dataList.length === 0) {
@@ -1517,23 +1764,41 @@
                     <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
                     <td>${item.tanggalStart}</td>
                     <td>
-                        <div style="display: flex; gap: 4px;">
-                            <button class="btn btn-purple" style="padding: 4px 8px; font-size: 11px; width: auto;" onclick="downloadSuratTugas(${item.id})" title="Cetak / Download Surat Perintah Penugasan Resmi">📄 Surat Tugas</button>
-                            <button class="btn btn-warning" style="padding: 4px 8px; font-size: 11px; width: auto;" onclick="triggerAuditorReminder(${item.id})" title="Kirim Reminder Due Date ke Auditor">📧 Reminder Auditor</button>
-                            <button class="btn btn-danger" style="padding: 4px 8px; font-size: 11px; width: auto;" onclick="deleteDocumentNumber(${item.id})">🗑️</button>
+                        <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
+                            <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project">⚙️</button>
+                            <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas">🖨️</button>
+                            <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="Upload SPP Bertanda Tangan Basah">📤</button>
+                            <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu untuk mengaktifkan"' : 'title="Kirim Surat Tugas via Email (Outlook)"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
+                            <button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor Project">🗑️</button>
                         </div>
                     </td>
                 </tr>
             `).join('');
         }
 
+        function renderLogRows(logs) {
+            const tbodyLog = document.getElementById('table-log-body');
+            if (logs.length === 0) {
+                tbodyLog.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">Belum ada riwayat aktivitas recorded.</td></tr>`;
+                return;
+            }
+            tbodyLog.innerHTML = logs.map(l => `
+                <tr>
+                    <td style="white-space: nowrap;"><b>${l.timestamp}</b></td>
+                    <td><span class="badge bg-progress">${l.kategori}</span></td>
+                    <td><b>${l.aktivitas}</b></td>
+                    <td><span class="code-tag">${l.detailDoc}</span></td>
+                    <td><span class="badge bg-approved">${l.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
         function refreshUI() {
             updateExecutiveDashboard();
-
-            // 1. Render Table Penomoran
             renderPenomoranRows(dbPenomoran);
+            renderLogRows(activityLogs);
 
-            // 2. Render Table Summary Audit (Rata Tengah)
+            // Render Table Summary Audit
             const tbodyAudit = document.getElementById('table-audit-body');
             const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
 
@@ -1561,14 +1826,14 @@
                             </button>
                         </td>
                         <td>
-                            <button class="btn btn-warning" onclick="triggerRowOutlookReminder('${item.noSPP}')" style="padding: 4px 8px; font-size: 11px; width: auto;">📧 Reminder</button>
+                            <button class="btn btn-warning" onclick="triggerOutlookReminder('Reguler')" style="padding: 4px 8px; font-size: 11px; width: auto;">📧 Reminder</button>
                         </td>
                     </tr>
                     `;
                 }).join('');
             }
 
-            // 3. Render Table Anti Fraud
+            // Render Table Anti Fraud
             const tbodyFraud = document.getElementById('table-fraud-body');
             const fraudProjects = dbPenomoran.filter(x => x.jenis === 'Investigasi');
 
@@ -1591,7 +1856,9 @@
             }
         }
 
+        // Inisialisasi awal
         initTodayDate();
+        autoFillAuditeeEmail();
     </script>
 
     <!-- Firebase SDK versi CDN Compat -->
@@ -1632,6 +1899,12 @@
         database.ref('fraudDatabase').on('value', (snapshot) => {
             const data = snapshot.val();
             fraudDatabase = data || [];
+            refreshUI();
+        });
+
+        database.ref('activityLogs').on('value', (snapshot) => {
+            const data = snapshot.val();
+            activityLogs = data || [];
             refreshUI();
         });
     </script>
