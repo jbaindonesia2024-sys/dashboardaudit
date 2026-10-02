@@ -523,7 +523,7 @@
     <!-- ==================== TAB 4: ANTI FRAUD (INVESTIGASI) ==================== -->
     <div id="tab-antifraud" class="tab-content">
         <div class="card" style="border-left: 5px solid var(--purple-dark);">
-            <h3 style="color: var(--purple-dark);">🛡️️ Portal Anti Fraud & Special Investigation</h3>
+            <h3 style="color: var(--purple-dark);">🛡 Portal Anti Fraud & Special Investigation</h3>
             
             <div class="controls-row">
                 <div class="control-group">
@@ -560,7 +560,7 @@
         </div>
 
         <div class="card">
-            <h3>🛡️️ Register Temuan & Mitigasi Anti Fraud</h3>
+            <h3>🛡 Register Temuan & Mitigasi Anti Fraud</h3>
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
                 Daftar project investigasi terdaftar. Klik nomor surat tugas untuk membuka detail di tab baru.
             </p>
@@ -1799,7 +1799,7 @@
                 return;
             }
 
-            // TOMBOL EDIT & DELETE SEKARANG DITAMPILKAN UNTUK SEMUA ROLE
+            // TOMBOL EDIT & DELETE DITAMPILKAN UNTUK SEMUA ROLE
             tbodyPenomoran.innerHTML = dataList.map(item => `
                 <tr>
                     <td><span class="badge ${item.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}">${item.jenis}</span></td>
@@ -1960,29 +1960,22 @@
                 });
         }
 
-        // 2. DETEKSI AUTH & PERBAIKAN PEMBACAAN ROLE DARI NODE users/
+        // 2. DETEKSI AUTH & PEMBACAAN ROLE DINAMIS DARI FIELD EMAIL REALTIME DB
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUserEmail = user.email;
-                
-                // Ganti titik (.) dengan (_) untuk format Key Firebase
-                const userKeyUnderscore = user.email.toLowerCase().replace(/\./g, '_');
+                const targetEmail = user.email.toLowerCase();
 
-                // Cek node users/ dengan pencarian komprehensif
                 database.ref('users').once('value', (snapshot) => {
                     const allUsers = snapshot.val() || {};
                     let matchedRole = null;
 
-                    // 1. Cek langsung key dengan underscore
-                    if (allUsers[userKeyUnderscore] && allUsers[userKeyUnderscore].role) {
-                        matchedRole = allUsers[userKeyUnderscore].role;
-                    } else {
-                        // 2. Cek pencarian case-insensitive / match manual
-                        for (let key in allUsers) {
-                            if (key.toLowerCase() === userKeyUnderscore || key.toLowerCase() === user.email.toLowerCase()) {
-                                matchedRole = allUsers[key].role;
-                                break;
-                            }
+                    // Mencari user berdasarkan kesesuaian nilai field 'email' di dalam node
+                    for (let key in allUsers) {
+                        const userObj = allUsers[key];
+                        if (userObj && userObj.email && userObj.email.toLowerCase() === targetEmail) {
+                            matchedRole = userObj.role;
+                            break;
                         }
                     }
 
