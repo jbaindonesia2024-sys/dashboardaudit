@@ -667,8 +667,17 @@
         let selectedRegulerObj = null;
         let selectedFraudObj = null;
         let currentUserEmail = "";
+        let currentUserRole = "auditor"; // Default role
 
-        // FUNGSI LOGGING SYSTEM TERINTEGRASI DENGAN USER EMAIL
+        // KONVERSI ROLE KE TINGKATAN LEVEL HIRARKI
+        function getRoleLevel(role) {
+            const r = (role || '').toLowerCase();
+            if (r === 'admin') return 3;   // Level 3: Full Control (Admin + Auditor)
+            if (r === 'manager') return 2; // Level 2: Approval & Control
+            if (r === 'auditor') return 1; // Level 1: Input Operational
+            return 0; // Guest / Unregistered
+        }
+
         function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
             const newLog = {
                 id: Date.now(),
@@ -807,6 +816,11 @@
             }
 
             if (editId) {
+                // HANYA ROLE LEVEL >= 2 (MANAGER/ADMIN) YANG BOLEH REVISI
+                if (getRoleLevel(currentUserRole) < 2) {
+                    return alert("⛔ AKSES DITOLAK: Hanya role Manager atau Admin yang memiliki wewenang mengedit data project!");
+                }
+
                 const docIdx = dbPenomoran.findIndex(x => x.id == editId);
                 if (docIdx !== -1) {
                     dbPenomoran[docIdx] = {
@@ -867,6 +881,10 @@
         }
 
         function editDocumentNumber(id) {
+            if (getRoleLevel(currentUserRole) < 2) {
+                return alert("⛔ AKSES DITOLAK: Anda memerlukan wewenang minimal Manager untuk mengedit project!");
+            }
+
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
 
@@ -891,6 +909,11 @@
         }
 
         function deleteDocumentNumber(id) {
+            // HANYA ROLE LEVEL >= 2 (MANAGER/ADMIN) YANG BOLEH HAPUS
+            if (getRoleLevel(currentUserRole) < 2) {
+                return alert("⛔ AKSES DITOLAK: Hanya Manager/Admin yang berhak menghapus data project!");
+            }
+
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
 
@@ -998,6 +1021,11 @@
         }
 
         function toggleManagerApproval(id) {
+            // PROTEKSI LEVEL >= 2 (MANAGER/ADMIN)
+            if (getRoleLevel(currentUserRole) < 2) {
+                return alert("⛔ AKSES DITOLAK: Hanya Manager atau Admin yang memiliki otorisasi untuk melakukan Approval!");
+            }
+
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
 
@@ -1775,6 +1803,9 @@
                 tbodyPenomoran.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai.</td></tr>`;
                 return;
             }
+
+            const isManagerOrAdmin = getRoleLevel(currentUserRole) >= 2;
+
             tbodyPenomoran.innerHTML = dataList.map(item => `
                 <tr>
                     <td><span class="badge ${item.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}">${item.jenis}</span></td>
@@ -1789,11 +1820,11 @@
                     <td>${item.tanggalStart}</td>
                     <td>
                         <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
-                            <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project">⚙️</button>
+                            ${isManagerOrAdmin ? `<button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project (Manager/Admin)">⚙️️</button>` : ''}
                             <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas">🖨️</button>
                             <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="Upload SPP Bertanda Tangan Basah">📤</button>
                             <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu untuk mengaktifkan"' : 'title="Kirim Surat Tugas via Email (Outlook)"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
-                            <button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor Project">🗑️</button>
+                            ${isManagerOrAdmin ? `<button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor Project (Manager/Admin)">🗑️</button>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -1920,17 +1951,32 @@
                 });
         }
 
-        // 2. STATE LISTENER DETEKSI STATUS AUTH USER
+        // 2. STATE LISTENER DETEKSI AUTH & BACA ROLE OTOMATIS DARI FIREBASE USERS
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUserEmail = user.email;
-                document.getElementById('display-user-email').innerText = user.email;
-                document.getElementById('user-badge-header').style.display = 'flex';
-                document.getElementById('auth-login-overlay').style.display = 'none';
                 
-                listenDatabaseRealtime();
+                // Ubah titik pada email menjadi underscore untuk mencocokkan Key di DB
+                const userKey = user.email.replace(/\./g, '_');
+
+                database.ref('users/' + userKey).once('value', (snapshot) => {
+                    const userData = snapshot.val();
+                    if (userData && userData.role) {
+                        currentUserRole = userData.role;
+                    } else {
+                        currentUserRole = "auditor"; // Default jika belum di-set di DB
+                    }
+
+                    document.getElementById('display-user-email').innerText = `${user.email} [${currentUserRole.toUpperCase()}]`;
+                    document.getElementById('user-badge-header').style.display = 'flex';
+                    document.getElementById('auth-login-overlay').style.display = 'none';
+                    
+                    listenDatabaseRealtime();
+                });
+
             } else {
                 currentUserEmail = "";
+                currentUserRole = "auditor";
                 document.getElementById('user-badge-header').style.display = 'none';
                 document.getElementById('auth-login-overlay').style.display = 'flex';
             }
@@ -1943,7 +1989,7 @@
             }
         }
 
-        // 4. MINTA RESET PASSWORD (LUPA PASSWORD)
+        // 4. MINTA RESET PASSWORD
         function mintaResetPassword() {
             const email = prompt("Masukkan email akun audit Anda untuk menerima link reset password:");
             if (email) {
