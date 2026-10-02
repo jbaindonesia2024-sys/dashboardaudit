@@ -523,7 +523,7 @@
     <!-- ==================== TAB 4: ANTI FRAUD (INVESTIGASI) ==================== -->
     <div id="tab-antifraud" class="tab-content">
         <div class="card" style="border-left: 5px solid var(--purple-dark);">
-            <h3 style="color: var(--purple-dark);">🛡️ Portal Anti Fraud & Special Investigation</h3>
+            <h3 style="color: var(--purple-dark);">🛡️️ Portal Anti Fraud & Special Investigation</h3>
             
             <div class="controls-row">
                 <div class="control-group">
@@ -560,7 +560,7 @@
         </div>
 
         <div class="card">
-            <h3>🛡️ Register Temuan & Mitigasi Anti Fraud</h3>
+            <h3>🛡️️ Register Temuan & Mitigasi Anti Fraud</h3>
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
                 Daftar project investigasi terdaftar. Klik nomor surat tugas untuk membuka detail di tab baru.
             </p>
@@ -674,9 +674,9 @@
         // KONVERSI ROLE KE TINGKATAN LEVEL HIRARKI
         function getRoleLevel(role) {
             const r = (role || '').toLowerCase();
-            if (r === 'admin') return 3;   // Level 3: Full Control (Admin + Auditor)
-            if (r === 'manager') return 2; // Level 2: Approval & Control
-            if (r === 'auditor') return 1; // Level 1: Input Operational
+            if (r === 'admin') return 3;   // Level 3: Full Control
+            if (r === 'manager') return 2; // Level 2: Approval
+            if (r === 'auditor') return 1; // Level 1: Operational Input
             return 0; // Guest / Unregistered
         }
 
@@ -818,10 +818,6 @@
             }
 
             if (editId) {
-                if (getRoleLevel(currentUserRole) < 2) {
-                    return alert("⛔ AKSES DITOLAK: Hanya role Manager atau Admin yang memiliki wewenang mengedit data project!");
-                }
-
                 const docIdx = dbPenomoran.findIndex(x => x.id == editId);
                 if (docIdx !== -1) {
                     dbPenomoran[docIdx] = {
@@ -881,11 +877,8 @@
             refreshUI();
         }
 
+        // EDIT TERSEDIA UNTUK SEMUA ROLE
         function editDocumentNumber(id) {
-            if (getRoleLevel(currentUserRole) < 2) {
-                return alert("⛔ AKSES DITOLAK: Anda memerlukan wewenang minimal Manager untuk mengedit project!");
-            }
-
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
 
@@ -909,11 +902,8 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
+        // DELETE TERSEDIA UNTUK SEMUA ROLE
         function deleteDocumentNumber(id) {
-            if (getRoleLevel(currentUserRole) < 2) {
-                return alert("⛔ AKSES DITOLAK: Hanya Manager/Admin yang berhak menghapus data project!");
-            }
-
             const doc = dbPenomoran.find(x => x.id === id);
             if (!doc) return;
 
@@ -1020,7 +1010,7 @@
             renderLogRows(filteredLogs);
         }
 
-        // FUNGSI APPROVAL DENGAN PROTEKSI STRICT ROLE LEVEL >= 2
+        // FUNGSI APPROVAL DENGAN PROTEKSI LEVEL MANAGER & ADMIN SAJA
         function toggleManagerApproval(id) {
             if (getRoleLevel(currentUserRole) < 2) {
                 return alert("⛔ AKSES DITOLAK: Hanya Manager atau Admin yang memiliki otorisasi untuk melakukan Approval!");
@@ -1809,8 +1799,7 @@
                 return;
             }
 
-            const isManagerOrAdmin = getRoleLevel(currentUserRole) >= 2;
-
+            // TOMBOL EDIT & DELETE SEKARANG DITAMPILKAN UNTUK SEMUA ROLE
             tbodyPenomoran.innerHTML = dataList.map(item => `
                 <tr>
                     <td><span class="badge ${item.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}">${item.jenis}</span></td>
@@ -1825,11 +1814,11 @@
                     <td>${item.tanggalStart}</td>
                     <td>
                         <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
-                            ${isManagerOrAdmin ? `<button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project (Manager/Admin)">⚙</button>` : ''}
+                            <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project">⚙</button>
                             <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas">🖨️</button>
                             <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="Upload SPP Bertanda Tangan Basah">📤</button>
                             <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu untuk mengaktifkan"' : 'title="Kirim Surat Tugas via Email (Outlook)"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
-                            ${isManagerOrAdmin ? `<button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor Project (Manager/Admin)">🗑️</button>` : ''}
+                            <button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor Project">🗑️</button>
                         </div>
                     </td>
                 </tr>
@@ -1869,7 +1858,6 @@
                 tbodyAudit.innerHTML = regulerProjects.map(item => {
                     const isApproved = item.statusManager === "Approved by Manager";
                     
-                    // SEGREGASI TOMBOL APPROVAL BERDASARKAN ROLE LEVEL
                     let approvalUI = "";
                     if (isManagerOrAdmin) {
                         // Manager / Admin: Boleh klik tombol interaktif
@@ -1879,7 +1867,7 @@
                             </button>
                         `;
                     } else {
-                        // Auditor: Tampilan Read-Only Badge (Tidak Bisa Diklik)
+                        // Auditor: Tampilan Read-Only Badge
                         approvalUI = `
                             <span class="badge ${isApproved ? 'bg-approved' : 'bg-not-approved'}" title="Hanya Manager/Admin yang berhak melakukan Otorisasi Approval">
                                 ${isApproved ? 'Approved by Manager' : 'Not Approved'}
@@ -1972,21 +1960,33 @@
                 });
         }
 
-        // 2. STATE LISTENER DETEKSI AUTH & BACA ROLE OTOMATIS DARI FIREBASE USERS
+        // 2. DETEKSI AUTH & PERBAIKAN PEMBACAAN ROLE DARI NODE users/
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUserEmail = user.email;
                 
-                // Ubah titik pada email menjadi underscore untuk mencocokkan Key di DB
-                const userKey = user.email.replace(/\./g, '_');
+                // Ganti titik (.) dengan (_) untuk format Key Firebase
+                const userKeyUnderscore = user.email.toLowerCase().replace(/\./g, '_');
 
-                database.ref('users/' + userKey).once('value', (snapshot) => {
-                    const userData = snapshot.val();
-                    if (userData && userData.role) {
-                        currentUserRole = userData.role;
+                // Cek node users/ dengan pencarian komprehensif
+                database.ref('users').once('value', (snapshot) => {
+                    const allUsers = snapshot.val() || {};
+                    let matchedRole = null;
+
+                    // 1. Cek langsung key dengan underscore
+                    if (allUsers[userKeyUnderscore] && allUsers[userKeyUnderscore].role) {
+                        matchedRole = allUsers[userKeyUnderscore].role;
                     } else {
-                        currentUserRole = "auditor"; // Default jika belum di-set di DB
+                        // 2. Cek pencarian case-insensitive / match manual
+                        for (let key in allUsers) {
+                            if (key.toLowerCase() === userKeyUnderscore || key.toLowerCase() === user.email.toLowerCase()) {
+                                matchedRole = allUsers[key].role;
+                                break;
+                            }
+                        }
                     }
+
+                    currentUserRole = matchedRole ? matchedRole.toLowerCase() : "auditor";
 
                     document.getElementById('display-user-email').innerText = `${user.email} [${currentUserRole.toUpperCase()}]`;
                     document.getElementById('user-badge-header').style.display = 'flex';
