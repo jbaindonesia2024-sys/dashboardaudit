@@ -450,7 +450,7 @@
         </div>
     </div>
 
-    <!-- ==================== TAB 3: SUMMARY AUDIT (RESTUDIO & FLOW TERBENAHI) ==================== -->
+    <!-- ==================== TAB 3: SUMMARY AUDIT ==================== -->
     <div id="tab-audit" class="tab-content">
         <div class="card" style="border-left: 5px solid var(--primary);">
             <h3 style="margin-bottom: 12px;">📂 Summary Audit Management & Interactive Monitoring</h3>
@@ -607,13 +607,36 @@
         </div>
     </div>
 
-    <!-- JAVASCRIPT SYSTEM LOGIC -->
+    <!-- JAVASCRIPT LOGIC - SEMUA FUNGSI DEKLARASI TERLETAK DI SATU SCRIPT UTAMA -->
     <script>
+        // Data Global In-Memory
+        let dbPenomoran = [];
+        let auditDatabase = [];
+        let fraudDatabase = [];
+        let activityLogs = [];
+        let selectedRegulerObj = null;
+        let selectedFraudObj = null;
+        let currentUserEmail = "";
+        let currentUserRole = "auditor";
+
         const regionalMap = {
             "reg1": { name: "Irfan Baharudin", title: "Regional Head 1", email: "irfan.baharudin@jba.co.id" },
             "reg2": { name: "Syafi Munawir Almaki", title: "Regional Head 2", email: "syafi.almaki@jba.co.id" },
             "reg3": { name: "Tan Hung Pau", title: "Regional Head 3 & 4", email: "tan.pau@jba.co.id" }
         };
+
+        function switchTab(tabId, evt) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-fraud', 'active-log'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            if(evt && evt.target) {
+                if(tabId === 'tab-antifraud') evt.target.classList.add('active-fraud');
+                else if(tabId === 'tab-activitylog') evt.target.classList.add('active-log');
+                else evt.target.classList.add('active');
+            }
+            document.getElementById(tabId).classList.add('active');
+            refreshUI();
+        }
 
         function autoFillAuditeeEmail() {
             const selectedKey = document.getElementById('p-regional').value;
@@ -657,17 +680,10 @@
         function initTodayDate() {
             const today = new Date();
             const container = document.getElementById('tgl-terbit-container');
-            container.innerHTML = `<input type="text" id="p-tgl-terbit-display" class="form-control" value="${formatIndonesianDate(today)}" readonly>`;
+            if (container) {
+                container.innerHTML = `<input type="text" id="p-tgl-terbit-display" class="form-control" value="${formatIndonesianDate(today)}" readonly>`;
+            }
         }
-
-        let dbPenomoran = [];
-        let auditDatabase = [];
-        let fraudDatabase = [];
-        let activityLogs = [];
-        let selectedRegulerObj = null;
-        let selectedFraudObj = null;
-        let currentUserEmail = "";
-        let currentUserRole = "auditor";
 
         function getRoleLevel(role) {
             const r = (role || '').toLowerCase();
@@ -709,19 +725,6 @@
             if (typeof database !== 'undefined') {
                 database.ref('fraudDatabase').set(fraudDatabase);
             }
-        }
-
-        function switchTab(tabId, evt) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-fraud', 'active-log'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            if(evt && evt.target) {
-                if(tabId === 'tab-antifraud') evt.target.classList.add('active-fraud');
-                else if(tabId === 'tab-activitylog') evt.target.classList.add('active-log');
-                else evt.target.classList.add('active');
-            }
-            document.getElementById(tabId).classList.add('active');
-            refreshUI();
         }
 
         function toggleBackDateFields() {
@@ -814,7 +817,6 @@
                 }
             }
 
-            // GENERATE SECRET AUDITEE TOKEN BILA BELUM ADA
             const auditeeToken = 'tok-' + Math.random().toString(36).substring(2, 9);
 
             if (editId) {
@@ -985,7 +987,6 @@
             window.location.href = mailtoUrl;
         }
 
-        // SALIN LINK PORTAL AUDITEE KE CLIPBOARD
         function copyAuditeePortalLink(noSPP) {
             const docObj = dbPenomoran.find(x => x.noSPP === noSPP);
             if (!docObj) return;
@@ -1169,26 +1170,30 @@
         function populateDropdowns() {
             const regulerList = dbPenomoran.filter(x => x.jenis === "Reguler");
             const regulerSelect = document.getElementById('audit-select-nomor');
-            if (regulerList.length === 0) {
-                regulerSelect.innerHTML = `<option value="">Belum ada project Reguler</option>`;
-                selectedRegulerObj = null;
-            } else {
-                regulerSelect.innerHTML = regulerList.map((item, idx) => 
-                    `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
-                ).join('');
-                selectedRegulerObj = regulerList[0];
+            if (regulerSelect) {
+                if (regulerList.length === 0) {
+                    regulerSelect.innerHTML = `<option value="">Belum ada project Reguler</option>`;
+                    selectedRegulerObj = null;
+                } else {
+                    regulerSelect.innerHTML = regulerList.map((item, idx) => 
+                        `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
+                    ).join('');
+                    selectedRegulerObj = regulerList[0];
+                }
             }
 
             const fraudList = dbPenomoran.filter(x => x.jenis === "Investigasi");
             const fraudSelect = document.getElementById('fraud-select-nomor');
-            if (fraudList.length === 0) {
-                fraudSelect.innerHTML = `<option value="">Belum ada project Investigasi</option>`;
-                selectedFraudObj = null;
-            } else {
-                fraudSelect.innerHTML = fraudList.map((item, idx) => 
-                    `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
-                ).join('');
-                selectedFraudObj = fraudList[0];
+            if (fraudSelect) {
+                if (fraudList.length === 0) {
+                    fraudSelect.innerHTML = `<option value="">Belum ada project Investigasi</option>`;
+                    selectedFraudObj = null;
+                } else {
+                    fraudSelect.innerHTML = fraudList.map((item, idx) => 
+                        `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
+                    ).join('');
+                    selectedFraudObj = fraudList[0];
+                }
             }
         }
 
@@ -1208,7 +1213,6 @@
             }
         }
 
-        // MEMBUKA HALAMAN DETAIL AUDIT INTERAKTIF DENGAN REVISI REKOMENDASI & MULTI-VERSION PICA
         function openAuditDetailWindow(noSPP, jenis) {
             logActivity("Portal Navigasi", "Buka Halaman Detail Project Interaktif", noSPP);
             const docObj = dbPenomoran.find(x => x.noSPP === noSPP);
@@ -1299,7 +1303,7 @@
                         <button class="btn-dl btn-add-proj" onclick="toggleAddProjectDropdown()" title="Tambah Project Gabungan ke PPT (Maksimal 3)">+</button>
                     </div>
 
-                    ${!isApproved ? '<span style="font-size: 12px; color: #ef4444; align-self: center; font-weight: 600;">⚠️️ LHA & PICA hanya dapat di-download setelah status Approved by Manager.</span>' : ''}
+                    ${!isApproved ? '<span style="font-size: 12px; color: #ef4444; align-self: center; font-weight: 600;">⚠️ LHA & PICA hanya dapat di-download setelah status Approved by Manager.</span>' : ''}
                     
                     <div id="dropdown-project-box" class="dropdown-select-box">
                         <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Pilih Project Tambahan (Maksimal 3 Project):</label>
@@ -1437,10 +1441,6 @@
                                         items.map((t, idx) => {
                                             const recText = t.rekomendasiRevisi || t.rekomendasi || '-';
                                             const hasRevision = !!t.rekomendasiRevisi;
-                                            
-                                            let statusBadgeClass = "badge-open";
-                                            if ((t.status || '').toLowerCase() === 'closed') statusBadgeClass = "badge-closed";
-                                            else if ((t.status || '').toLowerCase().includes('progress')) statusBadgeClass = "badge-progress";
 
                                             return \`
                                             <tr>
@@ -1452,7 +1452,7 @@
                                                 <td>
                                                     \${recText}
                                                     \${hasRevision ? '<br><small style="color:#d97706; font-weight:bold;">*(Rekomendasi Terevisi)</small>' : ''}
-                                                    <br><button class="btn-edit-rec" onclick="editRecommendation('\${t.noTemuan}')">✏️ Edit Rekomendasi</button>
+                                                    <br><button class="btn-edit-rec" onclick="editRecommendation('\${t.noTemuan}')">✏️️ Edit Rekomendasi</button>
                                                 </td>
                                                 <td><b>\${t.pic || '-'}</b><br><small style="color:#64748b;">Target: \${t.dueDate || '-'}</small></td>
                                                 <td>\${t.perbaikanCabang || t.rootCause || '-'}</td>
@@ -1489,7 +1489,6 @@
                         \`;
                     }
 
-                    // FITUR REVISI REKOMENDASI AUDITOR
                     function editRecommendation(noTemuan) {
                         const targetItem = masterDbList.find(x => x.noSPP === currentMainSPP && x.noTemuan === noTemuan);
                         if (!targetItem) return;
@@ -1856,18 +1855,25 @@
         }
 
         function updateExecutiveDashboard() {
-            document.getElementById('kpi-exec-total').innerText = dbPenomoran.length;
-            document.getElementById('kpi-exec-lha').innerText = auditDatabase.length + fraudDatabase.length;
-            document.getElementById('kpi-exec-open').innerText = auditDatabase.filter(x => x.status === 'Open').length + fraudDatabase.filter(x => x.status === 'Open').length;
+            const kpiTotal = document.getElementById('kpi-exec-total');
+            const kpiLha = document.getElementById('kpi-exec-lha');
+            const kpiOpen = document.getElementById('kpi-exec-open');
+            const kpiRate = document.getElementById('kpi-exec-rate');
+
+            if (kpiTotal) kpiTotal.innerText = dbPenomoran.length;
+            if (kpiLha) kpiLha.innerText = auditDatabase.length + fraudDatabase.length;
+            if (kpiOpen) kpiOpen.innerText = auditDatabase.filter(x => x.status === 'Open').length + fraudDatabase.filter(x => x.status === 'Open').length;
             
             const totalFindings = auditDatabase.length + fraudDatabase.length;
             const closedFindings = auditDatabase.filter(x => x.status === 'Closed').length + fraudDatabase.filter(x => x.status === 'Closed').length;
             const rate = totalFindings > 0 ? Math.round((closedFindings / totalFindings) * 100) : 0;
-            document.getElementById('kpi-exec-rate').innerText = `${rate}%`;
+            if (kpiRate) kpiRate.innerText = `${rate}%`;
         }
 
         function renderPenomoranRows(dataList) {
             const tbodyPenomoran = document.getElementById('table-penomoran-body');
+            if (!tbodyPenomoran) return;
+
             if (dataList.length === 0) {
                 tbodyPenomoran.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai.</td></tr>`;
                 return;
@@ -1900,6 +1906,8 @@
 
         function renderLogRows(logs) {
             const tbodyLog = document.getElementById('table-log-body');
+            if (!tbodyLog) return;
+
             if (logs.length === 0) {
                 tbodyLog.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Belum ada riwayat aktivitas recorded.</td></tr>`;
                 return;
@@ -1922,91 +1930,95 @@
             renderLogRows(activityLogs);
 
             const tbodyAudit = document.getElementById('table-audit-body');
-            const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
-            const isManagerOrAdmin = getRoleLevel(currentUserRole) >= 2;
+            if (tbodyAudit) {
+                const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
+                const isManagerOrAdmin = getRoleLevel(currentUserRole) >= 2;
 
-            if (regulerProjects.length === 0) {
-                tbodyAudit.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Reguler yang diterbitkan.</td></tr>`;
-            } else {
-                tbodyAudit.innerHTML = regulerProjects.map(item => {
-                    const isApproved = item.statusManager === "Approved by Manager";
-                    
-                    // KETAHUI PROGRES ACTION PLAN PROJECT DARI MASTER AUDIT DATABASE
-                    const projectFindings = auditDatabase.filter(x => x.noSPP === item.noSPP);
-                    const totalFinds = projectFindings.length;
-                    const closedFinds = projectFindings.filter(x => x.status === 'Closed').length;
-                    const closedPct = totalFinds > 0 ? Math.round((closedFinds / totalFinds) * 100) : 0;
+                if (regulerProjects.length === 0) {
+                    tbodyAudit.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Reguler yang diterbitkan.</td></tr>`;
+                } else {
+                    tbodyAudit.innerHTML = regulerProjects.map(item => {
+                        const isApproved = item.statusManager === "Approved by Manager";
+                        
+                        const projectFindings = auditDatabase.filter(x => x.noSPP === item.noSPP);
+                        const totalFinds = projectFindings.length;
+                        const closedFinds = projectFindings.filter(x => x.status === 'Closed').length;
+                        const closedPct = totalFinds > 0 ? Math.round((closedFinds / totalFinds) * 100) : 0;
 
-                    let approvalUI = "";
-                    if (isManagerOrAdmin) {
-                        approvalUI = `
-                            <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik untuk mengubah status otorisasi approval">
-                                ${isApproved ? 'Approved by Manager' : 'Not Approved'}
-                            </button>
+                        let approvalUI = "";
+                        if (isManagerOrAdmin) {
+                            approvalUI = `
+                                <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik untuk mengubah status otorisasi approval">
+                                    ${isApproved ? 'Approved by Manager' : 'Not Approved'}
+                                </button>
+                            `;
+                        } else {
+                            approvalUI = `
+                                <span class="badge ${isApproved ? 'bg-approved' : 'bg-not-approved'}">
+                                    ${isApproved ? 'Approved by Manager' : 'Not Approved'}
+                                </span>
+                            `;
+                        }
+
+                        return `
+                        <tr>
+                            <td>
+                                <span class="code-tag code-tag-spp" onclick="openAuditDetailWindow('${item.noSPP}', 'Reguler')" title="Klik untuk membuka detail di tab baru">
+                                    🔗 ${item.noSPP}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="code-tag code-tag-lha">${item.noLHA}</span><br>
+                                <span class="code-tag code-tag-pica" style="margin-top:2px;">${item.noPICA}</span>
+                            </td>
+                            <td><b>${item.judul}</b></td>
+                            <td>${item.auditor}</td>
+                            <td>${approvalUI}</td>
+                            <td>
+                                <div style="font-size: 10px; font-weight: bold; margin-bottom: 2px;">${closedFinds}/${totalFinds} Closed (${closedPct}%)</div>
+                                <div class="progress-bar-mini">
+                                    <div class="progress-bar-closed" style="width: ${closedPct}%;"></div>
+                                    <div class="progress-bar-open" style="width: ${100 - closedPct}%;"></div>
+                                </div>
+                            </td>
+                            <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
+                            <td>
+                                <div style="display: flex; gap: 4px; justify-content: center;">
+                                    <button class="btn btn-warning" onclick="triggerOutlookReminder('Reguler')" style="padding: 4px 8px; font-size: 11px; width: auto;" title="Kirim Reminder Email ke Auditee">📧</button>
+                                    <button class="btn btn-purple" onclick="copyAuditeePortalLink('${item.noSPP}')" style="padding: 4px 8px; font-size: 11px; width: auto;" title="Salin Link Portal Interaktif Auditee">🔗 Link</button>
+                                </div>
+                            </td>
+                        </tr>
                         `;
-                    } else {
-                        approvalUI = `
-                            <span class="badge ${isApproved ? 'bg-approved' : 'bg-not-approved'}">
-                                ${isApproved ? 'Approved by Manager' : 'Not Approved'}
-                            </span>
-                        `;
-                    }
-
-                    return `
-                    <tr>
-                        <td>
-                            <span class="code-tag code-tag-spp" onclick="openAuditDetailWindow('${item.noSPP}', 'Reguler')" title="Klik untuk membuka detail di tab baru">
-                                🔗 ${item.noSPP}
-                            </span>
-                        </td>
-                        <td>
-                            <span class="code-tag code-tag-lha">${item.noLHA}</span><br>
-                            <span class="code-tag code-tag-pica" style="margin-top:2px;">${item.noPICA}</span>
-                        </td>
-                        <td><b>${item.judul}</b></td>
-                        <td>${item.auditor}</td>
-                        <td>${approvalUI}</td>
-                        <td>
-                            <div style="font-size: 10px; font-weight: bold; margin-bottom: 2px;">${closedFinds}/${totalFinds} Closed (${closedPct}%)</div>
-                            <div class="progress-bar-mini">
-                                <div class="progress-bar-closed" style="width: ${closedPct}%;"></div>
-                                <div class="progress-bar-open" style="width: ${100 - closedPct}%;"></div>
-                            </div>
-                        </td>
-                        <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
-                        <td>
-                            <div style="display: flex; gap: 4px; justify-content: center;">
-                                <button class="btn btn-warning" onclick="triggerOutlookReminder('Reguler')" style="padding: 4px 8px; font-size: 11px; width: auto;" title="Kirim Reminder Email ke Auditee">📧</button>
-                                <button class="btn btn-purple" onclick="copyAuditeePortalLink('${item.noSPP}')" style="padding: 4px 8px; font-size: 11px; width: auto;" title="Salin Link Portal Interaktif Auditee">🔗 Link</button>
-                            </div>
-                        </td>
-                    </tr>
-                    `;
-                }).join('');
+                    }).join('');
+                }
             }
 
             const tbodyFraud = document.getElementById('table-fraud-body');
-            const fraudProjects = dbPenomoran.filter(x => x.jenis === 'Investigasi');
+            if (tbodyFraud) {
+                const fraudProjects = dbPenomoran.filter(x => x.jenis === 'Investigasi');
 
-            if (fraudProjects.length === 0) {
-                tbodyFraud.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Investigasi yang diterbitkan.</td></tr>`;
-            } else {
-                tbodyFraud.innerHTML = fraudProjects.map(item => `
-                    <tr>
-                        <td>
-                            <span class="code-tag code-tag-investigasi" onclick="openAuditDetailWindow('${item.noSPP}', 'Investigasi')" title="Klik untuk membuka detail di tab baru">
-                                🔗 ${item.noSPP}
-                            </span>
-                        </td>
-                        <td><b>${item.judul}</b></td>
-                        <td>${item.auditor}</td>
-                        <td>${item.tanggalStart}</td>
-                        <td><span class="badge bg-approved">${item.statusManager}</span></td>
-                    </tr>
-                `).join('');
+                if (fraudProjects.length === 0) {
+                    tbodyFraud.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Investigasi yang diterbitkan.</td></tr>`;
+                } else {
+                    tbodyFraud.innerHTML = fraudProjects.map(item => `
+                        <tr>
+                            <td>
+                                <span class="code-tag code-tag-investigasi" onclick="openAuditDetailWindow('${item.noSPP}', 'Investigasi')" title="Klik untuk membuka detail di tab baru">
+                                    🔗 ${item.noSPP}
+                                </span>
+                            </td>
+                            <td><b>${item.judul}</b></td>
+                            <td>${item.auditor}</td>
+                            <td>${item.tanggalStart}</td>
+                            <td><span class="badge bg-approved">${item.statusManager}</span></td>
+                        </tr>
+                    `).join('');
+                }
             }
         }
 
+        // Inisialisasi awal UI
         initTodayDate();
         autoFillAuditeeEmail();
     </script>
