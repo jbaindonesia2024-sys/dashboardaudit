@@ -152,11 +152,13 @@
         .bg-high { background: #fee2e2; color: #991b1b; }
         .bg-progress { background: #e0f2fe; color: #0369a1; }
         .bg-approved { background: #dcfce7; color: #15803d; }
+        .bg-not-approved { background: #fee2e2; color: #dc2626; border: 1px solid #fecdd3; }
         
         /* Interactive Approval Buttons */
         .btn-approval-not { background: var(--danger); color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .btn-approval-not:hover { background: #dc2626; }
-        .btn-approval-ok { background: #16a34a; color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; cursor: default; }
+        .btn-approval-ok { background: #16a34a; color: white; border: none; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-approval-ok:hover { background: #15803d; }
 
         .code-tag { font-family: monospace; font-weight: 700; color: var(--primary); background: #f0f9ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #bae6fd; font-size: 11px; text-decoration: none; cursor: pointer; }
         .code-tag:hover { text-decoration: underline; background: #e0f2fe; }
@@ -816,7 +818,6 @@
             }
 
             if (editId) {
-                // HANYA ROLE LEVEL >= 2 (MANAGER/ADMIN) YANG BOLEH REVISI
                 if (getRoleLevel(currentUserRole) < 2) {
                     return alert("⛔ AKSES DITOLAK: Hanya role Manager atau Admin yang memiliki wewenang mengedit data project!");
                 }
@@ -909,7 +910,6 @@
         }
 
         function deleteDocumentNumber(id) {
-            // HANYA ROLE LEVEL >= 2 (MANAGER/ADMIN) YANG BOLEH HAPUS
             if (getRoleLevel(currentUserRole) < 2) {
                 return alert("⛔ AKSES DITOLAK: Hanya Manager/Admin yang berhak menghapus data project!");
             }
@@ -1020,8 +1020,8 @@
             renderLogRows(filteredLogs);
         }
 
+        // FUNGSI APPROVAL DENGAN PROTEKSI STRICT ROLE LEVEL >= 2
         function toggleManagerApproval(id) {
-            // PROTEKSI LEVEL >= 2 (MANAGER/ADMIN)
             if (getRoleLevel(currentUserRole) < 2) {
                 return alert("⛔ AKSES DITOLAK: Hanya Manager atau Admin yang memiliki otorisasi untuk melakukan Approval!");
             }
@@ -1030,11 +1030,16 @@
             if (!doc) return;
 
             if (doc.statusManager === "Approved by Manager") {
-                alert("Project audit ini sudah di-approve oleh Manager.");
+                if (confirm("Project ini sudah di-approve. Apakah Anda ingin MENGBATALKAN status approval?")) {
+                    doc.statusManager = "Not Approved";
+                    logActivity("Summary Audit", "Pembatalan Approval Manager", doc.noSPP);
+                    syncPenomoranToFirebase();
+                    refreshUI();
+                }
                 return;
             }
 
-            const confirmed = confirm("Apakah sudah dilakukan review terhadap project audit yang dilakukan?");
+            const confirmed = confirm("Apakah Anda sudah melakukan review akhir terhadap laporan project audit ini?");
             if (confirmed) {
                 doc.statusManager = "Approved by Manager";
                 logActivity("Summary Audit", "Otorisasi Approval Manager", doc.noSPP);
@@ -1820,7 +1825,7 @@
                     <td>${item.tanggalStart}</td>
                     <td>
                         <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
-                            ${isManagerOrAdmin ? `<button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project (Manager/Admin)">⚙️️</button>` : ''}
+                            ${isManagerOrAdmin ? `<button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit / Revisi Project (Manager/Admin)">⚙</button>` : ''}
                             <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas">🖨️</button>
                             <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="Upload SPP Bertanda Tangan Basah">📤</button>
                             <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu untuk mengaktifkan"' : 'title="Kirim Surat Tugas via Email (Outlook)"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
@@ -1856,12 +1861,32 @@
 
             const tbodyAudit = document.getElementById('table-audit-body');
             const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
+            const isManagerOrAdmin = getRoleLevel(currentUserRole) >= 2;
 
             if (regulerProjects.length === 0) {
                 tbodyAudit.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Reguler yang diterbitkan.</td></tr>`;
             } else {
                 tbodyAudit.innerHTML = regulerProjects.map(item => {
                     const isApproved = item.statusManager === "Approved by Manager";
+                    
+                    // SEGREGASI TOMBOL APPROVAL BERDASARKAN ROLE LEVEL
+                    let approvalUI = "";
+                    if (isManagerOrAdmin) {
+                        // Manager / Admin: Boleh klik tombol interaktif
+                        approvalUI = `
+                            <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik untuk mengubah status otorisasi approval">
+                                ${isApproved ? 'Approved by Manager' : 'Not Approved'}
+                            </button>
+                        `;
+                    } else {
+                        // Auditor: Tampilan Read-Only Badge (Tidak Bisa Diklik)
+                        approvalUI = `
+                            <span class="badge ${isApproved ? 'bg-approved' : 'bg-not-approved'}" title="Hanya Manager/Admin yang berhak melakukan Otorisasi Approval">
+                                ${isApproved ? 'Approved by Manager' : 'Not Approved'}
+                            </span>
+                        `;
+                    }
+
                     return `
                     <tr>
                         <td>
@@ -1875,11 +1900,7 @@
                         <td>${item.auditor}</td>
                         <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
                         <td>${item.tanggalStart}</td>
-                        <td>
-                            <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})">
-                                ${isApproved ? 'Approved by Manager' : 'Not Approved'}
-                            </button>
-                        </td>
+                        <td>${approvalUI}</td>
                         <td>
                             <button class="btn btn-warning" onclick="triggerOutlookReminder('Reguler')" style="padding: 4px 8px; font-size: 11px; width: auto;">📧 Reminder</button>
                         </td>
