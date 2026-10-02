@@ -71,6 +71,22 @@
         .btn-success { background: #16a34a; color: white; }
         .btn-warning { background: #d97706; color: white; }
 
+        .btn-tbl-icon { padding: 6px 10px; font-size: 13px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; color: white; transition: 0.2s; }
+        .btn-tbl-edit { background: #64748b; }
+        .btn-tbl-print { background: #0284c7; }
+        .btn-tbl-upload { background: #d97706; }
+        .btn-tbl-send { background: #16a34a; }
+        .btn-tbl-send:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed !important; }
+        .btn-tbl-delete { background: #ef4444; }
+
+        .controls-row { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
+        .control-group { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 220px; }
+        .control-group label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+
+        .btn-action { border: none; padding: 9px 16px; border-radius: 6px; font-weight: 600; font-size: 12px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: white; text-decoration: none; }
+        .btn-excel { background: #16a34a; }
+        .btn-pdf { background: #dc2626; }
+
         .summary-header-grid { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; align-items: start; }
         @media (max-width: 992px) { .summary-header-grid { grid-template-columns: 1fr; } }
 
@@ -100,16 +116,22 @@
         .bg-approved { background: #dcfce7; color: #15803d; }
         .bg-not-approved { background: #fee2e2; color: #dc2626; }
 
-        .btn-status-toggle { border: none; padding: 5px 12px; border-radius: 20px; font-weight: 800; font-size: 11px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        .btn-status-toggle { border: none; padding: 5px 10px; border-radius: 20px; font-weight: 800; font-size: 10px; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
         .status-open { background: #fee2e2; color: #dc2626; border: 1px solid #fecdd3; }
         .status-open:hover { background: #fca5a5; }
         .status-closed { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
         .status-closed:hover { background: #86efac; }
 
         .code-tag { font-family: monospace; font-weight: 700; color: var(--primary); background: #f0f9ff; padding: 2px 6px; border-radius: 4px; border: 1px solid #bae6fd; font-size: 11px; cursor: pointer; }
+        .code-tag-investigasi { color: #6b21a8; background: #f3e8ff; border-color: #d8b4fe; }
         .code-tag-spp { color: #854d0e; background: #fefce8; border-color: #fef08a; }
         .code-tag-lha { color: #dc2626; background: #fef2f2; border-color: #fecdd3; }
         .code-tag-pica { color: #16a34a; background: #f0fdf4; border-color: #bbf7d0; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.75); z-index: 9999; justify-content: center; align-items: center; }
+        .modal-card { background: white; padding: 20px; border-radius: 8px; width: 450px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+        .btn-close-modal { background: none; border: none; font-size: 18px; font-weight: bold; cursor: pointer; color: var(--text-muted); }
 
         .auth-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0f172a; z-index: 99999; display: flex; justify-content: center; align-items: center; }
         .auth-card { background: #ffffff; padding: 32px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
@@ -133,6 +155,9 @@
                 </div>
                 <button type="submit" class="btn btn-success" style="width: 100%;">🔑 Masuk ke Dashboard</button>
             </form>
+            <div style="margin-top: 14px; text-align: center;">
+                <button onclick="window.mintaResetPassword()" style="background: none; border: none; color: var(--primary); font-size: 11px; cursor: pointer; text-decoration: underline;">Lupa Password?</button>
+            </div>
         </div>
     </div>
 
@@ -143,6 +168,7 @@
         <div id="user-badge-header" style="margin-top: 12px; display: none; align-items: center; justify-content: space-between;">
             <span class="user-profile-badge">👤 Logged in: <b id="display-user-email">-</b></span>
             <div style="display: flex; gap: 8px;">
+                <button onclick="window.userUbahPasswordMandiri()" style="background: #475569; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🔑 Ubah Pass</button>
                 <button onclick="window.handleUserLogout()" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Logout 🚪</button>
             </div>
         </div>
@@ -153,28 +179,30 @@
         <button class="tab-btn active" onclick="window.switchTab('tab-executive', event)">📊 Executive Summary</button>
         <button class="tab-btn" onclick="window.switchTab('tab-penomoran', event)">🔢 Penomoran Dokumen</button>
         <button class="tab-btn" onclick="window.switchTab('tab-audit', event)">📂 Summary Audit</button>
+        <button class="tab-btn" onclick="window.switchTab('tab-antifraud', event)" style="border-bottom: 2px solid var(--purple);">🛡️ Anti Fraud</button>
         <button class="tab-btn" onclick="window.switchTab('tab-activitylog', event)">📜 Activity Log</button>
     </div>
 
     <!-- TAB 1: EXECUTIVE -->
     <div id="tab-executive" class="tab-content active">
         <div class="kpi-grid">
-            <div class="kpi-card"><div class="kpi-title">Total Audit Project</div><div class="kpi-value" id="kpi-exec-total">0</div><div class="kpi-subtext">Reguler</div></div>
+            <div class="kpi-card"><div class="kpi-title">Total Audit Project</div><div class="kpi-value" id="kpi-exec-total">0</div><div class="kpi-subtext">Reguler & Investigasi</div></div>
             <div class="kpi-card"><div class="kpi-title">Total Temuan Audit</div><div class="kpi-value" id="kpi-exec-lha">0</div><div class="kpi-subtext alert" id="kpi-exec-high">0 High Risk</div></div>
-            <div class="kpi-card"><div class="kpi-title">PICA Open / Progress</div><div class="kpi-value" id="kpi-exec-open">0</div><div class="kpi-subtext alert" id="kpi-exec-due-alert">0 Open</div></div>
+            <div class="kpi-card"><div class="kpi-title">PICA Open / Progress</div><div class="kpi-value" id="kpi-exec-open">0</div><div class="kpi-subtext alert" id="kpi-exec-due-alert">0 Mendekati Due Date</div></div>
             <div class="kpi-card"><div class="kpi-title">Completion Rate</div><div class="kpi-value" id="kpi-exec-rate">0%</div><div class="kpi-subtext">Status Closed</div></div>
         </div>
     </div>
 
-    <!-- TAB 2: PENOMORAN DOKUMEN -->
+    <!-- TAB 2: PENOMORAN -->
     <div id="tab-penomoran" class="tab-content">
         <div class="grid-container">
             <div class="card">
                 <h3 id="form-penomoran-title">Form Penomoran Dokumen & Surat Tugas</h3>
                 <form id="form-penomoran" onsubmit="window.generateDocumentNumber(event)">
+                    <input type="hidden" id="edit-doc-id" value="">
                     <div class="form-group">
                         <label>Jenis Audit</label>
-                        <select id="p-jenis" class="form-control" required><option value="Reguler" selected>Reguler</option></select>
+                        <select id="p-jenis" class="form-control" required><option value="Reguler" selected>Reguler</option><option value="Investigasi">Investigasi</option></select>
                     </div>
                     <div class="form-group"><label>Judul Project / Cabang</label><input type="text" id="p-judul" class="form-control" placeholder="Contoh: Cabang Surabaya" required></div>
                     <div class="form-group">
@@ -187,12 +215,12 @@
                     </div>
                     <div class="form-group"><label>Periode Audit</label><input type="text" id="p-periode" class="form-control" placeholder="Q3 2026" required></div>
                     <div class="form-row">
-                        <div class="form-group"><label>Tgl Mulai Audit</label><input type="date" id="p-tgl-mulai" class="form-control" required></div>
-                        <div class="form-group"><label>Tgl Selesai Audit</label><input type="date" id="p-tgl-selesai" class="form-control" required></div>
+                        <div class="form-group"><label>Tgl Mulai</label><input type="date" id="p-tgl-mulai" class="form-control" required></div>
+                        <div class="form-group"><label>Tgl Selesai</label><input type="date" id="p-tgl-selesai" class="form-control" required></div>
                     </div>
                     <div class="form-group"><label>Lead Auditor</label><input type="text" id="p-auditor" class="form-control" required></div>
-                    <div class="form-group"><label>Email Auditee / Cabang</label><input type="email" id="p-email" class="form-control" required></div>
-                    <div class="form-group"><label>CC Email (PICA & Reminder)</label><input type="text" id="p-cc-email" class="form-control" placeholder="manager@jba.co.id"></div>
+                    <div class="form-group"><label>Email Auditee</label><input type="email" id="p-email" class="form-control" required></div>
+                    <div class="form-group"><label>CC Email (Surat & PICA)</label><input type="text" id="p-cc-email" class="form-control" placeholder="manager@jba.co.id"></div>
                     <button type="submit" id="btn-submit-penomoran" class="btn btn-success">⚡ Generate Nomor Dokumen</button>
                 </form>
             </div>
@@ -200,17 +228,7 @@
                 <h3>Register Penomoran Dokumen</h3>
                 <div class="table-responsive">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Jenis</th>
-                                <th>No. SPP</th>
-                                <th>No. LHA & PICA</th>
-                                <th>Cabang / Judul</th>
-                                <th>Tgl Mulai Audit</th>
-                                <th>Due Date (HK+4)</th>
-                                <th>Aksi PICA Email</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Jenis</th><th>No. SPP</th><th>No. LHA & PICA</th><th>Judul</th><th>Due Date</th><th>Tgl Terbit</th><th>Aksi</th></tr></thead>
                         <tbody id="table-penomoran-body"></tbody>
                     </table>
                 </div>
@@ -218,18 +236,18 @@
         </div>
     </div>
 
-    <!-- TAB 3: SUMMARY AUDIT -->
+    <!-- TAB 3: SUMMARY AUDIT (RESTUDIO & FLOW PICA TERBENAHI) -->
     <div id="tab-audit" class="tab-content">
         <div class="card" style="border-left: 5px solid var(--primary);">
-            <h3 style="margin-bottom: 12px;">📂 Summary Audit Management & Project Monitoring</h3>
+            <h3 style="margin-bottom: 12px;">📂 Summary Audit & Interactive PICA Portal Management</h3>
             <div class="summary-header-grid">
                 <div class="instruction-box">
-                    <h4>ℹ️ Alur Pemantauan PICA:</h4>
+                    <h4>ℹ️ Prosedur Permohonan Penyelesaian PICA</h4>
                     <ol>
-                        <li>Pilih project audit reguler terdaftar dari dropdown.</li>
-                        <li>Upload file Excel temuan audit awal.</li>
-                        <li>Klik <b>📧 Permohonan PICA</b> untuk megirimkan email resmi ke Regional Head (CC Auditee).</li>
-                        <li>Atur status temuan <b>Open</b> atau <b>Closed</b> pada lembar kerja project.</li>
+                        <li>Pilih project audit reguler dari dropdown.</li>
+                        <li>Upload file Excel/CSV temuan audit awal.</li>
+                        <li>Klik <b>📧 Permohonan PICA</b> untuk megirimkan email resmi ke <b>Regional Head</b> (CC Auditee).</li>
+                        <li>Auditee dapat mengakses link interaktif untuk mengunggah bukti & mengisi tindakan penyelesaian.</li>
                     </ol>
                 </div>
                 <div class="control-group">
@@ -257,7 +275,7 @@
                             <th>Lead Auditor</th>
                             <th>Status Otorisasi</th>
                             <th>Progres Action Plan</th>
-                            <th>Target Due Date (HK+4)</th>
+                            <th>Target Due Date</th>
                             <th>Aksi Permohonan PICA</th>
                         </tr>
                     </thead>
@@ -267,7 +285,20 @@
         </div>
     </div>
 
-    <!-- TAB 4: LOG -->
+    <!-- TAB 4: ANTI FRAUD -->
+    <div id="tab-antifraud" class="tab-content">
+        <div class="card">
+            <h3>🛡️ Register Temuan Anti Fraud & Investigasi</h3>
+            <div class="table-responsive">
+                <table>
+                    <thead><tr><th>No. Surat Tugas</th><th>Judul Project</th><th>Investigator</th><th>Tgl Terbit</th><th>Status</th></tr></thead>
+                    <tbody id="table-fraud-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: LOG -->
     <div id="tab-activitylog" class="tab-content">
         <div class="card">
             <h3>📜 System Activity Log</h3>
@@ -289,8 +320,10 @@
     <script>
         window.dbPenomoran = [];
         window.auditDatabase = [];
+        window.fraudDatabase = [];
         window.activityLogs = [];
         window.selectedRegulerObj = null;
+        window.selectedFraudObj = null;
         window.currentUserEmail = "";
         window.currentUserRole = "auditor";
 
@@ -301,10 +334,11 @@
         };
 
         window.switchTab = function(tabId, evt) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-log'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'active-fraud', 'active-log'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             if(evt && evt.target) {
-                if(tabId === 'tab-activitylog') evt.target.classList.add('active-log');
+                if(tabId === 'tab-antifraud') evt.target.classList.add('active-fraud');
+                else if(tabId === 'tab-activitylog') evt.target.classList.add('active-log');
                 else evt.target.classList.add('active');
             }
             const target = document.getElementById(tabId);
@@ -312,8 +346,7 @@
             window.refreshUI();
         };
 
-        // RUMUS KALKULASI DUE DATE: 4 HARI KERJA SETELAH TANGGAL SELESAI AUDIT (SABTU & MINGGU SKIPPED)
-        function calculateBusinessDueDate(startDateStr, daysToAdd) {
+        function addBusinessDays(startDateStr, daysToAdd) {
             if (!startDateStr) return "-";
             let date = new Date(startDateStr);
             if (isNaN(date.getTime())) return "-";
@@ -322,16 +355,7 @@
                 date.setDate(date.getDate() + 1);
                 if (date.getDay() !== 0 && date.getDay() !== 6) added++;
             }
-            const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-            return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
-        }
-
-        function formatIndoDateStr(dateStr) {
-            if (!dateStr) return "-";
-            const date = new Date(dateStr);
-            if (isNaN(date.getTime())) return dateStr;
-            const months = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-            return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+            return `${date.getDate()} ${["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"][date.getMonth()]} ${date.getFullYear()}`;
         }
 
         window.generateDocumentNumber = function(e) {
@@ -343,11 +367,7 @@
             const periode = document.getElementById('p-periode').value;
             const tglMulai = document.getElementById('p-tgl-mulai').value;
             const tglSelesai = document.getElementById('p-tgl-selesai').value;
-            
-            // Due Date = 4 hari kerja setelah Tanggal Selesai Audit
-            const dueDateProject = calculateBusinessDueDate(tglSelesai, 4);
-            const tglMulaiFormatted = formatIndoDateStr(tglMulai);
-
+            const dueDateProject = addBusinessDays(tglSelesai, 4);
             const auditor = document.getElementById('p-auditor').value;
             const email = document.getElementById('p-email').value;
             const ccEmail = document.getElementById('p-cc-email').value;
@@ -367,18 +387,18 @@
                 regionalHead: regionalHeadObj.name,
                 regionalEmail: regionalHeadObj.email,
                 periodeAudit: periode,
-                tglMulaiAudit: tglMulaiFormatted,
                 tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
                 dueDateProject: dueDateProject,
                 auditor: auditor,
                 emailAuditee: email,
                 ccEmail: ccEmail,
+                tanggalStart: new Date().toLocaleDateString('id-ID'),
                 statusManager: "Not Approved"
             };
 
             window.dbPenomoran.push(newDoc);
             database.ref('dbPenomoran').set(window.dbPenomoran);
-            alert(`Nomor SPP Terbit: ${autoSPP}\nTgl Mulai Audit: ${tglMulaiFormatted}\nTarget Due Date (HK+4): ${dueDateProject}`);
+            alert(`Nomor SPP Terbit: ${autoSPP}\nTarget Due Date PICA: ${dueDateProject}`);
             window.refreshUI();
             window.populateDropdowns();
         };
@@ -390,7 +410,7 @@
             }
         };
 
-        // PENGIRIMAN EMAIL PERMOHONAN PENYELESAIAN PICA KE REGIONAL HEAD & CC AUDITEE
+        // KANONIKAL EMAIL PERMOHONAN PENYELESAIAN PICA KE REGIONAL HEAD & AUDITEE
         window.sendPICARequestEmail = function(noSPP) {
             const docObj = window.dbPenomoran.find(x => x.noSPP === noSPP);
             if (!docObj) return alert("Data project tidak ditemukan!");
@@ -402,19 +422,18 @@
             const ccEmailStr = ccList.join(",");
 
             const baseUrl = window.location.href.split('?')[0];
-            const picaPortalUrl = `${baseUrl}?spp=${encodeURIComponent(noSPP)}&email=${encodeURIComponent(docObj.emailAuditee)}`;
+            const picaPortalUrl = `${baseUrl}?mode=auditee&spp=${encodeURIComponent(noSPP)}&email=${encodeURIComponent(docObj.emailAuditee)}`;
 
             const subject = encodeURIComponent(`[PERMOHONAN PENYELESAIAN PICA] Audit Cabang ${docObj.judul} - ${noSPP}`);
             const body = encodeURIComponent(
                 `Yth. Bapak/Ibu Regional Head (${docObj.regionalHead || 'Regional Head'}),\n` +
-                `CC: Tim Management / Auditee Cabang ${docObj.judul}\n\n` +
+                `CC: Tim Management / Auditee ${docObj.judul}\n\n` +
                 `Bersama email ini kami sampaikan bahwa Laporan Penjelasan Indikasi & Catatan Audit (PICA) untuk kegiatan internal audit berikut telah diterbitkan:\n\n` +
-                ` Lokasi / Cabang      : ${docObj.judul}\n` +
-                ` Nomor Surat Tugas    : ${docObj.noSPP}\n` +
-                ` Nomor LHA / PICA      : ${docObj.noLHA} / ${docObj.noPICA}\n` +
-                ` Tgl Mulai Audit       : ${docObj.tglMulaiAudit || '-'}\n` +
-                ` Lead Auditor         : ${docObj.auditor}\n` +
-                ` Target Due Date (HK+4): ${docObj.dueDateProject}\n\n` +
+                ` Lokasi / Cabang   : ${docObj.judul}\n` +
+                ` Nomor Surat Tugas : ${docObj.noSPP}\n` +
+                ` Nomor LHA / PICA   : ${docObj.noLHA} / ${docObj.noPICA}\n` +
+                ` Lead Auditor      : ${docObj.auditor}\n` +
+                ` Target Due Date   : ${docObj.dueDateProject}\n\n` +
                 `Mohon kepada Pihak Regional & Cabang untuk mengakses portal interaktif permohonan penyelesaian PICA di bawah ini:\n\n` +
                 `🔗 LINK PORTAL PICA AUDITEE:\n${picaPortalUrl}\n\n` +
                 `Gunakan Email Auditee (${docObj.emailAuditee}) dan No. Surat Tugas (${noSPP}) untuk mengisi Tindakan Penyelesaian serta mengunggah lampiran bukti perbaikan.\n\n` +
@@ -425,17 +444,18 @@
             window.location.href = `mailto:${toEmail}?subject=${subject}&body=${body}&cc=${encodeURIComponent(ccEmailStr)}`;
         };
 
-        // HALAMAN DETAIL PROJECT (LEMBAR KERJA AUDITOR)
-        window.openAuditDetailWindow = function(noSPP) {
+        // HALAMAN INTERAKTIF PENYELSAIAN PROJECT (DAPAT DIBUKA AUDITEE MAUPUN AUDITOR)
+        window.openAuditDetailWindow = function(noSPP, jenis, isAuditeeMode = false) {
             const docObj = window.dbPenomoran.find(x => x.noSPP === noSPP);
-            const masterDb = window.auditDatabase;
+            const masterDb = jenis === 'Investigasi' ? window.fraudDatabase : window.auditDatabase;
 
             const detailHTML = `
             <!DOCTYPE html>
             <html lang="id">
             <head>
                 <meta charset="UTF-8">
-                <title>Detail Monitoring Audit - ${noSPP}</title>
+                <title>Portal Penyelesaian PICA - ${noSPP}</title>
+                <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>
                 <style>
                     body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 24px; background: #f8fafc; color: #0f172a; }
                     .header { background: #1e293b; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
@@ -446,40 +466,38 @@
                     table { width: 100%; border-collapse: collapse; font-size: 12px; }
                     th { background: #f1f5f9; padding: 10px; border-bottom: 2px solid #cbd5e1; font-weight: 700; text-align: left; }
                     td { padding: 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-                    .btn-status-toggle { border: none; padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 11px; cursor: pointer; text-transform: uppercase; transition:0.2s; }
+                    .btn-status-toggle { border: none; padding: 5px 12px; border-radius: 20px; font-weight: 800; font-size: 11px; cursor: pointer; text-transform: uppercase; }
                     .status-open { background: #fee2e2; color: #dc2626; border: 1px solid #fecdd3; }
-                    .status-open:hover { background: #fca5a5; }
                     .status-closed { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-                    .status-closed:hover { background: #86efac; }
-                    .preview-badge { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; text-decoration: none; }
+                    .form-control-sm { width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <h2>DETAIL MONITORING AUDIT & ACTION PLAN PICA</h2>
-                    <p>Lokasi Audit: ${docObj ? docObj.judul : '-'} | Lead Auditor: ${docObj ? docObj.auditor : '-'}</p>
+                    <h2>PORTAL INTERAKTIF PENYELESAIAN PROJECT PICA</h2>
+                    <p>${isAuditeeMode ? '👤 AUDITEE MODE - Pengisian Tindakan Penyelesaian' : '🛡️ AUDITOR MODE - Monitoring & Otorisasi Audit'}</p>
                 </div>
 
                 <div class="card">
                     <div class="meta-grid">
                         <div class="meta-item"><label>Lokasi / Cabang Audit</label><span>${docObj ? docObj.judul : '-'}</span></div>
                         <div class="meta-item"><label>Nomor Surat Tugas (SPP)</label><span>${noSPP}</span></div>
-                        <div class="meta-item"><label>Nomor LHA / PICA</label><span>${docObj ? docObj.noLHA : '-'} / ${docObj ? docObj.noPICA : '-'}</span></div>
-                        <div class="meta-item"><label>Tanggal Mulai Audit</label><span>${docObj ? docObj.tglMulaiAudit : '-'}</span></div>
-                        <div class="meta-item"><label>Target Due Date (HK+4)</label><span style="color:#ef4444;">${docObj ? docObj.dueDateProject : '-'}</span></div>
+                        <div class="meta-item"><label>Nomor LHA</label><span>${docObj ? docObj.noLHA : '-'}</span></div>
+                        <div class="meta-item"><label>Nomor PICA</label><span>${docObj ? docObj.noPICA : '-'}</span></div>
+                        <div class="meta-item"><label>Target Due Date Penyelesaian</label><span style="color:#ef4444;">${docObj ? docObj.dueDateProject : '-'}</span></div>
                     </div>
 
-                    <h3>📋 Lembar Kerja Temuan & Monitoring Tindakan Penyelesaian</h3>
+                    <h3>📋 Lembar Kerja Temuan & Action Plan</h3>
                     <div style="overflow-x: auto; margin-top: 14px;">
                         <table>
                             <thead>
                                 <tr>
                                     <th>No</th>
-                                    <th>Sub Area & Fakta Audit</th>
+                                    <th>Kalimat Temuan / Fakta Audit</th>
                                     <th>Rekomendasi Auditor</th>
-                                    <th>Perbaikan Cabang (Rencana Auditee)</th>
-                                    <th>Lampiran Bukti (Preview)</th>
-                                    <th>Status Temuan (Klik Toggle)</th>
+                                    <th>Tindakan Penyelesaian (Auditee)</th>
+                                    <th>Lampiran Bukti</th>
+                                    <th>Status Temuan</th>
                                 </tr>
                             </thead>
                             <tbody id="table-pica-body"></tbody>
@@ -489,12 +507,13 @@
 
                 <script>
                     const mainSPP = "${noSPP}";
+                    const isAuditee = ${isAuditeeMode};
                     let picaItems = ${JSON.stringify(masterDb)}.filter(x => x.noSPP === mainSPP);
 
                     function renderPicaRows() {
                         const tbody = document.getElementById('table-pica-body');
                         if (picaItems.length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Belum ada data temuan terdaftar.</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Belum ada temuan di-upload oleh Auditor.</td></tr>';
                             return;
                         }
 
@@ -509,21 +528,81 @@
                                 </td>
                                 <td>\${item.rekomendasiRevisi || item.rekomendasi || '-'}</td>
                                 <td>
-                                    <div>\${item.perbaikanCabang || '<i style="color:#94a3b8;">- (Akan diisi Auditee)</i>'}</div>
+                                    \${isAuditee ? \`
+                                        <textarea class="form-control-sm" rows="3" onchange="saveActionPlan('\${item.noTemuan}', this.value)" placeholder="Ketik keterangan tindakan perbaikan di sini...">\${item.perbaikanCabang || ''}</textarea>
+                                    \` : \`
+                                        <div>\${item.perbaikanCabang || '<i style="color:#94a3b8;">Belum diisi oleh auditee</i>'}</div>
+                                    \`}
                                 </td>
                                 <td>
-                                    \${item.attachment ? \`
-                                        <a href="\${item.attachment.data}" target="_blank" class="preview-badge">🔍 Preview \${item.attachment.name}</a>
-                                    \` : '<span style="color:#94a3b8; font-size:11px;">Upload Disabled (Menunggu Auditee)</span>'}
+                                    <div id="attach-container-\${item.noTemuan}">
+                                        \${item.attachment ? \`
+                                            <div>
+                                                📎 <a href="\${item.attachment.data}" download="\${item.attachment.name}" style="color:#0284c7; font-weight:bold;">\${item.attachment.name}</a>
+                                                \${isAuditee ? \`<br><button onclick="deleteFile('\${item.noTemuan}')" style="color:#ef4444; border:none; background:none; cursor:pointer; font-size:10px;">🗑️ Hapus Bukti</button>\` : ''}
+                                            </div>
+                                        \` : \`
+                                            \${isAuditee ? \`
+                                                <input type="file" style="font-size:11px;" onchange="uploadFile(event, '\${item.noTemuan}')">
+                                            \` : '<span style="color:#94a3b8; font-size:11px;">Tidak ada lampiran</span>'}
+                                        \`}
+                                    </div>
                                 </td>
                                 <td style="text-align:center;">
-                                    <button class="btn-status-toggle \${isClosed ? 'status-closed' : 'status-open'}" onclick="toggleFindingStatus('\${item.noTemuan}')">
-                                        \${isClosed ? 'Closed ✅' : 'Open ⏳'}
-                                    </button>
+                                    \${isAuditee ? \`
+                                        <span class="btn-status-toggle \${isClosed ? 'status-closed' : 'status-open'}">\${item.status || 'Open'}</span>
+                                    \` : \`
+                                        <button class="btn-status-toggle \${isClosed ? 'status-closed' : 'status-open'}" onclick="toggleFindingStatus('\${item.noTemuan}')">
+                                            \${isClosed ? 'Closed ✅' : 'Open ⏳'}
+                                        </button>
+                                    \`}
                                 </td>
                             </tr>
                             \`;
                         }).join('');
+                    }
+
+                    function saveActionPlan(noTemuan, textVal) {
+                        const found = picaItems.find(x => x.noTemuan === noTemuan);
+                        if (found) {
+                            found.perbaikanCabang = textVal;
+                            alert("Keterangan tindakan penyelesaian berhasil disimpan!");
+                            if (window.opener && window.opener.savePicaFromChild) {
+                                window.opener.savePicaFromChild(mainSPP, noTemuan, { perbaikanCabang: textVal });
+                            }
+                        }
+                    }
+
+                    function uploadFile(evt, noTemuan) {
+                        const file = evt.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const attachObj = { name: file.name, data: e.target.result };
+                            const found = picaItems.find(x => x.noTemuan === noTemuan);
+                            if (found) {
+                                found.attachment = attachObj;
+                                renderPicaRows();
+                                alert("Lampiran bukti perbaikan berhasil di-upload!");
+                                if (window.opener && window.opener.savePicaFromChild) {
+                                    window.opener.savePicaFromChild(mainSPP, noTemuan, { attachment: attachObj });
+                                }
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+
+                    function deleteFile(noTemuan) {
+                        if (confirm("Hapus lampiran bukti perbaikan ini?")) {
+                            const found = picaItems.find(x => x.noTemuan === noTemuan);
+                            if (found) {
+                                delete found.attachment;
+                                renderPicaRows();
+                                if (window.opener && window.opener.savePicaFromChild) {
+                                    window.opener.savePicaFromChild(mainSPP, noTemuan, { attachment: null });
+                                }
+                            }
+                        }
                     }
 
                     function toggleFindingStatus(noTemuan) {
@@ -531,8 +610,8 @@
                         if (found) {
                             found.status = (found.status === 'Closed') ? 'Open' : 'Closed';
                             renderPicaRows();
-                            if (window.opener && window.opener.savePicaStatusFromChild) {
-                                window.opener.savePicaStatusFromChild(mainSPP, noTemuan, found.status);
+                            if (window.opener && window.opener.savePicaFromChild) {
+                                window.opener.savePicaFromChild(mainSPP, noTemuan, { status: found.status });
                             }
                         }
                     }
@@ -548,11 +627,20 @@
             win.document.close();
         };
 
-        // SINKRONISASI PUSH REALTIME KE FIREBASE
-        window.savePicaStatusFromChild = function(noSPP, noTemuan, newStatus) {
+        // KONEKTIVITAS SINKRONISASI REALTIME DARI CHILD PORTAL KE PARENT DASHBOARD
+        window.savePicaFromChild = function(noSPP, noTemuan, updatedFields) {
             const itemIdx = window.auditDatabase.findIndex(x => x.noSPP === noSPP && x.noTemuan === noTemuan);
             if (itemIdx !== -1) {
-                window.auditDatabase[itemIdx].status = newStatus;
+                window.auditDatabase[itemIdx] = { ...window.auditDatabase[itemIdx], ...updatedFields };
+                database.ref('auditDatabase').set(window.auditDatabase);
+                window.refreshUI();
+            }
+        };
+
+        window.toggleFindingStatusDirect = function(noSPP, noTemuan) {
+            const item = window.auditDatabase.find(x => x.noSPP === noSPP && x.noTemuan === noTemuan);
+            if (item) {
+                item.status = (item.status === 'Closed') ? 'Open' : 'Closed';
                 database.ref('auditDatabase').set(window.auditDatabase);
                 window.refreshUI();
             }
@@ -599,7 +687,7 @@
                         fakta: row["Fakta"] || row["Temuan"] || "-",
                         risiko: row["Risiko"] || "-",
                         rekomendasi: row["Rekomendasi"] || "-",
-                        perbaikanCabang: "", // Kosongkan perbaikan cabang saat awal upload
+                        perbaikanCabang: row["Tindakan Penyelesaian"] || "",
                         status: "Open"
                     }));
 
@@ -619,13 +707,13 @@
                     `<tr><td colspan="7" style="text-align:center;">Belum ada penomoran terbit.</td></tr>` :
                     window.dbPenomoran.map(item => `
                         <tr>
-                            <td><span class="badge bg-progress">${item.jenis}</span></td>
-                            <td><b class="code-tag" onclick="window.openAuditDetailWindow('${item.noSPP}')">${item.noSPP}</b></td>
+                            <td><span class="badge ${item.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}">${item.jenis}</span></td>
+                            <td><b class="code-tag" onclick="window.openAuditDetailWindow('${item.noSPP}', '${item.jenis}', false)">${item.noSPP}</b></td>
                             <td>${item.noLHA} / ${item.noPICA}</td>
                             <td><b>${item.judul}</b></td>
-                            <td>${item.tglMulaiAudit || '-'}</td>
                             <td><b style="color:var(--danger);">${item.dueDateProject || '-'}</b></td>
-                            <td><button class="btn btn-warning" onclick="window.sendPICARequestEmail('${item.noSPP}')" style="padding:4px 8px; font-size:11px;">📧 Permohonan PICA</button></td>
+                            <td>${item.tanggalStart}</td>
+                            <td><button class="btn btn-warning" onclick="window.sendPICARequestEmail('${item.noSPP}')" style="padding:4px 8px; font-size:11px;">📧 Email PICA</button></td>
                         </tr>
                     `).join('');
             }
@@ -644,7 +732,7 @@
                         return `
                         <tr>
                             <td>
-                                <span class="code-tag code-tag-spp" onclick="window.openAuditDetailWindow('${item.noSPP}')" title="Klik untuk Buka Lembar Kerja Auditor">
+                                <span class="code-tag code-tag-spp" onclick="window.openAuditDetailWindow('${item.noSPP}', 'Reguler', false)" title="Klik untuk Buka Portal Auditor">
                                     🔗 ${item.noSPP}
                                 </span>
                             </td>
@@ -661,7 +749,10 @@
                             </td>
                             <td><b style="color:var(--danger);">${item.dueDateProject || '-'}</b></td>
                             <td>
-                                <button class="btn btn-warning" onclick="window.sendPICARequestEmail('${item.noSPP}')" style="padding:5px 10px; font-size:11px; width:auto;" title="Kirim Permohonan PICA ke Regional Head">📧 Permohonan PICA</button>
+                                <div style="display:flex; gap:4px; justify-content:center;">
+                                    <button class="btn btn-warning" onclick="window.sendPICARequestEmail('${item.noSPP}')" style="padding:5px 10px; font-size:11px; width:auto;" title="Kirim Permohonan PICA ke Regional Head">📧 Permohonan PICA</button>
+                                    <button class="btn btn-purple" onclick="window.openAuditDetailWindow('${item.noSPP}', 'Reguler', true)" style="padding:5px 10px; font-size:11px; width:auto;" title="Buka Portal Simulasi Auditee">🔗 Portal Auditee</button>
+                                </div>
                             </td>
                         </tr>
                         `;
@@ -714,6 +805,19 @@
         });
 
         window.handleUserLogout = function() { auth.signOut(); };
+
+        // DETEKSI URL APABILA AUDITEE MEMBUKA DARI EMAIL LINK
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mode = urlParams.get('mode');
+            const spp = urlParams.get('spp');
+
+            if (mode === 'auditee' && spp) {
+                setTimeout(() => {
+                    window.openAuditDetailWindow(spp, 'Reguler', true);
+                }, 1000);
+            }
+        });
     </script>
 </body>
 </html>
