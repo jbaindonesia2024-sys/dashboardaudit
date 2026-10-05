@@ -285,7 +285,7 @@
             
             <div class="summary-header-grid">
                 <div class="instruction-box">
-                    <h4>ℹ️️ Petunjuk Penggunaan Fitur Upload</h4>
+                    <h4>ℹ Petunjuk Penggunaan Fitur Upload</h4>
                     <ol>
                         <li>Pilih project yang ingin di-upload summary auditnya. <i>(Jika tidak ada, daftarkan terlebih dahulu projectnya pada halaman <b>Penomoran Dokumen</b>)</i>.</li>
                         <li>Klik upload dan pilih summary audit yang sesuai dengan projectnya.</li>
@@ -445,6 +445,11 @@
 
     <!-- MANDATORY STANDALONE SCRIPT FOR DOCUMENT GENERATION -->
     <script>
+        // Inisialisasi awal variabel global jika belum ada
+        if (!Array.isArray(window.dbPenomoran)) {
+            window.dbPenomoran = [];
+        }
+
         // Helper untuk menghitung hari kerja (+4 hari kerja)
         function calcBusinessDays(dateStr, days) {
             if (!dateStr) return "-";
@@ -472,8 +477,10 @@
         window.generateDocumentNumber = function(e) {
             if (e && e.preventDefault) e.preventDefault();
 
-            // Memastikan dbPenomoran tersedia secara global
-            if (!window.dbPenomoran) window.dbPenomoran = [];
+            // Memastikan dbPenomoran SELALU berupa Array yang valid
+            if (!Array.isArray(window.dbPenomoran)) {
+                window.dbPenomoran = [];
+            }
 
             const editId = document.getElementById('edit-doc-id') ? document.getElementById('edit-doc-id').value : '';
             const jenis = document.getElementById('p-jenis').value;
@@ -524,7 +531,7 @@
                 let maxSequence = 0;
 
                 window.dbPenomoran.forEach(item => {
-                    if (item.noSPP) {
+                    if (item && item.noSPP) {
                         const isSameYear = item.noSPP.endsWith(`/${currentYear}`);
                         if (isSameYear) {
                             const prefixMatch = item.noSPP.match(/^(\d+)\//);
@@ -585,7 +592,7 @@
             }
 
             // Sync ke Firebase Realtime Database bila terhubung
-            if (typeof database !== 'undefined' && database.ref) {
+            if (typeof database !== 'undefined' && database && database.ref) {
                 database.ref('dbPenomoran').set(window.dbPenomoran);
             }
 
