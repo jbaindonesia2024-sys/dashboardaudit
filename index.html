@@ -229,7 +229,10 @@
             <div class="card">
                 <div class="card-header">
                     <h3>Register Penomoran Dokumen Terbit</h3>
-                    <button class="btn-action btn-excel" onclick="exportPenomoranExcel()">📊 Download Register (Excel)</button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn-action btn-excel" onclick="exportPenomoranExcel()">📊 Download Register (Excel)</button>
+                        <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px; width: auto;" onclick="clearAllPenomoranData()">🗑️ Reset Semua Data</button>
+                    </div>
                 </div>
 
                 <div style="margin-bottom: 12px;">
@@ -443,14 +446,12 @@
     <!-- Custom JS Link -->
     <script src="script.js"></script>
 
-    <!-- MANDATORY STANDALONE SCRIPT FOR DOCUMENT GENERATION -->
+    <!-- MANDATORY STANDALONE SCRIPT FOR DOCUMENT GENERATION & FIREBASE SYNC FIX -->
     <script>
-        // Inisialisasi awal variabel global jika belum ada
         if (!Array.isArray(window.dbPenomoran)) {
             window.dbPenomoran = [];
         }
 
-        // Helper untuk menghitung hari kerja (+4 hari kerja)
         function calcBusinessDays(dateStr, days) {
             if (!dateStr) return "-";
             let d = new Date(dateStr);
@@ -464,7 +465,6 @@
             return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
         }
 
-        // Helper format tanggal Indonesia
         function formatDateIndo(dateStr) {
             if (!dateStr) return "-";
             let d = new Date(dateStr);
@@ -473,11 +473,9 @@
             return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
         }
 
-        // FUNGSI UTAMA GENERATE NOMOR DOKUMEN
         window.generateDocumentNumber = function(e) {
             if (e && e.preventDefault) e.preventDefault();
 
-            // Memastikan dbPenomoran SELALU berupa Array yang valid
             if (!Array.isArray(window.dbPenomoran)) {
                 window.dbPenomoran = [];
             }
@@ -521,9 +519,7 @@
                 autoLHA = document.getElementById('p-manual-lha').value.trim() || "-";
                 if (!autoSPP) return alert("Nomor SPP wajib diisi jika dicentang Back Date!");
             } else {
-                // =========================================================================
-                // LOGIKA NOMOR KONTINU MAX + RESET OTOMATIS TIAP TAHUN BARU
-                // =========================================================================
+                // DETEKSI URUTAN NOMOR TERBESAR & RESET JIKA BERGANTI TAHUN
                 const today = new Date();
                 const currentYear = today.getFullYear();
                 const monthRoman = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][today.getMonth()];
@@ -591,14 +587,13 @@
                 window.dbPenomoran.push(docData);
             }
 
-            // Sync ke Firebase Realtime Database bila terhubung
+            // Sync ke Firebase Realtime Database
             if (typeof database !== 'undefined' && database && database.ref) {
                 database.ref('dbPenomoran').set(window.dbPenomoran);
             }
 
             alert(editId ? "Data penomoran berhasil diperbarui!" : `Nomor Dokumen Terbit: ${autoSPP}`);
 
-            // Reset Form sederhana setelah submit
             document.getElementById('form-penomoran').reset();
             if (document.getElementById('edit-doc-id')) document.getElementById('edit-doc-id').value = '';
             if (document.getElementById('backdate-fields')) document.getElementById('backdate-fields').style.display = 'none';
@@ -607,7 +602,19 @@
             if (typeof populateDropdowns === 'function') populateDropdowns();
         };
 
-        // Helper toggle backdate
+        // FUNGSI BERSIHKAN DATA TERUJI UNTUK RESET FIREBASE PERMANEN
+        window.clearAllPenomoranData = function() {
+            if (confirm("Apakah Anda yakin ingin MENGHAPUS SEMUA register penomoran secara permanen di database?")) {
+                window.dbPenomoran = [];
+                if (typeof database !== 'undefined' && database && database.ref) {
+                    database.ref('dbPenomoran').set([]);
+                }
+                alert("Semua data penomoran berhasil dibersihkan dari database!");
+                if (typeof refreshUI === 'function') refreshUI();
+                if (typeof populateDropdowns === 'function') populateDropdowns();
+            }
+        };
+
         window.toggleBackDateFields = function() {
             const chk = document.getElementById('p-is-backdate');
             const box = document.getElementById('backdate-fields');
