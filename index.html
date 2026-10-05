@@ -442,5 +442,130 @@
 
     <!-- Custom JS Link -->
     <script src="script.js"></script>
+
+    <!-- KODE OVERRIDE PENOMORAN (MAX SEQUENCE + ANNUAL RESET) -->
+    <script>
+        window.generateDocumentNumber = function(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-doc-id').value;
+            const jenis = document.getElementById('p-jenis').value;
+            const judul = document.getElementById('p-judul').value;
+            const regKey = document.getElementById('p-regional').value;
+            const regionalHeadObj = typeof regionalMap !== 'undefined' ? regionalMap[regKey] : { name: "-", email: "-" };
+            const periode = document.getElementById('p-periode').value;
+            const tglMulai = document.getElementById('p-tgl-mulai').value;
+            const tglSelesai = document.getElementById('p-tgl-selesai').value;
+            const dueDateProject = typeof calculateBusinessDueDate === 'function' ? calculateBusinessDueDate(tglSelesai, 4) : "-";
+            const auditor = document.getElementById('p-auditor').value;
+            const member1 = document.getElementById('p-member1').value;
+            const member2 = document.getElementById('p-member2').value;
+            const email = document.getElementById('p-email').value;
+            const ccEmail = document.getElementById('p-cc-email').value;
+            const isBackdate = document.getElementById('p-is-backdate').checked;
+
+            let autoSPP = "", autoLHA = "-", autoPICA = "-";
+
+            if (editId) {
+                const docIndex = window.dbPenomoran.findIndex(d => d.id == editId);
+                if (docIndex !== -1) {
+                    autoSPP = window.dbPenomoran[docIndex].noSPP;
+                    autoLHA = window.dbPenomoran[docIndex].noLHA;
+                    autoPICA = window.dbPenomoran[docIndex].noPICA;
+                }
+            } else if (isBackdate) {
+                autoSPP = document.getElementById('p-manual-spp').value.trim();
+                autoPICA = document.getElementById('p-manual-pica').value.trim() || "-";
+                autoLHA = document.getElementById('p-manual-lha').value.trim() || "-";
+                if (!autoSPP) return alert("Nomor SPP wajib diisi jika dicentang Back Date!");
+            } else {
+                // =========================================================================
+                // LOGIKA PENOMORAN DOKUMEN BERDASARKAN NOMOR TERAKHIR & RESET TAHUNAN
+                // =========================================================================
+                const today = new Date();
+                const currentYear = today.getFullYear();
+                const monthRoman = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][today.getMonth()];
+
+                let maxSequence = 0;
+
+                if (Array.isArray(window.dbPenomoran)) {
+                    window.dbPenomoran.forEach(item => {
+                        if (item.noSPP) {
+                            // Cek apakah dokumen berada pada tahun berjalan
+                            const isSameYear = item.noSPP.endsWith(`/${currentYear}`);
+                            if (isSameYear) {
+                                const prefixMatch = item.noSPP.match(/^(\d+)\//);
+                                if (prefixMatch) {
+                                    const seqNum = parseInt(prefixMatch[1], 10);
+                                    if (!isNaN(seqNum) && seqNum > maxSequence) {
+                                        maxSequence = seqNum;
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Urutan berikutnya adalah (Nilai Maksimum Tahun Ini + 1)
+                const nextSeq = maxSequence + 1;
+                const seqStr = String(nextSeq).padStart(3, '0');
+
+                if (jenis === "Investigasi") {
+                    autoSPP = `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${currentYear}`;
+                    autoLHA = "-";
+                    autoPICA = "-";
+                } else {
+                    autoSPP = `${seqStr}/SPP/JBA-IA/${monthRoman}/${currentYear}`;
+                    autoLHA = `${seqStr}/IA/JBA/LHA/${monthRoman}/${currentYear}`;
+                    autoPICA = `${seqStr}/IA/JBA/PICA/${monthRoman}/${currentYear}`;
+                }
+            }
+
+            const docData = {
+                id: editId ? Number(editId) : Date.now(),
+                jenis: jenis,
+                noSPP: autoSPP,
+                noLHA: autoLHA,
+                noPICA: autoPICA,
+                judul: judul,
+                regionalHead: regionalHeadObj ? regionalHeadObj.name : "-",
+                regionalEmail: regionalHeadObj ? regionalHeadObj.email : "-",
+                periodeAudit: periode,
+                tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
+                tglMulaiAudit: typeof formatIndoDateStr === 'function' ? formatIndoDateStr(tglMulai) : tglMulai,
+                tglSelesaiAudit: typeof formatIndoDateStr === 'function' ? formatIndoDateStr(tglSelesai) : tglSelesai,
+                dueDateProject: dueDateProject,
+                auditor: auditor,
+                member1: member1,
+                member2: member2,
+                emailAuditee: email,
+                ccEmail: ccEmail,
+                tanggalStart: editId ? undefined : new Date().toLocaleDateString('id-ID'),
+                statusManager: editId ? undefined : "Not Approved"
+            };
+
+            if (editId) {
+                const index = window.dbPenomoran.findIndex(d => d.id == editId);
+                if (index !== -1) {
+                    window.dbPenomoran[index] = { ...window.dbPenomoran[index], ...docData };
+                }
+            } else {
+                window.dbPenomoran.push(docData);
+            }
+
+            if (typeof database !== 'undefined') {
+                database.ref('dbPenomoran').set(window.dbPenomoran);
+            }
+
+            if (typeof addActivityLog === 'function') {
+                addActivityLog("Penomoran Dokumen", editId ? "Edit Penomoran" : "Generate Penomoran", `No. SPP: ${autoSPP} - ${judul}`);
+            }
+
+            alert(editId ? "Data penomoran berhasil diperbarui!" : `Nomor Dokumen Terbit: ${autoSPP}`);
+            
+            if (typeof resetPenomoranForm === 'function') resetPenomoranForm();
+            if (typeof refreshUI === 'function') refreshUI();
+            if (typeof populateDropdowns === 'function') populateDropdowns();
+        };
+    </script>
 </body>
 </html>
