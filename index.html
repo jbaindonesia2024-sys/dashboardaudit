@@ -285,7 +285,7 @@
             
             <div class="summary-header-grid">
                 <div class="instruction-box">
-                    <h4>ℹ️ Petunjuk Penggunaan Fitur Upload</h4>
+                    <h4>ℹ️️ Petunjuk Penggunaan Fitur Upload</h4>
                     <ol>
                         <li>Pilih project yang ingin di-upload summary auditnya. <i>(Jika tidak ada, daftarkan terlebih dahulu projectnya pada halaman <b>Penomoran Dokumen</b>)</i>.</li>
                         <li>Klik upload dan pilih summary audit yang sesuai dengan projectnya.</li>
@@ -443,25 +443,61 @@
     <!-- Custom JS Link -->
     <script src="script.js"></script>
 
-    <!-- KODE OVERRIDE PENOMORAN (MAX SEQUENCE + ANNUAL RESET) -->
+    <!-- MANDATORY STANDALONE SCRIPT FOR DOCUMENT GENERATION -->
     <script>
+        // Helper untuk menghitung hari kerja (+4 hari kerja)
+        function calcBusinessDays(dateStr, days) {
+            if (!dateStr) return "-";
+            let d = new Date(dateStr);
+            if (isNaN(d.getTime())) return "-";
+            let added = 0;
+            while (added < days) {
+                d.setDate(d.getDate() + 1);
+                if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+            }
+            const m = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+            return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        // Helper format tanggal Indonesia
+        function formatDateIndo(dateStr) {
+            if (!dateStr) return "-";
+            let d = new Date(dateStr);
+            if (isNaN(d.getTime())) return dateStr;
+            const m = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
+            return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
+        }
+
+        // FUNGSI UTAMA GENERATE NOMOR DOKUMEN
         window.generateDocumentNumber = function(e) {
-            e.preventDefault();
-            const editId = document.getElementById('edit-doc-id').value;
+            if (e && e.preventDefault) e.preventDefault();
+
+            // Memastikan dbPenomoran tersedia secara global
+            if (!window.dbPenomoran) window.dbPenomoran = [];
+
+            const editId = document.getElementById('edit-doc-id') ? document.getElementById('edit-doc-id').value : '';
             const jenis = document.getElementById('p-jenis').value;
             const judul = document.getElementById('p-judul').value;
             const regKey = document.getElementById('p-regional').value;
-            const regionalHeadObj = typeof regionalMap !== 'undefined' ? regionalMap[regKey] : { name: "-", email: "-" };
+            
+            const regionalMapLocal = {
+                "reg1": { name: "Irfan Baharudin", email: "irfan.baharudin@jba.co.id" },
+                "reg2": { name: "Syafi Munawir Almaki", email: "syafi.almaki@jba.co.id" },
+                "reg3": { name: "Tan Hung Pau", email: "tan.pau@jba.co.id" }
+            };
+            const regionalHeadObj = regionalMapLocal[regKey] || { name: "-", email: "-" };
+
             const periode = document.getElementById('p-periode').value;
             const tglMulai = document.getElementById('p-tgl-mulai').value;
             const tglSelesai = document.getElementById('p-tgl-selesai').value;
-            const dueDateProject = typeof calculateBusinessDueDate === 'function' ? calculateBusinessDueDate(tglSelesai, 4) : "-";
+            const dueDateProject = calcBusinessDays(tglSelesai, 4);
+
             const auditor = document.getElementById('p-auditor').value;
-            const member1 = document.getElementById('p-member1').value;
-            const member2 = document.getElementById('p-member2').value;
+            const member1 = document.getElementById('p-member1') ? document.getElementById('p-member1').value : '';
+            const member2 = document.getElementById('p-member2') ? document.getElementById('p-member2').value : '';
             const email = document.getElementById('p-email').value;
             const ccEmail = document.getElementById('p-cc-email').value;
-            const isBackdate = document.getElementById('p-is-backdate').checked;
+            const isBackdate = document.getElementById('p-is-backdate') ? document.getElementById('p-is-backdate').checked : false;
 
             let autoSPP = "", autoLHA = "-", autoPICA = "-";
 
@@ -479,7 +515,7 @@
                 if (!autoSPP) return alert("Nomor SPP wajib diisi jika dicentang Back Date!");
             } else {
                 // =========================================================================
-                // LOGIKA PENOMORAN DOKUMEN BERDASARKAN NOMOR TERAKHIR & RESET TAHUNAN
+                // LOGIKA NOMOR KONTINU MAX + RESET OTOMATIS TIAP TAHUN BARU
                 // =========================================================================
                 const today = new Date();
                 const currentYear = today.getFullYear();
@@ -487,25 +523,21 @@
 
                 let maxSequence = 0;
 
-                if (Array.isArray(window.dbPenomoran)) {
-                    window.dbPenomoran.forEach(item => {
-                        if (item.noSPP) {
-                            // Cek apakah dokumen berada pada tahun berjalan
-                            const isSameYear = item.noSPP.endsWith(`/${currentYear}`);
-                            if (isSameYear) {
-                                const prefixMatch = item.noSPP.match(/^(\d+)\//);
-                                if (prefixMatch) {
-                                    const seqNum = parseInt(prefixMatch[1], 10);
-                                    if (!isNaN(seqNum) && seqNum > maxSequence) {
-                                        maxSequence = seqNum;
-                                    }
+                window.dbPenomoran.forEach(item => {
+                    if (item.noSPP) {
+                        const isSameYear = item.noSPP.endsWith(`/${currentYear}`);
+                        if (isSameYear) {
+                            const prefixMatch = item.noSPP.match(/^(\d+)\//);
+                            if (prefixMatch) {
+                                const seqNum = parseInt(prefixMatch[1], 10);
+                                if (!isNaN(seqNum) && seqNum > maxSequence) {
+                                    maxSequence = seqNum;
                                 }
                             }
                         }
-                    });
-                }
+                    }
+                });
 
-                // Urutan berikutnya adalah (Nilai Maksimum Tahun Ini + 1)
                 const nextSeq = maxSequence + 1;
                 const seqStr = String(nextSeq).padStart(3, '0');
 
@@ -527,12 +559,12 @@
                 noLHA: autoLHA,
                 noPICA: autoPICA,
                 judul: judul,
-                regionalHead: regionalHeadObj ? regionalHeadObj.name : "-",
-                regionalEmail: regionalHeadObj ? regionalHeadObj.email : "-",
+                regionalHead: regionalHeadObj.name,
+                regionalEmail: regionalHeadObj.email,
                 periodeAudit: periode,
                 tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
-                tglMulaiAudit: typeof formatIndoDateStr === 'function' ? formatIndoDateStr(tglMulai) : tglMulai,
-                tglSelesaiAudit: typeof formatIndoDateStr === 'function' ? formatIndoDateStr(tglSelesai) : tglSelesai,
+                tglMulaiAudit: formatDateIndo(tglMulai),
+                tglSelesaiAudit: formatDateIndo(tglSelesai),
                 dueDateProject: dueDateProject,
                 auditor: auditor,
                 member1: member1,
@@ -552,19 +584,29 @@
                 window.dbPenomoran.push(docData);
             }
 
-            if (typeof database !== 'undefined') {
+            // Sync ke Firebase Realtime Database bila terhubung
+            if (typeof database !== 'undefined' && database.ref) {
                 database.ref('dbPenomoran').set(window.dbPenomoran);
             }
 
-            if (typeof addActivityLog === 'function') {
-                addActivityLog("Penomoran Dokumen", editId ? "Edit Penomoran" : "Generate Penomoran", `No. SPP: ${autoSPP} - ${judul}`);
-            }
-
             alert(editId ? "Data penomoran berhasil diperbarui!" : `Nomor Dokumen Terbit: ${autoSPP}`);
-            
-            if (typeof resetPenomoranForm === 'function') resetPenomoranForm();
+
+            // Reset Form sederhana setelah submit
+            document.getElementById('form-penomoran').reset();
+            if (document.getElementById('edit-doc-id')) document.getElementById('edit-doc-id').value = '';
+            if (document.getElementById('backdate-fields')) document.getElementById('backdate-fields').style.display = 'none';
+
             if (typeof refreshUI === 'function') refreshUI();
             if (typeof populateDropdowns === 'function') populateDropdowns();
+        };
+
+        // Helper toggle backdate
+        window.toggleBackDateFields = function() {
+            const chk = document.getElementById('p-is-backdate');
+            const box = document.getElementById('backdate-fields');
+            if (chk && box) {
+                box.style.display = chk.checked ? 'block' : 'none';
+            }
         };
     </script>
 </body>
