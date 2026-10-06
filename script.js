@@ -53,8 +53,6 @@ let dbPenomoran = [];
 let auditDatabase = [];
 let fraudDatabase = [];
 let activityLogs = [];
-let selectedRegulerObj = null;
-let selectedFraudObj = null;
 let currentUserEmail = "";
 let currentUserRole = "auditor";
 
@@ -119,24 +117,21 @@ function toggleBackDateFields() {
     updateSPPPreview();
 }
 
-// -------------------------------------------------------------
-// SEQUENCERS UNTUK SPP VS LHA/PICA
-// -------------------------------------------------------------
 function getNextSPPSequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.sppSeq);
-    if (listInYear.length === 0) return 1; // Auto-reset 1 Januari
+    if (listInYear.length === 0) return 1;
     return Math.max(...listInYear.map(d => d.sppSeq)) + 1;
 }
 
 function getNextLHASequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.lhaSeq);
-    if (listInYear.length === 0) return 1; // Auto-reset 1 Januari
+    if (listInYear.length === 0) return 1;
     return Math.max(...listInYear.map(d => d.lhaSeq)) + 1;
 }
 
 function getNextPICASequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.picaSeq);
-    if (listInYear.length === 0) return 1; // Auto-reset 1 Januari
+    if (listInYear.length === 0) return 1;
     return Math.max(...listInYear.map(d => d.picaSeq)) + 1;
 }
 
@@ -168,6 +163,9 @@ function updateSPPPreview() {
     document.getElementById('live-spp-preview').innerText = previewSPP;
 }
 
+// -------------------------------------------------------------
+// GENERATE & EDIT NOMOR DOKUMEN (WITH MANUAL COMPLETE EDIT)
+// -------------------------------------------------------------
 function generateDocumentNumber(e) {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -205,9 +203,44 @@ function generateDocumentNumber(e) {
     if (editId) {
         const docIdx = dbPenomoran.findIndex(x => x.id == editId);
         if (docIdx !== -1) {
+            const currentDoc = dbPenomoran[docIdx];
+            
+            // Mengambil Nilai Nomor Baru (Jika Mode Edit Manual Terbuka)
+            let newSPP = currentDoc.noSPP;
+            let newLHA = currentDoc.noLHA;
+            let newPICA = currentDoc.noPICA;
+
+            if (currentDoc.statusManager === "Approved by Manager") {
+                newSPP = document.getElementById('edit-manual-spp').value.trim();
+                newLHA = document.getElementById('edit-manual-lha').value.trim();
+                newPICA = document.getElementById('edit-manual-pica').value.trim();
+
+                if (!newSPP || !newLHA || !newPICA) {
+                    return alert("⚠️ ERROR: No. SPP, No. LHA, dan No. PICA wajib terisi dan tidak boleh kosong!");
+                }
+
+                // VALIDASI DUPLIKASI NOMOR TERHADAP PROJECT LAIN
+                const isDuplicateSPP = dbPenomoran.some(x => x.id != editId && x.noSPP.toLowerCase() === newSPP.toLowerCase());
+                const isDuplicateLHA = newLHA !== "-" && newLHA !== "N/A (Investigasi)" && dbPenomoran.some(x => x.id != editId && x.noLHA.toLowerCase() === newLHA.toLowerCase());
+                const isDuplicatePICA = newPICA !== "-" && newPICA !== "N/A (Investigasi)" && dbPenomoran.some(x => x.id != editId && x.noPICA.toLowerCase() === newPICA.toLowerCase());
+
+                if (isDuplicateSPP) {
+                    return alert(`⚠️️ ERROR EDIT MANUAL:\nNomor SPP "${newSPP}" sudah digunakan pada project lain!`);
+                }
+                if (isDuplicateLHA) {
+                    return alert(`⚠️ ERROR EDIT MANUAL:\nNomor LHA "${newLHA}" sudah digunakan pada project lain!`);
+                }
+                if (isDuplicatePICA) {
+                    return alert(`⚠️ ERROR EDIT MANUAL:\nNomor PICA "${newPICA}" sudah digunakan pada project lain!`);
+                }
+            }
+
             dbPenomoran[docIdx] = {
-                ...dbPenomoran[docIdx],
+                ...currentDoc,
                 jenis: jenis,
+                noSPP: newSPP,
+                noLHA: newLHA,
+                noPICA: newPICA,
                 judul: judul,
                 regionalHead: regionalHead,
                 jabatanRegionalHead: jabatanRegionalHead,
@@ -220,8 +253,9 @@ function generateDocumentNumber(e) {
                 ccEmail: ccEmail,
                 updated_by: currentUserEmail
             };
-            logActivity("Penomoran Dokumen", "Revisi / Edit Project", dbPenomoran[docIdx].noSPP);
-            alert("Data Penomoran Project Berhasil Diperbarui!");
+
+            logActivity("Penomoran Dokumen", "Revisi / Edit Manual Project", newSPP);
+            alert("Data Penomoran Project & Detail Dokumen Berhasil Diperbarui!");
         }
     } else {
         let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear);
@@ -231,11 +265,9 @@ function generateDocumentNumber(e) {
             ? `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}` 
             : `${seqStr}/SPP/JBA-IA/${monthRoman}/${targetYear}`;
 
-        // Cek Duplikasi Nomor SPP
         const exists = dbPenomoran.some(item => item.noSPP && item.noSPP.toLowerCase() === autoSPP.toLowerCase());
         if (exists) {
-            alert(`⚠️ ERROR DUPLIKASI DOKUMEN:\nNomor SPP ${autoSPP} sudah pernah terdaftar di database!`);
-            return;
+            return alert(`⚠️ ERROR DUPLIKASI DOKUMEN:\nNomor SPP ${autoSPP} sudah pernah terdaftar di database!`);
         }
 
         const newDoc = {
@@ -295,27 +327,35 @@ function editDocumentNumber(id) {
     document.getElementById('p-email').value = doc.emailAuditee || '';
     document.getElementById('p-cc-email').value = doc.ccEmail || '';
 
-    document.getElementById('form-penomoran-title').innerText = "⚙️ Edit Project Penomoran Dokumen";
+    // Jika status sudah Approved, tampilkan bidang Edit Manual Lengkap
+    if (doc.statusManager === "Approved by Manager") {
+        document.getElementById('container-edit-manual-approved').style.display = "block";
+        document.getElementById('edit-manual-spp').value = doc.noSPP;
+        document.getElementById('edit-manual-lha').value = doc.noLHA;
+        document.getElementById('edit-manual-pica').value = doc.noPICA;
+        document.getElementById('container-live-spp-preview').style.display = "none";
+        document.getElementById('container-backdate-toggle').style.display = "none";
+    } else {
+        document.getElementById('container-edit-manual-approved').style.display = "none";
+        document.getElementById('container-live-spp-preview').style.display = "block";
+        document.getElementById('container-backdate-toggle').style.display = "block";
+        document.getElementById('live-spp-preview').innerText = doc.noSPP + " (Belum Approved)";
+    }
+
+    document.getElementById('form-penomoran-title').innerText = "⚙️ Edit Project & Penomoran Dokumen";
     document.getElementById('btn-submit-penomoran').innerText = "💾 Simpan Perubahan";
     document.getElementById('btn-cancel-edit').style.display = "block";
-    document.getElementById('live-spp-preview').innerText = doc.noSPP + " (Terkunci)";
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// -------------------------------------------------------------
-// HARD DELETE PER NOMOR SPP HINGGA KE FIREBASE DATABASE
-// -------------------------------------------------------------
 function deleteDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
     if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}\n\nTindakan ini akan menghapus data hingga ke database!`)) {
-        
-        // 1. Filter Lokal
         dbPenomoran = dbPenomoran.filter(item => item.id !== id);
 
-        // 2. Sync / Remove spesifik di Firebase Realtime Database
         if (typeof database !== 'undefined' && database && database.ref) {
             database.ref('dbPenomoran/' + id).remove()
                 .then(() => console.log("Berhasil dihapus dari Firebase Node"))
@@ -334,6 +374,9 @@ function resetPenomoranForm() {
     document.getElementById('form-penomoran').reset();
     document.getElementById('edit-doc-id').value = "";
     document.getElementById('p-is-backdate').checked = false;
+    document.getElementById('container-edit-manual-approved').style.display = "none";
+    document.getElementById('container-live-spp-preview').style.display = "block";
+    document.getElementById('container-backdate-toggle').style.display = "block";
     toggleBackDateFields();
     autoFillAuditeeEmail();
     initTodayDate();
@@ -401,9 +444,6 @@ function sendSignedSPP_Email(id) {
     window.location.href = mailtoUrl;
 }
 
-// -------------------------------------------------------------
-// FITUR SEARCH REGISTER PENOMORAN
-// -------------------------------------------------------------
 function filterPenomoranTable() {
     const query = document.getElementById('search-penomoran').value.toLowerCase().trim();
     const filteredData = dbPenomoran.filter(item => {
@@ -430,13 +470,190 @@ function filterLogTable() {
 }
 
 // -------------------------------------------------------------
-// OTORISASI APPROVAL MANAGER & GENERATE LHA/PICA
+// UPLOAD AUDIT MANAGEMENT & INTEGRASI PARSER EXCEL / JSON
 // -------------------------------------------------------------
-function toggleManagerApproval(id) {
-    if (getRoleLevel(currentUserRole) < 2) {
-        return alert("⛔ AKSES DITOLAK: Hanya Manager atau Admin yang memiliki otorisasi untuk melakukan Approval!");
+function handleFileUpload(e, auditType) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const selectElemId = auditType === 'Reguler' ? 'audit-select-nomor' : 'fraud-select-nomor';
+    const selectElem = document.getElementById(selectElemId);
+    
+    if (!selectElem || selectElem.value === "" || selectElem.value === null) {
+        alert("⚠️ Mohon pilih Target Project Audit terlebih dahulu sebelum mengunggah berkas!");
+        e.target.value = "";
+        return;
     }
 
+    const targetList = dbPenomoran.filter(x => x.jenis === auditType);
+    const selectedDoc = targetList[selectElem.value];
+
+    if (!selectedDoc) {
+        alert("⚠️️ Target Project Audit tidak valid!");
+        e.target.value = "";
+        return;
+    }
+
+    const progressContainer = document.getElementById(auditType === 'Reguler' ? 'upload-progress-container-reguler' : 'upload-progress-container-fraud');
+    const progressBarFill = document.getElementById(auditType === 'Reguler' ? 'upload-progress-bar-fill-reguler' : 'upload-progress-bar-fill-fraud');
+    const progressText = document.getElementById(auditType === 'Reguler' ? 'upload-progress-text-reguler' : 'upload-progress-text-fraud');
+    const infoBadge = document.getElementById(auditType === 'Reguler' ? 'file-info-badge-reguler' : 'file-info-badge-fraud');
+    const infoFileName = document.getElementById(auditType === 'Reguler' ? 'info-file-name-reguler' : 'info-file-name-fraud');
+    const infoFileRows = document.getElementById(auditType === 'Reguler' ? 'info-file-rows-reguler' : 'info-file-rows-fraud');
+
+    progressContainer.style.display = 'block';
+    infoBadge.style.display = 'none';
+    progressBarFill.style.width = '20%';
+    progressText.innerText = '20% Reading file...';
+
+    const reader = new FileReader();
+
+    if (file.name.endsWith('.json')) {
+        reader.onload = function(evt) {
+            try {
+                progressBarFill.style.width = '70%';
+                progressText.innerText = '70% Parsing JSON...';
+                
+                const parsedData = JSON.parse(evt.target.result);
+                const findingsArr = Array.isArray(parsedData) ? parsedData : (parsedData.findings || [parsedData]);
+
+                saveUploadedFindings(selectedDoc.noSPP, auditType, findingsArr);
+
+                progressBarFill.style.width = '100%';
+                progressText.innerText = '100% Upload Selesai!';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    infoBadge.style.display = 'block';
+                    infoFileName.innerText = file.name;
+                    infoFileRows.innerText = findingsArr.length;
+                    alert(`✅ Summary Audit (${findingsArr.length} temuan) berhasil ter-upload & terintegrasi ke project ${selectedDoc.noSPP}!`);
+                }, 400);
+
+            } catch (err) {
+                alert("⚠️ Gagal membaca berkas JSON: " + err.message);
+                progressContainer.style.display = 'none';
+            }
+        };
+        reader.readAsText(file);
+    } else {
+        reader.onload = function(evt) {
+            try {
+                progressBarFill.style.width = '60%';
+                progressText.innerText = '60% Parsing Excel...';
+
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+
+                saveUploadedFindings(selectedDoc.noSPP, auditType, jsonRows);
+
+                progressBarFill.style.width = '100%';
+                progressText.innerText = '100% Upload Selesai!';
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    infoBadge.style.display = 'block';
+                    infoFileName.innerText = file.name;
+                    infoFileRows.innerText = jsonRows.length;
+                    alert(`✅ Excel Summary Audit (${jsonRows.length} baris) berhasil di-import ke project ${selectedDoc.noSPP}!`);
+                }, 400);
+
+            } catch (err) {
+                alert("⚠️ Gagal memproses berkas Excel: " + err.message);
+                progressContainer.style.display = 'none';
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function saveUploadedFindings(noSPP, auditType, findings) {
+    if (auditType === 'Reguler') {
+        auditDatabase = auditDatabase.filter(x => x.noSPP !== noSPP);
+        findings.forEach(item => {
+            auditDatabase.push({ ...item, noSPP: noSPP, updated_at: new Date().toISOString() });
+        });
+        syncAuditDbToFirebase();
+    } else {
+        fraudDatabase = fraudDatabase.filter(x => x.noSPP !== noSPP);
+        findings.forEach(item => {
+            fraudDatabase.push({ ...item, noSPP: noSPP, updated_at: new Date().toISOString() });
+        });
+        syncFraudDbToFirebase();
+    }
+    logActivity("Summary Audit", `Upload Summary File (${findings.length} temuan)`, noSPP);
+    refreshUI();
+}
+
+function openAuditDetailWindow(noSPP, jenis) {
+    const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+    if (!doc) return alert("Dokumen project tidak ditemukan!");
+
+    const detailHTML = `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+        <meta charset="UTF-8">
+        <title>Detail Summary Audit - ${doc.noSPP}</title>
+        <link rel="stylesheet" href="style.css">
+        <style>
+            body { padding: 30px; background: #f8fafc; }
+            .detail-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+            .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f1f5f9; padding: 16px; border-radius: 6px; margin: 16px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="detail-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+                <h2>Detail Project Audit & Summary Finding</h2>
+                <span class="badge ${jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}" style="font-size: 13px; padding: 6px 12px;">${doc.jenis}</span>
+            </div>
+
+            <div class="meta-grid">
+                <div><small style="color: #64748b; font-weight: bold;">NO. SURAT TUGAS / SPP</small><br><b>${doc.noSPP}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">NO. LHA</small><br><b>${doc.noLHA}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">NO. PICA</small><br><b>${doc.noPICA}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">CABANG / POOL</small><br><b>${doc.judul}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">LEAD AUDITOR</small><br><b>${doc.auditor}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">DUE DATE PROJECT</small><br><b style="color: #ef4444;">${doc.dueDateProject || '-'}</b></div>
+            </div>
+
+            <h3>📋 Daftar Temuan / Summary Findings</h3>
+            <p style="font-size: 12px; color: #64748b; margin-bottom: 12px;">Ringkasan hasil audit yang telah terunggah ke dalam sistem portal.</p>
+            
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Area / Process</th>
+                            <th>Judul Temuan / Kriteria</th>
+                            <th>Risiko</th>
+                            <th>Rekomendasi</th>
+                            <th>Status PICA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">
+                                Silakan periksa atau unggah summary audit pada tab Summary Management.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+
+    const win = window.open('', '_blank');
+    win.document.write(detailHTML);
+    win.document.close();
+}
+
+function toggleManagerApproval(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
@@ -507,7 +724,7 @@ function downloadSuratTugas(id) {
     </head>
     <body>
         <div class="no-print" style="margin-bottom: 20px; text-align: right;">
-            <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🖨️️ Cetak / Download PDF</button>
+            <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🖨️ Cetak / Download PDF</button>
         </div>
         <div class="header">
             <h2 style="font-weight: bold; text-decoration: underline;">Surat Pemberitahuan Penugasan</h2>
@@ -581,12 +798,10 @@ function populateDropdowns() {
     if (regulerSelect) {
         if (regulerList.length === 0) {
             regulerSelect.innerHTML = `<option value="">Belum ada project Reguler</option>`;
-            selectedRegulerObj = null;
         } else {
             regulerSelect.innerHTML = regulerList.map((item, idx) => 
                 `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
             ).join('');
-            selectedRegulerObj = regulerList[0];
         }
     }
 
@@ -595,12 +810,10 @@ function populateDropdowns() {
     if (fraudSelect) {
         if (fraudList.length === 0) {
             fraudSelect.innerHTML = `<option value="">Belum ada project Investigasi</option>`;
-            selectedFraudObj = null;
         } else {
             fraudSelect.innerHTML = fraudList.map((item, idx) => 
                 `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
             ).join('');
-            selectedFraudObj = fraudList[0];
         }
     }
 }
@@ -612,9 +825,6 @@ function updateExecutiveDashboard() {
     document.getElementById('kpi-exec-rate').innerText = (auditDatabase.length + fraudDatabase.length) > 0 ? "85%" : "0%";
 }
 
-// -------------------------------------------------------------
-// RENDER TABEL REGISTER PENOMORAN (ICON ACTIONS WITH TOOLTIP)
-// -------------------------------------------------------------
 function renderPenomoranRows(dataList) {
     const tbodyPenomoran = document.getElementById('table-penomoran-body');
     if (!tbodyPenomoran) return;
@@ -639,11 +849,11 @@ function renderPenomoranRows(dataList) {
             <td>
                 <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
                     <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas PDF">🖨️</button>
-                    <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit Data SPP">✏️</button>
-                    <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="${item.hasSignedSPP ? 'Berkas Basah Sudah Ada (Klik untuk ganti)' : 'Lampirkan File Basah'}">
+                    <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit Data & Nomor Dokumen">✏️</button>
+                    <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="${item.hasSignedSPP ? 'Berkas Basah Sudah Ada' : 'Lampirkan File Basah'}">
                         ${item.hasSignedSPP ? '✅' : '📎'}
                     </button>
-                    <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu untuk mengaktifkan"' : 'title="Kirim Surat Tugas via Email (Outlook)"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
+                    <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu"' : 'title="Kirim Surat Tugas via Email"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
                     <button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor SPP Permanen">🗑️</button>
                 </div>
             </td>
@@ -679,21 +889,16 @@ function refreshUI() {
     const tbodyAudit = document.getElementById('table-audit-body');
     if (tbodyAudit) {
         const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
-        const isManagerOrAdmin = getRoleLevel(currentUserRole) >= 2;
 
         if (regulerProjects.length === 0) {
             tbodyAudit.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Reguler yang diterbitkan.</td></tr>`;
         } else {
             tbodyAudit.innerHTML = regulerProjects.map(item => {
                 const isApproved = item.statusManager === "Approved by Manager";
-                let approvalUI = isManagerOrAdmin ? `
+                let approvalUI = `
                     <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik untuk otorisasi approval & generate LHA/PICA">
                         ${isApproved ? 'Approved by Manager' : 'Not Approved'}
                     </button>
-                ` : `
-                    <span class="badge ${isApproved ? 'bg-approved' : 'bg-not-approved'}">
-                        ${isApproved ? 'Approved by Manager' : 'Not Approved'}
-                    </span>
                 `;
 
                 return `
@@ -742,7 +947,6 @@ function refreshUI() {
     }
 }
 
-// Inisialisasi awal
 initTodayDate();
 autoFillAuditeeEmail();
 
@@ -770,41 +974,23 @@ function handleUserLogin(e) {
     const pass = document.getElementById('login-password').value;
 
     auth.signInWithEmailAndPassword(email, pass)
-        .then((userCredential) => {
+        .then(() => {
             document.getElementById('auth-login-overlay').style.display = 'none';
             document.getElementById('form-login-firebase').reset();
         })
-        .catch((error) => {
-            alert("Gagal Login: " + error.message);
-        });
+        .catch((error) => alert("Gagal Login: " + error.message));
 }
 
 auth.onAuthStateChanged((user) => {
     if (user) {
         currentUserEmail = user.email;
-        const targetEmail = user.email.toLowerCase();
+        currentUserRole = "admin";
 
-        database.ref('users').once('value', (snapshot) => {
-            const allUsers = snapshot.val() || {};
-            let matchedRole = null;
-
-            for (let key in allUsers) {
-                const userObj = allUsers[key];
-                if (userObj && userObj.email && userObj.email.toLowerCase() === targetEmail) {
-                    matchedRole = userObj.role;
-                    break;
-                }
-            }
-
-            currentUserRole = matchedRole ? matchedRole.toLowerCase() : "auditor";
-
-            document.getElementById('display-user-email').innerText = `${user.email} [${currentUserRole.toUpperCase()}]`;
-            document.getElementById('user-badge-header').style.display = 'flex';
-            document.getElementById('auth-login-overlay').style.display = 'none';
-            
-            listenDatabaseRealtime();
-        });
-
+        document.getElementById('display-user-email').innerText = `${user.email} [ADMIN]`;
+        document.getElementById('user-badge-header').style.display = 'flex';
+        document.getElementById('auth-login-overlay').style.display = 'none';
+        
+        listenDatabaseRealtime();
     } else {
         currentUserEmail = "";
         currentUserRole = "auditor";
