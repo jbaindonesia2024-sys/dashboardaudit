@@ -132,34 +132,26 @@
 
                     <div class="form-group">
                         <label>Jenis Surat Tugas / Audit</label>
-                        <select id="p-jenis" class="form-control" required>
+                        <select id="p-jenis" class="form-control" onchange="updateSPPPreview()" required>
                             <option value="Reguler" selected>Reguler</option>
                             <option value="Investigasi">Investigasi</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label>Judul Project / Cabang Diaudit</label>
-                        <input type="text" id="p-judul" class="form-control" placeholder="Contoh: Cabang Jakarta / Hub Bandung" required>
+                        <label>Judul Project / Pool / Cabang Diaudit</label>
+                        <input type="text" id="p-judul" class="form-control" placeholder="Contoh: Pool Jakarta / Cabang Bandung" required>
                     </div>
 
                     <div class="form-group" style="background: #f8fafc; padding: 10px; border: 1px dashed var(--border); border-radius: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--primary-dark);">
                             <input type="checkbox" id="p-is-backdate" onchange="toggleBackDateFields()">
-                            <span> Back Date (Input Manual Nomor Dokumen)</span>
+                            <span> Back Date (Input Manual Nomor SPP)</span>
                         </label>
                         <div id="backdate-fields" style="display: none; margin-top: 10px;">
                             <div class="form-group">
-                                <label>Nomor SPP (Manual)</label>
-                                <input type="text" id="p-manual-spp" class="form-control" placeholder="Contoh: 01/SPP/JBA-IA/I/2026">
-                            </div>
-                            <div class="form-group">
-                                <label>Nomor PICA (Manual)</label>
-                                <input type="text" id="p-manual-pica" class="form-control" placeholder="Contoh: 001/IA/JBA/PICA/I/2026">
-                            </div>
-                            <div class="form-group">
-                                <label>Nomor LHA (Manual)</label>
-                                <input type="text" id="p-manual-lha" class="form-control" placeholder="Contoh: 001/IA/JBA/LHA/I/2026">
+                                <label>Nomor Urut SPP Manual</label>
+                                <input type="number" id="p-manual-spp-seq" class="form-control" placeholder="Contoh: 15 (untuk nomor urut 015)" oninput="updateSPPPreview()">
                             </div>
                         </div>
                     </div>
@@ -190,9 +182,17 @@
                     </div>
 
                     <div class="form-group">
+                        <label>Tanggal Surat Terbit (Tahun Dokumen)</label>
+                        <div id="tgl-terbit-container">
+                            <input type="date" id="p-tgl-terbit" class="form-control" onchange="updateSPPPreview()" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
                         <label>Lead Auditor</label>
                         <input type="text" id="p-auditor" class="form-control" placeholder="Nama Lead Auditor" required>
                     </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label>Audit Member 1 (Opsional)</label>
@@ -201,13 +201,6 @@
                         <div class="form-group">
                             <label>Audit Member 2 (Opsional)</label>
                             <input type="text" id="p-member2" class="form-control" placeholder="Nama Anggota Tim 2">
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tanggal Surat Terbit</label>
-                        <div id="tgl-terbit-container">
-                            <input type="text" id="p-tgl-terbit-display" class="form-control" readonly>
                         </div>
                     </div>
 
@@ -221,6 +214,12 @@
                         <input type="text" id="p-cc-email" class="form-control" placeholder="manager.auditee@jba.co.id, regional.head@jba.co.id">
                     </div>
 
+                    <!-- LIVE PREVIEW SPP BANNER -->
+                    <div class="preview-box" style="background: #e0f2fe; border-left: 4px solid var(--primary); padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 11px;">
+                        <span>📌 Preview Nomor SPP Terbit:</span><br>
+                        <b id="live-spp-preview" style="color: var(--primary-dark); font-family: monospace; font-size: 13px;">-</b>
+                    </div>
+
                     <button type="submit" id="btn-submit-penomoran" class="btn btn-success" style="margin-top: 10px;">⚡ Generate Nomor Dokumen</button>
                     <button type="button" id="btn-cancel-edit" class="btn btn-danger" style="margin-top: 6px; display: none;" onclick="resetPenomoranForm()">✕ Batal Edit</button>
                 </form>
@@ -231,12 +230,11 @@
                     <h3>Register Penomoran Dokumen Terbit</h3>
                     <div style="display: flex; gap: 8px;">
                         <button class="btn-action btn-excel" onclick="exportPenomoranExcel()">📊 Download Register (Excel)</button>
-                        <button class="btn btn-danger" style="padding: 6px 10px; font-size: 11px; width: auto;" onclick="clearAllPenomoranData()">🗑️ Reset Semua Data</button>
                     </div>
                 </div>
 
                 <div style="margin-bottom: 12px;">
-                    <input type="text" id="search-penomoran" class="form-control" placeholder="🔍 Cari berdasarkan jenis, No. Surat, LHA/PICA, atau nama Cabang..." onkeyup="filterPenomoranTable()">
+                    <input type="text" id="search-penomoran" class="form-control" placeholder="🔍 Cari berdasarkan jenis, No. SPP, No. LHA/PICA, Cabang, atau Regional..." onkeyup="filterPenomoranTable()">
                 </div>
 
                 <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
@@ -246,10 +244,10 @@
                                 <th>Jenis</th>
                                 <th>No. Surat / SPP</th>
                                 <th>No. LHA & PICA</th>
-                                <th>Cabang / Judul</th>
+                                <th>Pool / Cabang</th>
                                 <th>Due Date Project (HK+4)</th>
                                 <th>Tgl Terbit</th>
-                                <th>Aksi Dokumen</th>
+                                <th style="text-align: center;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="table-penomoran-body"></tbody>
@@ -445,183 +443,5 @@
 
     <!-- Custom JS Link -->
     <script src="script.js"></script>
-
-    <!-- MANDATORY STANDALONE SCRIPT FOR DOCUMENT GENERATION & FIREBASE SYNC FIX -->
-    <script>
-        if (!Array.isArray(window.dbPenomoran)) {
-            window.dbPenomoran = [];
-        }
-
-        function calcBusinessDays(dateStr, days) {
-            if (!dateStr) return "-";
-            let d = new Date(dateStr);
-            if (isNaN(d.getTime())) return "-";
-            let added = 0;
-            while (added < days) {
-                d.setDate(d.getDate() + 1);
-                if (d.getDay() !== 0 && d.getDay() !== 6) added++;
-            }
-            const m = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-            return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
-        }
-
-        function formatDateIndo(dateStr) {
-            if (!dateStr) return "-";
-            let d = new Date(dateStr);
-            if (isNaN(d.getTime())) return dateStr;
-            const m = ["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus","September","Oktober","November","Desember"];
-            return `${d.getDate()} ${m[d.getMonth()]} ${d.getFullYear()}`;
-        }
-
-        window.generateDocumentNumber = function(e) {
-            if (e && e.preventDefault) e.preventDefault();
-
-            if (!Array.isArray(window.dbPenomoran)) {
-                window.dbPenomoran = [];
-            }
-
-            const editId = document.getElementById('edit-doc-id') ? document.getElementById('edit-doc-id').value : '';
-            const jenis = document.getElementById('p-jenis').value;
-            const judul = document.getElementById('p-judul').value;
-            const regKey = document.getElementById('p-regional').value;
-            
-            const regionalMapLocal = {
-                "reg1": { name: "Irfan Baharudin", email: "irfan.baharudin@jba.co.id" },
-                "reg2": { name: "Syafi Munawir Almaki", email: "syafi.almaki@jba.co.id" },
-                "reg3": { name: "Tan Hung Pau", email: "tan.pau@jba.co.id" }
-            };
-            const regionalHeadObj = regionalMapLocal[regKey] || { name: "-", email: "-" };
-
-            const periode = document.getElementById('p-periode').value;
-            const tglMulai = document.getElementById('p-tgl-mulai').value;
-            const tglSelesai = document.getElementById('p-tgl-selesai').value;
-            const dueDateProject = calcBusinessDays(tglSelesai, 4);
-
-            const auditor = document.getElementById('p-auditor').value;
-            const member1 = document.getElementById('p-member1') ? document.getElementById('p-member1').value : '';
-            const member2 = document.getElementById('p-member2') ? document.getElementById('p-member2').value : '';
-            const email = document.getElementById('p-email').value;
-            const ccEmail = document.getElementById('p-cc-email').value;
-            const isBackdate = document.getElementById('p-is-backdate') ? document.getElementById('p-is-backdate').checked : false;
-
-            let autoSPP = "", autoLHA = "-", autoPICA = "-";
-
-            if (editId) {
-                const docIndex = window.dbPenomoran.findIndex(d => d.id == editId);
-                if (docIndex !== -1) {
-                    autoSPP = window.dbPenomoran[docIndex].noSPP;
-                    autoLHA = window.dbPenomoran[docIndex].noLHA;
-                    autoPICA = window.dbPenomoran[docIndex].noPICA;
-                }
-            } else if (isBackdate) {
-                autoSPP = document.getElementById('p-manual-spp').value.trim();
-                autoPICA = document.getElementById('p-manual-pica').value.trim() || "-";
-                autoLHA = document.getElementById('p-manual-lha').value.trim() || "-";
-                if (!autoSPP) return alert("Nomor SPP wajib diisi jika dicentang Back Date!");
-            } else {
-                // DETEKSI URUTAN NOMOR TERBESAR & RESET JIKA BERGANTI TAHUN
-                const today = new Date();
-                const currentYear = today.getFullYear();
-                const monthRoman = ["I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"][today.getMonth()];
-
-                let maxSequence = 0;
-
-                window.dbPenomoran.forEach(item => {
-                    if (item && item.noSPP) {
-                        const isSameYear = item.noSPP.endsWith(`/${currentYear}`);
-                        if (isSameYear) {
-                            const prefixMatch = item.noSPP.match(/^(\d+)\//);
-                            if (prefixMatch) {
-                                const seqNum = parseInt(prefixMatch[1], 10);
-                                if (!isNaN(seqNum) && seqNum > maxSequence) {
-                                    maxSequence = seqNum;
-                                }
-                            }
-                        }
-                    }
-                });
-
-                const nextSeq = maxSequence + 1;
-                const seqStr = String(nextSeq).padStart(3, '0');
-
-                if (jenis === "Investigasi") {
-                    autoSPP = `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${currentYear}`;
-                    autoLHA = "-";
-                    autoPICA = "-";
-                } else {
-                    autoSPP = `${seqStr}/SPP/JBA-IA/${monthRoman}/${currentYear}`;
-                    autoLHA = `${seqStr}/IA/JBA/LHA/${monthRoman}/${currentYear}`;
-                    autoPICA = `${seqStr}/IA/JBA/PICA/${monthRoman}/${currentYear}`;
-                }
-            }
-
-            const docData = {
-                id: editId ? Number(editId) : Date.now(),
-                jenis: jenis,
-                noSPP: autoSPP,
-                noLHA: autoLHA,
-                noPICA: autoPICA,
-                judul: judul,
-                regionalHead: regionalHeadObj.name,
-                regionalEmail: regionalHeadObj.email,
-                periodeAudit: periode,
-                tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
-                tglMulaiAudit: formatDateIndo(tglMulai),
-                tglSelesaiAudit: formatDateIndo(tglSelesai),
-                dueDateProject: dueDateProject,
-                auditor: auditor,
-                member1: member1,
-                member2: member2,
-                emailAuditee: email,
-                ccEmail: ccEmail,
-                tanggalStart: editId ? undefined : new Date().toLocaleDateString('id-ID'),
-                statusManager: editId ? undefined : "Not Approved"
-            };
-
-            if (editId) {
-                const index = window.dbPenomoran.findIndex(d => d.id == editId);
-                if (index !== -1) {
-                    window.dbPenomoran[index] = { ...window.dbPenomoran[index], ...docData };
-                }
-            } else {
-                window.dbPenomoran.push(docData);
-            }
-
-            // Sync ke Firebase Realtime Database
-            if (typeof database !== 'undefined' && database && database.ref) {
-                database.ref('dbPenomoran').set(window.dbPenomoran);
-            }
-
-            alert(editId ? "Data penomoran berhasil diperbarui!" : `Nomor Dokumen Terbit: ${autoSPP}`);
-
-            document.getElementById('form-penomoran').reset();
-            if (document.getElementById('edit-doc-id')) document.getElementById('edit-doc-id').value = '';
-            if (document.getElementById('backdate-fields')) document.getElementById('backdate-fields').style.display = 'none';
-
-            if (typeof refreshUI === 'function') refreshUI();
-            if (typeof populateDropdowns === 'function') populateDropdowns();
-        };
-
-        // FUNGSI BERSIHKAN DATA TERUJI UNTUK RESET FIREBASE PERMANEN
-        window.clearAllPenomoranData = function() {
-            if (confirm("Apakah Anda yakin ingin MENGHAPUS SEMUA register penomoran secara permanen di database?")) {
-                window.dbPenomoran = [];
-                if (typeof database !== 'undefined' && database && database.ref) {
-                    database.ref('dbPenomoran').set([]);
-                }
-                alert("Semua data penomoran berhasil dibersihkan dari database!");
-                if (typeof refreshUI === 'function') refreshUI();
-                if (typeof populateDropdowns === 'function') populateDropdowns();
-            }
-        };
-
-        window.toggleBackDateFields = function() {
-            const chk = document.getElementById('p-is-backdate');
-            const box = document.getElementById('backdate-fields');
-            if (chk && box) {
-                box.style.display = chk.checked ? 'block' : 'none';
-            }
-        };
-    </script>
 </body>
 </html>
