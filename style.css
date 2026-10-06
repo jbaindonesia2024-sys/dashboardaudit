@@ -47,7 +47,7 @@ body { background-color: var(--bg-body); color: var(--text-main); padding: 20px;
 .kpi-subtext.alert { color: #ef4444; }
 
 /* Cards & Grid Container */
-.grid-container { display: grid; grid-template-columns: 420px 1fr; gap: 20px; }
+.grid-container { display: grid; grid-template-columns: 440px 1fr; gap: 20px; }
 @media (max-width: 992px) { .grid-container { grid-template-columns: 1fr; } }
 
 .card { background: var(--bg-card); padding: 18px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 20px; }
@@ -74,17 +74,32 @@ body { background-color: var(--bg-body); color: var(--text-main); padding: 20px;
 .btn-warning { background: #d97706; color: white; }
 .btn-warning:hover { background: #b45309; }
 
-/* Icon Buttons Compact Style for Table */
-.btn-tbl-icon { padding: 6px 10px; font-size: 13px; border-radius: 4px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; color: white; transition: 0.2s; }
-.btn-tbl-edit { background: #64748b; }
-.btn-tbl-edit:hover { background: #475569; }
+/* Icon-Only Action Buttons for Table */
+.btn-tbl-icon {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    font-size: 13px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.2s ease-in-out;
+}
+.btn-tbl-icon:hover { transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.btn-tbl-edit { background: #f59e0b; }
+.btn-tbl-edit:hover { background: #d97706; }
 .btn-tbl-print { background: #0284c7; }
 .btn-tbl-print:hover { background: #0369a1; }
-.btn-tbl-upload { background: #d97706; }
-.btn-tbl-upload:hover { background: #b45309; }
+.btn-tbl-upload { background: #475569; }
+.btn-tbl-upload:hover { background: #334155; }
 .btn-tbl-send { background: #16a34a; }
 .btn-tbl-send:hover { background: #15803d; }
-.btn-tbl-send:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed !important; }
+.btn-tbl-send:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed !important; transform: none !important; box-shadow: none !important; }
 .btn-tbl-delete { background: #ef4444; }
 .btn-tbl-delete:hover { background: #dc2626; }
 
