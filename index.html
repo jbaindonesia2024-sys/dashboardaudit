@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Internal Audit & Anti Fraud Analytics</title>
-    <!-- SheetJS (xlsx) for Excel generation & parsing -->
+    <!-- SheetJS (xlsx) untuk parsing & export Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- jsPDF & autoTable for PDF generation -->
+    <!-- jsPDF & autoTable untuk generasi PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <!-- Custom CSS Link -->
@@ -55,7 +55,7 @@
         <button class="tab-btn active" onclick="switchTab('tab-executive', event)">📊 Executive Summary</button>
         <button class="tab-btn" onclick="switchTab('tab-penomoran', event)">🔢 Penomoran Dokumen</button>
         <button class="tab-btn" onclick="switchTab('tab-audit', event)">📂 Summary Audit</button>
-        <button class="tab-btn" onclick="switchTab('tab-antifraud', event)" style="border-bottom: 2px solid var(--purple);">🛡️ Anti Fraud</button>
+        <button class="tab-btn" onclick="switchTab('tab-antifraud', event)" style="border-bottom: 2px solid var(--purple);">🛡️️ Anti Fraud</button>
         <button class="tab-btn" onclick="switchTab('tab-activitylog', event)">📜 Activity Log</button>
     </div>
 
@@ -138,12 +138,31 @@
                         </select>
                     </div>
 
+                    <!-- AREA INI TAMPIL HANYA SAAT EDIT PROYEK TER-APPROVE -->
+                    <div id="container-edit-manual-approved" style="display: none; background: #fff7ed; padding: 10px; border: 1px dashed #f97316; border-radius: 6px; margin-bottom: 12px;">
+                        <span style="font-size: 11px; font-weight: bold; color: #c2410c;">✏️ EDIT MANUAL NOMOR TERBIT (APPROVAL ACTIVE)</span>
+                        <div class="form-group" style="margin-top: 6px;">
+                            <label>No. Surat / SPP</label>
+                            <input type="text" id="edit-manual-spp" class="form-control" placeholder="001/SPP/JBA-IA/X/2026">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>No. LHA</label>
+                                <input type="text" id="edit-manual-lha" class="form-control" placeholder="001/IA/JBA/LHA/X/2026">
+                            </div>
+                            <div class="form-group">
+                                <label>No. PICA</label>
+                                <input type="text" id="edit-manual-pica" class="form-control" placeholder="001/IA/JBA/PICA/X/2026">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Judul Project / Pool / Cabang Diaudit</label>
                         <input type="text" id="p-judul" class="form-control" placeholder="Contoh: Pool Jakarta / Cabang Bandung" required>
                     </div>
 
-                    <div class="form-group" style="background: #f8fafc; padding: 10px; border: 1px dashed var(--border); border-radius: 6px;">
+                    <div id="container-backdate-toggle" class="form-group" style="background: #f8fafc; padding: 10px; border: 1px dashed var(--border); border-radius: 6px;">
                         <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--primary-dark);">
                             <input type="checkbox" id="p-is-backdate" onchange="toggleBackDateFields()">
                             <span> Back Date (Input Manual Nomor SPP)</span>
@@ -215,7 +234,7 @@
                     </div>
 
                     <!-- LIVE PREVIEW SPP BANNER -->
-                    <div class="preview-box" style="background: #e0f2fe; border-left: 4px solid var(--primary); padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 11px;">
+                    <div id="container-live-spp-preview" class="preview-box" style="background: #e0f2fe; border-left: 4px solid var(--primary); padding: 10px; border-radius: 4px; margin-bottom: 12px; font-size: 11px;">
                         <span>📌 Preview Nomor SPP Terbit:</span><br>
                         <b id="live-spp-preview" style="color: var(--primary-dark); font-family: monospace; font-size: 13px;">-</b>
                     </div>
@@ -289,14 +308,14 @@
                     <h4>ℹ Petunjuk Penggunaan Fitur Upload</h4>
                     <ol>
                         <li>Pilih project yang ingin di-upload summary auditnya. <i>(Jika tidak ada, daftarkan terlebih dahulu projectnya pada halaman <b>Penomoran Dokumen</b>)</i>.</li>
-                        <li>Klik upload dan pilih summary audit yang sesuai dengan projectnya.</li>
-                        <li>Summary audit akan tertampil pada setiap project di halaman baru.</li>
+                        <li>Klik upload dan pilih file excel / json summary audit yang sesuai.</li>
+                        <li>Summary audit akan otomatis tersimpan dan dapat diklik untuk membuka detail di tab baru.</li>
                     </ol>
                 </div>
 
                 <div class="control-group">
                     <label>Target Project Audit Reguler:</label>
-                    <select id="audit-select-nomor" class="form-control" onchange="syncRegulerProject()">
+                    <select id="audit-select-nomor" class="form-control">
                         <!-- Dynamic Options -->
                     </select>
                 </div>
@@ -355,7 +374,7 @@
             <div class="controls-row">
                 <div class="control-group">
                     <label>Pilih Project Investigasi Terdaftar:</label>
-                    <select id="fraud-select-nomor" class="form-control" onchange="syncFraudProject()">
+                    <select id="fraud-select-nomor" class="form-control">
                         <!-- Dynamic Options -->
                     </select>
                 </div>
