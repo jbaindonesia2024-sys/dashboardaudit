@@ -155,9 +155,6 @@ function updateSPPPreview() {
     document.getElementById('live-spp-preview').innerText = previewSPP;
 }
 
-// -------------------------------------------------------------
-// FITUR EDIT DENGAN VALiDASI DUPLIKASI SPESIFIK NAMA PROJECT
-// -------------------------------------------------------------
 function generateDocumentNumber(e) {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -201,7 +198,6 @@ function generateDocumentNumber(e) {
             let newLHA = currentDoc.noLHA;
             let newPICA = currentDoc.noPICA;
 
-            // CEK DUPLIKASI NO. SPP TERHADAP PROJECT LAIN
             const duplicateSPPObj = dbPenomoran.find(x => x.id != editId && x.noSPP.toLowerCase() === newSPP.toLowerCase());
             if (duplicateSPPObj) {
                 return alert(`⚠️ ERROR EDIT MANUAL:\nNomor SPP '${newSPP}' telah terregistrasi pada Project '${duplicateSPPObj.judul}'!`);
@@ -215,7 +211,6 @@ function generateDocumentNumber(e) {
                     return alert("⚠️ ERROR: No. LHA dan No. PICA tidak boleh kosong!");
                 }
 
-                // CEK DUPLIKASI NO. LHA & PICA TERHADAP PROJECT LAIN
                 const duplicateLHAObj = newLHA !== "-" && newLHA !== "N/A (Investigasi)" && dbPenomoran.find(x => x.id != editId && x.noLHA.toLowerCase() === newLHA.toLowerCase());
                 if (duplicateLHAObj) {
                     return alert(`⚠️ ERROR EDIT MANUAL:\nNomor LHA '${newLHA}' telah terregistrasi pada Project '${duplicateLHAObj.judul}'!`);
@@ -223,7 +218,7 @@ function generateDocumentNumber(e) {
 
                 const duplicatePICAObj = newPICA !== "-" && newPICA !== "N/A (Investigasi)" && dbPenomoran.find(x => x.id != editId && x.noPICA.toLowerCase() === newPICA.toLowerCase());
                 if (duplicatePICAObj) {
-                    return alert(`⚠️ ERROR EDIT MANUAL:\nNomor PICA '${newPICA}' telah terregistrasi pada Project '${duplicatePICAObj.judul}'!`);
+                    return alert(`⚠️️ ERROR EDIT MANUAL:\nNomor PICA '${newPICA}' telah terregistrasi pada Project '${duplicatePICAObj.judul}'!`);
                 }
             }
 
@@ -319,13 +314,11 @@ function editDocumentNumber(id) {
     document.getElementById('p-email').value = doc.emailAuditee || '';
     document.getElementById('p-cc-email').value = doc.ccEmail || '';
 
-    // Tampilkan field edit No SPP
     document.getElementById('container-edit-manual-spp').style.display = "block";
     document.getElementById('edit-manual-spp-val').value = doc.noSPP;
     document.getElementById('container-live-spp-preview').style.display = "none";
     document.getElementById('container-backdate-toggle').style.display = "none";
 
-    // Jika disetujui, aktifkan edit LHA dan PICA
     if (doc.statusManager === "Approved by Manager") {
         document.getElementById('container-edit-manual-approved').style.display = "block";
         document.getElementById('edit-manual-lha').value = doc.noLHA;
@@ -462,9 +455,6 @@ function filterLogTable() {
     renderLogRows(filteredLogs);
 }
 
-// -------------------------------------------------------------
-// FITUR UPLOAD FILE (.EXCEL / .CSV / .JSON) & PARSING TEMUAN
-// -------------------------------------------------------------
 function handleFileUpload(e, auditType) {
     const file = e.target.files[0];
     if (!file) return;
@@ -604,9 +594,6 @@ function saveUploadedFindings(noSPP, auditType, findings) {
     refreshUI();
 }
 
-// -------------------------------------------------------------
-// TOGGLE STATUS OPEN / CLOSED DARI HALAMAN DETAIL PROYEK
-// -------------------------------------------------------------
 function toggleFindingStatus(findingId, noSPP) {
     let targetObj = auditDatabase.find(x => x.id == findingId);
     if (!targetObj) {
@@ -621,15 +608,11 @@ function toggleFindingStatus(findingId, noSPP) {
         syncFraudDbToFirebase();
         logActivity("Summary Audit", `Ubah Status Temuan (${targetObj.status})`, noSPP);
         
-        // Refresh Tampilan window jika aktif
         alert(`Status temuan berhasil diubah menjadi: ${targetObj.status}`);
         openAuditDetailWindow(noSPP);
     }
 }
 
-// -------------------------------------------------------------
-// MEMBUKA HALAMAN DETAIL TAB BARU (RINGKAS & SPESIFIK KOLOM)
-// -------------------------------------------------------------
 function openAuditDetailWindow(noSPP, jenis) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Dokumen project tidak ditemukan!");
@@ -896,6 +879,9 @@ function updateExecutiveDashboard() {
     document.getElementById('kpi-exec-rate').innerText = (auditDatabase.length + fraudDatabase.length) > 0 ? "85%" : "0%";
 }
 
+// -------------------------------------------------------------
+// RENDER DENGAN POSISI TOMBOL EDIT DI PERTAMA
+// -------------------------------------------------------------
 function renderPenomoranRows(dataList) {
     const tbodyPenomoran = document.getElementById('table-penomoran-body');
     if (!tbodyPenomoran) return;
@@ -919,8 +905,8 @@ function renderPenomoranRows(dataList) {
             <td>${item.tanggalStart}</td>
             <td>
                 <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
-                    <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas PDF">🖨️</button>
                     <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit Data & Nomor Dokumen">✏️</button>
+                    <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas PDF">🖨️</button>
                     <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="${item.hasSignedSPP ? 'Berkas Basah Sudah Ada' : 'Lampirkan File Basah'}">
                         ${item.hasSignedSPP ? '✅' : '📎'}
                     </button>
