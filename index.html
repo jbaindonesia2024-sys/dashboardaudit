@@ -65,7 +65,7 @@
             <div class="kpi-card">
                 <div class="kpi-title">Total Audit Project</div>
                 <div class="kpi-value" id="kpi-exec-total">0</div>
-                <div class="kpi-subtext">Reguler & Investigasi</div>
+                <div class="kpi-subtext">Reguler, Investigasi, Adhoc & Advisory</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">Total Temuan Audit</div>
@@ -75,7 +75,7 @@
             <div class="kpi-card">
                 <div class="kpi-title">PICA Open / Progress</div>
                 <div class="kpi-value" id="kpi-exec-open">0</div>
-                <div class="kpi-subtext alert" id="kpi-exec-due-alert">0 Mendekati Due Date (H-15)</div>
+                <div class="kpi-subtext alert" id="kpi-exec-due-alert">0 Mendekati Due Date</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">Completion Rate</div>
@@ -136,6 +136,8 @@
                         <select id="p-jenis" class="form-control" onchange="updateSPPPreview()" required>
                             <option value="Reguler" selected>Reguler</option>
                             <option value="Investigasi">Investigasi</option>
+                            <option value="Adhoc">Adhoc</option>
+                            <option value="Advisory">Advisory</option>
                         </select>
                     </div>
 
@@ -286,7 +288,8 @@
                     <button class="btn-action btn-danger" onclick="resetExcelFilters()" style="padding: 6px 10px; font-size: 11px;">🔄 Reset Filter</button>
                 </div>
 
-                <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+                <!-- CONTAINER STICKY HEADER -->
+                <div class="table-responsive sticky-table-container" style="max-height: 520px; overflow-y: auto;">
                     <table class="table-excel-sortable">
                         <thead>
                             <tr>
@@ -305,8 +308,8 @@
                                 <th onclick="sortByColumn('auditor')" class="sortable-th">
                                     Lead Auditor <span id="sort-icon-auditor" class="sort-icon">⇅</span>
                                 </th>
-                                <th onclick="sortByColumn('dueDateProject')" class="sortable-th">
-                                    Due Date Project <span id="sort-icon-dueDateProject" class="sort-icon">⇅</span>
+                                <th onclick="sortByColumn('tglSelesai')" class="sortable-th">
+                                    Tanggal Selesai Audit <span id="sort-icon-tglSelesai" class="sort-icon">⇅</span>
                                 </th>
                                 <th onclick="sortByColumn('tglTerbitSPP')" class="sortable-th">
                                     Tgl Terbit <span id="sort-icon-tglTerbitSPP" class="sort-icon">▼</span>
@@ -359,7 +362,7 @@
                 </div>
 
                 <div class="control-group">
-                    <label>Target Project Audit Reguler:</label>
+                    <label>Target Project Audit Reguler / Adhoc / Advisory:</label>
                     <select id="audit-select-nomor" class="form-control">
                         <!-- Dynamic Options -->
                     </select>
@@ -386,23 +389,42 @@
         </div>
 
         <div class="card">
-            <h3>📋 Database Summary Audit & Action Plan Tracking</h3>
+            <div class="card-header">
+                <h3>📋 Database Summary Audit & Action Plan Tracking</h3>
+                <!-- FITUR CONCAT / COMBINE SLIDE PPT DARI MULTIPLE PROJECT -->
+                <button class="btn-action btn-purple" onclick="combineSelectedProjectsPPT()" style="font-size: 11px;">
+                    ➕ Combine Selected Project to PPT
+                </button>
+            </div>
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
                 Menampilkan daftar project terdaftar dari Halaman Penomoran Dokumen. Klik nomor dokumen untuk membuka detail di tab baru.
             </p>
-            <div class="table-responsive">
-                <table class="table-center-audit">
+
+            <!-- CONTROL BAR FILTER ALA EXCEL UNTUK SUMMARY AUDIT -->
+            <div class="excel-filter-bar">
+                <div class="filter-item search-box-excel">
+                    <input type="text" id="search-audit-summary" class="form-control" placeholder="🔍 Cari global (No. SPP, No. LHA, Judul...)" onkeyup="applySummaryAuditFilters()">
+                </div>
+                <div class="filter-item">
+                    <select id="filter-audit-auditor" class="form-control filter-select" onchange="applySummaryAuditFilters()">
+                        <option value="">-- All Lead Auditor --</option>
+                    </select>
+                </div>
+                <button class="btn-action btn-danger" onclick="resetSummaryAuditFilters()" style="padding: 6px 10px; font-size: 11px;">🔄 Reset Filter</button>
+            </div>
+
+            <div class="table-responsive sticky-table-container" style="max-height: 520px; overflow-y: auto;">
+                <table class="table-center-audit table-excel-sortable">
                     <thead>
                         <tr>
-                            <th>No. SPP (Klik untuk Detail)</th>
-                            <th>No. LHA</th>
-                            <th>No. PICA</th>
-                            <th>Judul Project / Cabang</th>
-                            <th>Lead Auditor</th>
-                            <th>Due Date Project</th>
-                            <th>Tgl Terbit</th>
-                            <th>Status Otorisasi</th>
-                            <th>Aksi</th>
+                            <th style="width: 40px; text-align: center;">Select</th>
+                            <th onclick="sortSummaryByColumn('noSPP')" class="sortable-th">No. SPP (Klik Detail) <span id="sort-summary-noSPP" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('noLHA')" class="sortable-th">No. LHA <span id="sort-summary-noLHA" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('noPICA')" class="sortable-th">No. PICA <span id="sort-summary-noPICA" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('judul')" class="sortable-th">Judul Project / Cabang <span id="sort-summary-judul" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('auditor')" class="sortable-th">Lead Auditor <span id="sort-summary-auditor" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('tglSelesai')" class="sortable-th">Tanggal Selesai Audit <span id="sort-summary-tglSelesai" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('statusManager')" class="sortable-th">Status Otorisasi <span id="sort-summary-statusManager" class="sort-icon">⇅</span></th>
                         </tr>
                     </thead>
                     <tbody id="table-audit-body"></tbody>
@@ -445,7 +467,6 @@
                 <div style="display: flex; gap: 8px;">
                     <button class="btn-action btn-pdf" onclick="generatePDF_Fraud()" style="background: var(--purple-dark);">📄 Export Laporan (PDF)</button>
                     <button class="btn-action btn-excel" onclick="generateExcel_Fraud()">📊 Export Risk Matrix (Excel)</button>
-                    <button class="btn btn-purple" onclick="triggerOutlookReminder('Investigasi')" style="padding: 8px 12px; font-size: 11px;">📧 Reminder</button>
                 </div>
             </div>
         </div>
@@ -455,14 +476,14 @@
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
                 Daftar project investigasi terdaftar. Klik nomor surat tugas untuk membuka detail di tab baru.
             </p>
-            <div class="table-responsive">
+            <div class="table-responsive sticky-table-container">
                 <table>
                     <thead>
                         <tr>
                             <th>No. Surat Tugas (Klik untuk Detail)</th>
                             <th>Judul Project / Investigasi</th>
                             <th>Special Investigator</th>
-                            <th>Tgl Terbit</th>
+                            <th>Tanggal Selesai Audit</th>
                             <th>Status Otorisasi</th>
                         </tr>
                     </thead>
@@ -482,7 +503,7 @@
             <div style="margin-bottom: 12px;">
                 <input type="text" id="search-log" class="form-control" placeholder="🔍 Cari riwayat berdasarkan aktivitas, user, atau nomor dokumen..." onkeyup="filterLogTable()">
             </div>
-            <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
+            <div class="table-responsive sticky-table-container" style="max-height: 520px; overflow-y: auto;">
                 <table>
                     <thead>
                         <tr>
