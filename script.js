@@ -72,9 +72,9 @@ function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
     }
 }
 
-function syncPenomoranToFirebase() {
+function syncSinglePenomoranToFirebase(docObj) {
     if (typeof database !== 'undefined' && database && database.ref) {
-        database.ref('dbPenomoran').set(dbPenomoran);
+        database.ref('dbPenomoran/' + docObj.id).set(docObj);
     }
 }
 
