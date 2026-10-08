@@ -28,21 +28,6 @@ function formatIndonesianDate(dateObj) {
     return `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
 }
 
-function addBusinessDays(startDateStr, daysToAdd) {
-    if (!startDateStr) return "-";
-    let date = new Date(startDateStr);
-    if (isNaN(date.getTime())) return "-";
-    
-    let added = 0;
-    while (added < daysToAdd) {
-        date.setDate(date.getDate() + 1);
-        if (date.getDay() !== 0 && date.getDay() !== 6) {
-            added++;
-        }
-    }
-    return formatIndonesianDate(date);
-}
-
 function initTodayDate() {
     const today = new Date();
     const inputTgl = document.getElementById('p-tgl-terbit');
@@ -56,9 +41,13 @@ let activityLogs = [];
 let currentUserEmail = "";
 let currentUserRole = "auditor";
 
-// State Sorting & Filtering ala Excel
+// State Sorting Penomoran
 let currentSortColumn = 'tglTerbitSPP';
 let currentSortDirection = 'desc';
+
+// State Sorting Summary Audit
+let summarySortColumn = 'noSPP';
+let summarySortDirection = 'asc';
 
 function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
     const newLog = {
@@ -113,7 +102,7 @@ function toggleBackDateFields() {
     updateSPPPreview();
 }
 
-// PERBAIKAN URUTAN DOKUMEN BERDASARKAN TOTAL JUMLAH DATA TERDAFTAR TAHUN TERKAIT
+// URUTAN DOKUMEN REALTIME BERDASARKAN TOTAL DATA TERDAFTAR DI TAHUN TERKAIT
 function getNextSPPSequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d.year === targetYear);
     return listInYear.length + 1;
@@ -152,9 +141,11 @@ function updateSPPPreview() {
     let targetSeq = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear);
     const seqStr = String(targetSeq).padStart(3, '0');
 
-    let previewSPP = (jenis === "Investigasi") 
-        ? `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}` 
-        : `${seqStr}/SPP/JBA-IA/${monthRoman}/${targetYear}`;
+    let previewSPP = "";
+    if (jenis === "Investigasi") previewSPP = `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}`;
+    else if (jenis === "Adhoc") previewSPP = `${seqStr}/SPP-ADH/JBA-IA/${monthRoman}/${targetYear}`;
+    else if (jenis === "Advisory") previewSPP = `${seqStr}/SPP-ADV/JBA-IA/${monthRoman}/${targetYear}`;
+    else previewSPP = `${seqStr}/SPP/JBA-IA/${monthRoman}/${targetYear}`;
 
     document.getElementById('live-spp-preview').innerText = previewSPP;
 }
@@ -172,8 +163,7 @@ function generateDocumentNumber(e) {
 
     const tglMulai = document.getElementById('p-tgl-mulai').value;
     const tglSelesai = document.getElementById('p-tgl-selesai').value;
-    const tglPelaksanaan = `${tglMulai} s.d ${tglSelesai}`;
-    const dueDateProject = addBusinessDays(tglSelesai, 4);
+    const tglPemeriksaanFormatted = `${formatIndonesianDate(new Date(tglMulai))} s.d ${formatIndonesianDate(new Date(tglSelesai))}`;
 
     const auditor = document.getElementById('p-auditor').value;
     const m1 = document.getElementById('p-member1').value;
@@ -214,16 +204,6 @@ function generateDocumentNumber(e) {
                 if (!newLHA || !newPICA) {
                     return alert("⚠️ ERROR: No. LHA dan No. PICA tidak boleh kosong!");
                 }
-
-                const duplicateLHAObj = newLHA !== "-" && newLHA !== "N/A (Investigasi)" && dbPenomoran.find(x => x.id != editId && x.noLHA.toLowerCase() === newLHA.toLowerCase());
-                if (duplicateLHAObj) {
-                    return alert(`⚠️ ERROR EDIT MANUAL:\nNomor LHA '${newLHA}' telah terregistrasi pada Project '${duplicateLHAObj.judul}'!`);
-                }
-
-                const duplicatePICAObj = newPICA !== "-" && newPICA !== "N/A (Investigasi)" && dbPenomoran.find(x => x.id != editId && x.noPICA.toLowerCase() === newPICA.toLowerCase());
-                if (duplicatePICAObj) {
-                    return alert(`⚠️ ERROR EDIT MANUAL:\nNomor PICA '${newPICA}' telah terregistrasi pada Project '${duplicatePICAObj.judul}'!`);
-                }
             }
 
             dbPenomoran[docIdx] = {
@@ -236,8 +216,9 @@ function generateDocumentNumber(e) {
                 regionalHead: regionalHead,
                 jabatanRegionalHead: jabatanRegionalHead,
                 periodeAudit: periode,
-                tglPelaksanaan: tglPelaksanaan,
-                dueDateProject: dueDateProject,
+                tglMulai: tglMulai,
+                tglSelesai: tglSelesai,
+                tglPelaksanaan: tglPemeriksaanFormatted,
                 auditor: auditor,
                 auditMembers: auditMembers,
                 emailAuditee: email,
@@ -252,9 +233,11 @@ function generateDocumentNumber(e) {
         let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear);
         const seqStr = String(seqNum).padStart(3, '0');
 
-        let autoSPP = (jenis === "Investigasi") 
-            ? `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}` 
-            : `${seqStr}/SPP/JBA-IA/${monthRoman}/${targetYear}`;
+        let autoSPP = "";
+        if (jenis === "Investigasi") autoSPP = `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}`;
+        else if (jenis === "Adhoc") autoSPP = `${seqStr}/SPP-ADH/JBA-IA/${monthRoman}/${targetYear}`;
+        else if (jenis === "Advisory") autoSPP = `${seqStr}/SPP-ADV/JBA-IA/${monthRoman}/${targetYear}`;
+        else autoSPP = `${seqStr}/SPP/JBA-IA/${monthRoman}/${targetYear}`;
 
         const duplicateObj = dbPenomoran.find(item => item.noSPP && item.noSPP.toLowerCase() === autoSPP.toLowerCase());
         if (duplicateObj) {
@@ -273,13 +256,13 @@ function generateDocumentNumber(e) {
             noPICA: "-",
             tanggalStart: tglTerbitFormatted,
             tglTerbitSPP: tglTerbitRaw,
+            tglMulai: tglMulai,
             tglSelesai: tglSelesai,
-            dueDateProject: dueDateProject,
+            tglPelaksanaan: tglPemeriksaanFormatted,
             judul: judul,
             regionalHead: regionalHead,
             jabatanRegionalHead: jabatanRegionalHead,
             periodeAudit: periode,
-            tglPelaksanaan: tglPelaksanaan,
             auditor: auditor,
             auditMembers: auditMembers,
             emailAuditee: email,
@@ -292,7 +275,7 @@ function generateDocumentNumber(e) {
 
         dbPenomoran.push(newDoc);
         logActivity("Penomoran Dokumen", `Penerbitan Nomor (${isBackdate ? 'Back Date' : 'Otomatis'})`, autoSPP);
-        alert(`Nomor Dokumen ${jenis} Berhasil Diterbitkan!\nNo. Surat: ${autoSPP}\nDue Date Project: ${dueDateProject}`);
+        alert(`Nomor Dokumen ${jenis} Berhasil Diterbitkan!\nNo. Surat: ${autoSPP}`);
     }
 
     syncPenomoranToFirebase();
@@ -301,16 +284,21 @@ function generateDocumentNumber(e) {
     refreshUI();
 }
 
+// EDIT FORM DENGAN TETAP MEMPERTAHANKAN INFORMASI PADA INPUT FORM
 function editDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
     document.getElementById('edit-doc-id').value = doc.id;
-    document.getElementById('p-jenis').value = doc.jenis;
-    document.getElementById('p-judul').value = doc.judul;
-    document.getElementById('p-periode').value = doc.periodeAudit;
-    document.getElementById('p-auditor').value = doc.auditor;
+    document.getElementById('p-jenis').value = doc.jenis || "Reguler";
+    document.getElementById('p-judul').value = doc.judul || "";
+    document.getElementById('p-periode').value = doc.periodeAudit || "";
+    document.getElementById('p-auditor').value = doc.auditor || "";
     
+    if (doc.tglMulai) document.getElementById('p-tgl-mulai').value = doc.tglMulai;
+    if (doc.tglSelesai) document.getElementById('p-tgl-selesai').value = doc.tglSelesai;
+    if (doc.tglTerbitSPP) document.getElementById('p-tgl-terbit').value = doc.tglTerbitSPP;
+
     const members = (doc.auditMembers || '').split(', ');
     document.getElementById('p-member1').value = members[0] || '';
     document.getElementById('p-member2').value = members[1] || '';
@@ -321,7 +309,6 @@ function editDocumentNumber(id) {
     document.getElementById('container-edit-manual-spp').style.display = "block";
     document.getElementById('edit-manual-spp-val').value = doc.noSPP;
     document.getElementById('container-live-spp-preview').style.display = "none";
-    document.getElementById('container-backdate-toggle').style.display = "none";
 
     if (doc.statusManager === "Approved by Manager") {
         document.getElementById('container-edit-manual-approved').style.display = "block";
@@ -342,13 +329,11 @@ function deleteDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
-    if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}\n\nTindakan ini akan menghapus data hingga ke database!`)) {
+    if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}`)) {
         dbPenomoran = dbPenomoran.filter(item => item.id !== id);
 
         if (typeof database !== 'undefined' && database && database.ref) {
-            database.ref('dbPenomoran/' + id).remove()
-                .then(() => console.log("Berhasil dihapus dari Firebase Node"))
-                .catch(err => console.error("Gagal hapus node Firebase:", err));
+            database.ref('dbPenomoran/' + id).remove();
         }
 
         syncPenomoranToFirebase();
@@ -401,7 +386,7 @@ function submitUploadSppSigned() {
         logActivity("Penomoran Dokumen", "Upload SPP Tanda Tangan Basah", doc.noSPP);
         closeUploadSppModal();
         refreshUI();
-        alert("Surat Tugas bertanda tangan basah berhasil di-submit! Tombol Kirim Email Surat Tugas kini aktif.");
+        alert("Surat Tugas bertanda tangan basah berhasil di-submit!");
     }
 }
 
@@ -419,7 +404,7 @@ function sendSignedSPP_Email(id) {
         ` Nomor Surat        : ${doc.noSPP}\n` +
         ` Cabang / Hub       : ${doc.judul}\n` +
         ` Periode Audit      : ${doc.periodeAudit}\n` +
-        ` Tanggal Pelaksanaan: ${doc.tglPelaksanaan}\n` +
+        ` Tanggal Pemeriksaan: ${doc.tglPelaksanaan}\n` +
         ` Lead Auditor       : ${doc.auditor}\n\n` +
         `Mohon dapat memproses dan memfasilitasi kebutuhan data audit terkait.\n\n` +
         `Terima Kasih,\nInternal Audit Department`
@@ -435,7 +420,7 @@ function sendSignedSPP_Email(id) {
 }
 
 // -------------------------------------------------------------
-// FITUR SORTING & FILTERING PENOMORAN ALA EXCEL
+// FILTER & SORTING ALA EXCEL UNTUK TAB PENOMORAN DOKUMEN
 // -------------------------------------------------------------
 function sortByColumn(columnName) {
     if (currentSortColumn === columnName) {
@@ -518,6 +503,9 @@ function applyExcelFilters() {
         } else if (currentSortColumn === 'tglTerbitSPP' || currentSortColumn === 'id') {
             valA = new Date(a.tglTerbitSPP || a.id).getTime() || 0;
             valB = new Date(b.tglTerbitSPP || b.id).getTime() || 0;
+        } else if (currentSortColumn === 'tglSelesai') {
+            valA = new Date(a.tglSelesai || 0).getTime() || 0;
+            valB = new Date(b.tglSelesai || 0).getTime() || 0;
         } else {
             valA = String(valA).toLowerCase();
             valB = String(valB).toLowerCase();
@@ -547,301 +535,118 @@ function resetExcelFilters() {
 }
 
 // -------------------------------------------------------------
-// FITUR UPLOAD BATCH EXCEL PENOMORAN DOKUMEN LAMA
+// FILTER & SORTING ALA EXCEL UNTUK TAB SUMMARY AUDIT
 // -------------------------------------------------------------
-function uploadBatchPenomoranExcel(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+function sortSummaryByColumn(col) {
+    if (summarySortColumn === col) {
+        summarySortDirection = summarySortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        summarySortColumn = col;
+        summarySortDirection = 'asc';
+    }
 
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-        try {
-            const data = new Uint8Array(evt.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+    document.querySelectorAll('#tab-audit .sort-icon').forEach(el => el.innerText = '⇅');
+    const activeIcon = document.getElementById(`sort-summary-${col}`);
+    if (activeIcon) activeIcon.innerText = summarySortDirection === 'asc' ? '▲' : '▼';
 
-            if (jsonRows.length === 0) {
-                alert("⚠️ File Excel kosong atau format tidak sesuai!");
-                e.target.value = "";
-                return;
-            }
-
-            let insertedCount = 0;
-            let duplicateCount = 0;
-
-            jsonRows.forEach((row, idx) => {
-                const findVal = (keywords) => {
-                    const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().trim().includes(kw)));
-                    return key ? String(row[key]).trim() : "";
-                };
-
-                const jenis = findVal(['tipe', 'jenis']) || "Reguler";
-                const noSPP = findVal(['spp', 'no. spp', 'surat tugas', 'no. surat']);
-                const noLHA = findVal(['lha', 'no. lha']) || "-";
-                const noPICA = findVal(['pica', 'no. pica']) || "-";
-                const judul = findVal(['judul', 'cabang', 'pool', 'project']);
-
-                if (!noSPP || !judul) return;
-
-                const exists = dbPenomoran.some(x => x.noSPP.toLowerCase() === noSPP.toLowerCase());
-                if (exists) {
-                    duplicateCount++;
-                    return;
-                }
-
-                const regHeadInput = findVal(['regional head', 'regional']);
-                let matchedRegName = regHeadInput || regionalMap['reg1'].name;
-                let matchedRegTitle = regionalMap['reg1'].title;
-
-                Object.values(regionalMap).forEach(reg => {
-                    if (regHeadInput && regHeadInput.toLowerCase().includes(reg.name.toLowerCase())) {
-                        matchedRegName = reg.name;
-                        matchedRegTitle = reg.title;
-                    }
-                });
-
-                const tglTerbitRaw = findVal(['terbit', 'tanggal terbit', 'tgl terbit']);
-                let dateObj = tglTerbitRaw ? new Date(tglTerbitRaw) : new Date();
-                if (isNaN(dateObj.getTime())) dateObj = new Date();
-                
-                const targetYear = dateObj.getFullYear();
-                const tglTerbitFormatted = formatIndonesianDate(dateObj);
-                const tglMulai = findVal(['mulai', 'tgl mulai']) || "-";
-                const tglSelesai = findVal(['selesai', 'tgl selesai']) || "-";
-                const tglPelaksanaan = findVal(['pelaksanaan', 'tanggal pelaksanaan']) || `${tglMulai} s.d ${tglSelesai}`;
-                const dueDateProject = findVal(['due date', 'due']) || addBusinessDays(tglSelesai !== "-" ? tglSelesai : new Date().toISOString().slice(0,10), 4);
-
-                const auditor = findVal(['lead', 'auditor', 'lead auditor']) || "Auditor";
-                const auditMembers = findVal(['member', 'members', 'anggota']) || "-";
-                const emailAuditee = findVal(['email auditee', 'email']) || "auditee@jba.co.id";
-                const ccEmail = findVal(['cc', 'cc email']) || "-";
-                const statusMgr = findVal(['status manager', 'status']) || ((noLHA !== "-" && noLHA !== "N/A (Investigasi)") ? "Approved by Manager" : "Not Approved");
-
-                const extractSeq = (str) => {
-                    if (!str) return null;
-                    const match = str.match(/^(\d+)\//);
-                    return match ? parseInt(match[1], 10) : null;
-                };
-
-                const newDoc = {
-                    id: Date.now() + idx,
-                    jenis: jenis.toLowerCase().includes('investigasi') ? "Investigasi" : "Reguler",
-                    year: targetYear,
-                    sppSeq: extractSeq(noSPP),
-                    noSPP: noSPP,
-                    lhaSeq: extractSeq(noLHA),
-                    noLHA: noLHA,
-                    picaSeq: extractSeq(noPICA),
-                    noPICA: noPICA,
-                    tanggalStart: tglTerbitFormatted,
-                    tglTerbitSPP: dateObj.toISOString().slice(0, 10),
-                    tglSelesai: tglSelesai,
-                    dueDateProject: dueDateProject,
-                    judul: judul,
-                    regionalHead: matchedRegName,
-                    jabatanRegionalHead: matchedRegTitle,
-                    periodeAudit: findVal(['periode', 'periode audit']) || "N/A",
-                    tglPelaksanaan: tglPelaksanaan,
-                    auditor: auditor,
-                    auditMembers: auditMembers,
-                    emailAuditee: emailAuditee,
-                    ccEmail: ccEmail,
-                    hasSignedSPP: true,
-                    created_by: currentUserEmail || "Batch Upload",
-                    statusManager: statusMgr,
-                    isBackdate: true
-                };
-
-                dbPenomoran.push(newDoc);
-                insertedCount++;
-            });
-
-            syncPenomoranToFirebase();
-            logActivity("Penomoran Dokumen", "Batch Upload Register Excel", `${insertedCount} dokumen berhasil di-import`);
-            populateDropdowns();
-            refreshUI();
-
-            alert(`✅ Upload Selesai!\n\n• ${insertedCount} dokumen berhasil ditambahkan.\n• ${duplicateCount} dokumen dilewati karena nomor SPP sudah ada.`);
-        } catch (err) {
-            alert("⚠️ Gagal memproses file Excel: " + err.message);
-        }
-        e.target.value = "";
-    };
-    reader.readAsArrayBuffer(file);
+    applySummaryAuditFilters();
 }
 
-function filterLogTable() {
-    const query = document.getElementById('search-log').value.toLowerCase().trim();
-    const filteredLogs = activityLogs.filter(log => {
-        return log.timestamp.toLowerCase().includes(query) ||
-               (log.userEmail && log.userEmail.toLowerCase().includes(query)) ||
-               log.kategori.toLowerCase().includes(query) ||
-               log.aktivitas.toLowerCase().includes(query) ||
-               log.detailDoc.toLowerCase().includes(query);
+function applySummaryAuditFilters() {
+    const searchVal = (document.getElementById('search-audit-summary').value || '').toLowerCase().trim();
+    const selectedAuditor = document.getElementById('filter-audit-auditor').value;
+
+    let list = dbPenomoran.filter(x => x.jenis !== 'Investigasi');
+
+    let filtered = list.filter(item => {
+        const matchSearch = !searchVal || 
+            (item.noSPP && item.noSPP.toLowerCase().includes(searchVal)) ||
+            (item.noLHA && item.noLHA.toLowerCase().includes(searchVal)) ||
+            (item.noPICA && item.noPICA.toLowerCase().includes(searchVal)) ||
+            (item.judul && item.judul.toLowerCase().includes(searchVal)) ||
+            (item.auditor && item.auditor.toLowerCase().includes(searchVal));
+
+        const matchAuditor = !selectedAuditor || item.auditor === selectedAuditor;
+
+        return matchSearch && matchAuditor;
     });
-    renderLogRows(filteredLogs);
+
+    filtered.sort((a, b) => {
+        let valA = a[summarySortColumn] || '';
+        let valB = b[summarySortColumn] || '';
+
+        if (['noSPP', 'noLHA', 'noPICA'].includes(summarySortColumn)) {
+            const extractNum = (str) => {
+                const match = String(str).match(/^(\d+)\//);
+                return match ? parseInt(match[1], 10) : 0;
+            };
+            valA = extractNum(valA);
+            valB = extractNum(valB);
+        } else if (summarySortColumn === 'tglSelesai') {
+            valA = new Date(a.tglSelesai || 0).getTime() || 0;
+            valB = new Date(b.tglSelesai || 0).getTime() || 0;
+        } else {
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+        }
+
+        if (valA < valB) return summarySortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return summarySortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    renderAuditSummaryRows(filtered);
 }
 
-function handleFileUpload(e, auditType) {
-    const file = e.target.files[0];
-    if (!file) return;
+function resetSummaryAuditFilters() {
+    document.getElementById('search-audit-summary').value = '';
+    document.getElementById('filter-audit-auditor').value = '';
+    summarySortColumn = 'noSPP';
+    summarySortDirection = 'asc';
+    applySummaryAuditFilters();
+}
 
-    const selectElemId = auditType === 'Reguler' ? 'audit-select-nomor' : 'fraud-select-nomor';
-    const selectElem = document.getElementById(selectElemId);
-    
-    if (!selectElem || selectElem.value === "" || selectElem.value === null) {
-        alert("⚠️ Mohon pilih Target Project Audit terlebih dahulu sebelum mengunggah berkas!");
-        e.target.value = "";
+function renderAuditSummaryRows(regulerProjects) {
+    const tbodyAudit = document.getElementById('table-audit-body');
+    if (!tbodyAudit) return;
+
+    if (regulerProjects.length === 0) {
+        tbodyAudit.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada data summary audit.</td></tr>`;
         return;
     }
 
-    const targetList = dbPenomoran.filter(x => x.jenis === auditType);
-    const selectedDoc = targetList[selectElem.value];
+    tbodyAudit.innerHTML = regulerProjects.map(item => {
+        const isApproved = item.statusManager === "Approved by Manager";
+        let approvalUI = `
+            <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik otorisasi approval & terbitkan LHA/PICA">
+                ${isApproved ? 'Approved by Manager' : 'Not Approved'}
+            </button>
+        `;
 
-    if (!selectedDoc) {
-        alert("⚠️ Target Project Audit tidak valid!");
-        e.target.value = "";
-        return;
-    }
-
-    const progressContainer = document.getElementById(auditType === 'Reguler' ? 'upload-progress-container-reguler' : 'upload-progress-container-fraud');
-    const progressBarFill = document.getElementById(auditType === 'Reguler' ? 'upload-progress-bar-fill-reguler' : 'upload-progress-bar-fill-fraud');
-    const progressText = document.getElementById(auditType === 'Reguler' ? 'upload-progress-text-reguler' : 'upload-progress-text-fraud');
-    const infoBadge = document.getElementById(auditType === 'Reguler' ? 'file-info-badge-reguler' : 'file-info-badge-fraud');
-    const infoFileName = document.getElementById(auditType === 'Reguler' ? 'info-file-name-reguler' : 'info-file-name-fraud');
-    const infoFileRows = document.getElementById(auditType === 'Reguler' ? 'info-file-rows-reguler' : 'info-file-rows-fraud');
-
-    progressContainer.style.display = 'block';
-    infoBadge.style.display = 'none';
-    progressBarFill.style.width = '20%';
-    progressText.innerText = '20% Membaca berkas...';
-
-    const reader = new FileReader();
-
-    if (file.name.endsWith('.json')) {
-        reader.onload = function(evt) {
-            try {
-                progressBarFill.style.width = '70%';
-                progressText.innerText = '70% Parsing JSON...';
-                
-                const parsedData = JSON.parse(evt.target.result);
-                const rawFindings = Array.isArray(parsedData) ? parsedData : (parsedData.findings || [parsedData]);
-                
-                const normalizedFindings = rawFindings.map((item, idx) => ({
-                    id: item.id || Date.now() + idx,
-                    area: item.area || item.Area || item.proses || "-",
-                    fakta: item.fakta || item.Fakta || item.finding || item.Judul || "-",
-                    rootCause: item.rootCause || item.RootCause || item['Root Cause'] || item.akarMasalah || "-",
-                    rekomendasi: item.rekomendasi || item.Rekomendasi || "-",
-                    status: item.status || item.Status || "Open"
-                }));
-
-                saveUploadedFindings(selectedDoc.noSPP, auditType, normalizedFindings);
-
-                progressBarFill.style.width = '100%';
-                progressText.innerText = '100% Upload Selesai!';
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                    infoBadge.style.display = 'block';
-                    infoFileName.innerText = file.name;
-                    infoFileRows.innerText = normalizedFindings.length;
-                    alert(`✅ Summary Audit (${normalizedFindings.length} temuan) berhasil ter-upload ke project ${selectedDoc.noSPP}!`);
-                }, 400);
-
-            } catch (err) {
-                alert("⚠️ Gagal membaca berkas JSON: " + err.message);
-                progressContainer.style.display = 'none';
-            }
-        };
-        reader.readAsText(file);
-    } else {
-        reader.onload = function(evt) {
-            try {
-                progressBarFill.style.width = '60%';
-                progressText.innerText = '60% Parsing Excel / CSV...';
-
-                const data = new Uint8Array(evt.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonRows = XLSX.utils.sheet_to_json(worksheet);
-
-                const normalizedFindings = jsonRows.map((row, idx) => {
-                    const findKey = (keywords) => {
-                        const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().includes(kw)));
-                        return key ? row[key] : null;
-                    };
-
-                    return {
-                        id: Date.now() + idx,
-                        area: findKey(['area', 'proses', 'bagian']) || "-",
-                        fakta: findKey(['fakta', 'finding', 'temuan', 'judul']) || "-",
-                        rootCause: findKey(['root', 'cause', 'akar', 'sebab']) || "-",
-                        rekomendasi: findKey(['rekomendasi', 'saran', 'action']) || "-",
-                        status: findKey(['status', 'pica']) || "Open"
-                    };
-                });
-
-                saveUploadedFindings(selectedDoc.noSPP, auditType, normalizedFindings);
-
-                progressBarFill.style.width = '100%';
-                progressText.innerText = '100% Upload Selesai!';
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                    infoBadge.style.display = 'block';
-                    infoFileName.innerText = file.name;
-                    infoFileRows.innerText = normalizedFindings.length;
-                    alert(`✅ Summary Audit (${normalizedFindings.length} temuan) berhasil di-import ke project ${selectedDoc.noSPP}!`);
-                }, 400);
-
-            } catch (err) {
-                alert("⚠️ Gagal memproses berkas Excel/CSV: " + err.message);
-                progressContainer.style.display = 'none';
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
+        return `
+        <tr>
+            <td style="text-align: center;">
+                <input type="checkbox" class="chk-select-project" value="${item.noSPP}">
+            </td>
+            <td>
+                <span class="code-tag code-tag-spp" onclick="openAuditDetailWindow('${item.noSPP}', '${item.jenis}')" title="Klik untuk membuka detail & cetak LHA/PICA/PPT">
+                    🔗 ${item.noSPP}
+                </span>
+            </td>
+            <td><span class="code-tag code-tag-lha">${item.noLHA}</span></td>
+            <td><span class="code-tag code-tag-pica">${item.noPICA}</span></td>
+            <td><b>${item.judul}</b></td>
+            <td>${item.auditor}</td>
+            <td><b>${item.tglSelesai ? formatIndonesianDate(new Date(item.tglSelesai)) : '-'}</b></td>
+            <td>${approvalUI}</td>
+        </tr>
+        `;
+    }).join('');
 }
 
-function saveUploadedFindings(noSPP, auditType, findings) {
-    if (auditType === 'Reguler') {
-        auditDatabase = auditDatabase.filter(x => x.noSPP !== noSPP);
-        findings.forEach(item => {
-            auditDatabase.push({ ...item, noSPP: noSPP, updated_at: new Date().toISOString() });
-        });
-        syncAuditDbToFirebase();
-    } else {
-        fraudDatabase = fraudDatabase.filter(x => x.noSPP !== noSPP);
-        findings.forEach(item => {
-            fraudDatabase.push({ ...item, noSPP: noSPP, updated_at: new Date().toISOString() });
-        });
-        syncFraudDbToFirebase();
-    }
-    logActivity("Summary Audit", `Upload File Summary (${findings.length} temuan)`, noSPP);
-    refreshUI();
-}
-
-function toggleFindingStatus(findingId, noSPP) {
-    let targetObj = auditDatabase.find(x => x.id == findingId);
-    if (!targetObj) {
-        targetObj = fraudDatabase.find(x => x.id == findingId);
-    }
-
-    if (targetObj) {
-        const oldStatus = targetObj.status || 'Open';
-        targetObj.status = (oldStatus.toLowerCase() === 'open') ? 'Closed' : 'Open';
-        
-        syncAuditDbToFirebase();
-        syncFraudDbToFirebase();
-        logActivity("Summary Audit", `Ubah Status Temuan (${targetObj.status})`, noSPP);
-        
-        alert(`Status temuan berhasil diubah menjadi: ${targetObj.status}`);
-        openAuditDetailWindow(noSPP);
-    }
-}
-
+// -------------------------------------------------------------
+// DETAIL POP-UP WINDOW & TOMBOL DOWNLOAD PICA, LHA, PPT
+// -------------------------------------------------------------
 function openAuditDetailWindow(noSPP, jenis) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Dokumen project tidak ditemukan!");
@@ -886,6 +691,8 @@ function openAuditDetailWindow(noSPP, jenis) {
             body { padding: 30px; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
             .detail-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
             .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f1f5f9; padding: 16px; border-radius: 6px; margin: 16px 0; }
+            .btn-export-group { display: flex; gap: 10px; margin-top: 15px; }
+            .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; }
         </style>
     </head>
     <body>
@@ -898,13 +705,20 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <span class="badge ${doc.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}" style="font-size: 13px; padding: 6px 12px;">${doc.jenis}</span>
             </div>
 
+            <!-- ACTION EXPORT BUTTONS (PICA, LHA, PPT) -->
+            <div class="btn-export-group">
+                <button class="btn-exp" style="background: #16a34a;" onclick="window.opener.exportPICA_Single('${doc.noSPP}')">📊 Download PICA (Excel)</button>
+                <button class="btn-exp" style="background: #dc2626;" onclick="window.opener.exportLHA_Single('${doc.noSPP}')">📄 Download LHA (PDF)</button>
+                <button class="btn-exp" style="background: #d97706;" onclick="window.opener.exportPPT_Single('${doc.noSPP}')">💻 Download PPT / Ringkasan Slide</button>
+            </div>
+
             <div class="meta-grid">
                 <div><small style="color: #64748b; font-weight: bold;">NO. SURAT TUGAS / SPP</small><br><b style="color: #0284c7;">${doc.noSPP}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">NO. LHA</small><br><b style="color: #dc2626;">${doc.noLHA}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">NO. PICA</small><br><b style="color: #16a34a;">${doc.noPICA}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">LEAD AUDITOR</small><br><b>${doc.auditor}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">REGIONAL HEAD</small><br><b>${doc.regionalHead}</b></div>
-                <div><small style="color: #64748b; font-weight: bold;">DUE DATE PROJECT</small><br><b style="color: #ef4444;">${doc.dueDateProject || '-'}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">TANGGAL SELESAI AUDIT</small><br><b style="color: #ef4444;">${doc.tglSelesai ? window.opener.formatIndonesianDate(new Date(doc.tglSelesai)) : '-'}</b></div>
             </div>
 
             <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; color: #0f172a;">📋 Ringkasan Daftar Temuan (Summary Findings)</h3>
@@ -936,48 +750,108 @@ function openAuditDetailWindow(noSPP, jenis) {
     win.document.close();
 }
 
-function toggleManagerApproval(id) {
-    const doc = dbPenomoran.find(x => x.id === id);
-    if (!doc) return;
+// -------------------------------------------------------------
+// EXPORT SINGLE DOKUMEN (PICA, LHA, PPT)
+// -------------------------------------------------------------
+function exportPICA_Single(noSPP) {
+    const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+    const findings = auditDatabase.filter(x => x.noSPP === noSPP);
 
-    if (doc.statusManager === "Approved by Manager") {
-        if (confirm("Project ini sudah di-approve. Apakah Anda ingin MENGBATALKAN status approval?")) {
-            doc.statusManager = "Not Approved";
-            logActivity("Summary Audit", "Pembatalan Approval Manager", doc.noSPP);
-            syncPenomoranToFirebase();
-            refreshUI();
-        }
-        return;
-    }
+    if (!doc) return alert("Data project tidak ditemukan!");
 
-    const confirmed = confirm("Apakah Anda telah selesai melakukan verifikasi laporan untuk menerbitkan nomor LHA & PICA?");
-    if (confirmed) {
-        const today = new Date();
-        const currentYear = today.getFullYear();
-        const monthRoman = toRoman(today.getMonth() + 1);
+    const exportData = findings.map((f, i) => ({
+        "No": i + 1,
+        "No. PICA": doc.noPICA,
+        "Cabang / Unit": doc.judul,
+        "Area Pemeriksaan": f.area,
+        "Temuan / Fakta": f.fakta,
+        "Root Cause": f.rootCause,
+        "Rekomendasi": f.rekomendasi,
+        "Status": f.status || "Open"
+    }));
 
-        if (doc.jenis === "Investigasi") {
-            doc.statusManager = "Approved by Manager";
-            doc.noLHA = "N/A (Investigasi)";
-            doc.noPICA = "N/A (Investigasi)";
-        } else {
-            const nextLHASeq = getNextLHASequence(currentYear);
-            const nextPICASeq = getNextPICASequence(currentYear);
-
-            doc.lhaSeq = nextLHASeq;
-            doc.noLHA = `${String(nextLHASeq).padStart(3, '0')}/IA/JBA/LHA/${monthRoman}/${currentYear}`;
-            doc.picaSeq = nextPICASeq;
-            doc.noPICA = `${String(nextPICASeq).padStart(3, '0')}/IA/JBA/PICA/${monthRoman}/${currentYear}`;
-            doc.statusManager = "Approved by Manager";
-        }
-
-        logActivity("Summary Audit", "Otorisasi Approval Manager & Terbit LHA/PICA", doc.noSPP);
-        syncPenomoranToFirebase();
-        refreshUI();
-        alert(`🎉 Summary Audit Disetujui!\n\nNomor Resmi Terbit:\n• No. LHA: ${doc.noLHA}\n• No. PICA: ${doc.noPICA}`);
-    }
+    const ws = XLSX.utils.json_to_sheet(exportData.length ? exportData : [{ "Info": "Belum ada temuan" }]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "PICA");
+    XLSX.writeFile(wb, `PICA_${doc.judul.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 }
 
+function exportLHA_Single(noSPP) {
+    const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+    if (!doc) return alert("Data project tidak ditemukan!");
+
+    alert(`📄 Menerbitkan PDF LHA resmi untuk No. LHA: ${doc.noLHA}...`);
+}
+
+function exportPPT_Single(noSPP) {
+    const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+    const findings = auditDatabase.filter(x => x.noSPP === noSPP);
+
+    if (!doc) return;
+
+    let textContent = `SLIDE EXECUTIVE SUMMARY AUDIT\n`;
+    textContent += `=====================================\n`;
+    textContent += `Judul Project : ${doc.judul}\n`;
+    textContent += `No. SPP       : ${doc.noSPP}\n`;
+    textContent += `No. LHA       : ${doc.noLHA}\n`;
+    textContent += `Lead Auditor  : ${doc.auditor}\n`;
+    textContent += `Total Temuan  : ${findings.length} Temuan\n\n`;
+
+    findings.forEach((f, i) => {
+        textContent += `TEMUAN #${i+1}: ${f.area}\n`;
+        textContent += `- Fakta      : ${f.fakta}\n`;
+        textContent += `- Root Cause : ${f.rootCause}\n`;
+        textContent += `- Rekomendasi: ${f.rekomendasi}\n\n`;
+    });
+
+    const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Slide_Audit_${doc.judul.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    link.click();
+}
+
+// COMBINE MULTIPLE PROJECT PPT (+)
+function combineSelectedProjectsPPT() {
+    const checkboxes = document.querySelectorAll('.chk-select-project:checked');
+    if (checkboxes.length === 0) {
+        return alert("⚠️ Mohon pilih centang minimal 1 project audit pada tabel terlebih dahulu!");
+    }
+
+    let combinedContent = `====================================================\n`;
+    combinedContent += `   COMBINED EXECUTIVE SUMMARY PRESENTATION SLIDES\n`;
+    combinedContent += `====================================================\n\n`;
+
+    checkboxes.forEach((cb, idx) => {
+        const noSPP = cb.value;
+        const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+        const findings = auditDatabase.filter(x => x.noSPP === noSPP);
+
+        if (doc) {
+            combinedContent += `--- SLIDE PROJECT #${idx + 1}: ${doc.judul} ---\n`;
+            combinedContent += `• No. SPP       : ${doc.noSPP}\n`;
+            combinedContent += `• No. LHA       : ${doc.noLHA}\n`;
+            combinedContent += `• Lead Auditor  : ${doc.auditor}\n`;
+            combinedContent += `• Total Temuan  : ${findings.length}\n\n`;
+
+            findings.forEach((f, i) => {
+                combinedContent += `  [Temuan ${i+1}] ${f.area}\n`;
+                combinedContent += `  - Fakta       : ${f.fakta}\n`;
+                combinedContent += `  - Root Cause  : ${f.rootCause}\n`;
+                combinedContent += `  - Rekomendasi : ${f.rekomendasi}\n\n`;
+            });
+            combinedContent += `\n`;
+        }
+    });
+
+    const blob = new Blob([combinedContent], { type: "text/plain;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Combined_Audit_PPT_Slides_${new Date().toISOString().slice(0,10)}.txt`;
+    link.click();
+}
+
+// CETAK SURAT TUGAS FORMAT TANGGAL PEMERIKSAAN
 function downloadSuratTugas(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return alert("Dokumen tidak ditemukan!");
@@ -1015,7 +889,7 @@ function downloadSuratTugas(id) {
         </div>
 
         <p>Kepada Yth.<br>${doc.jabatanRegionalHead}<br>${doc.regionalHead}<br>ditempat</p>
-        <p style="margin-top: 15px;">Perihal Internal Audit Rutin</p>
+        <p style="margin-top: 15px;">Perihal Internal Audit (${doc.jenis})</p>
         <p style="margin-top: 10px;">Dengan hormat,</p>
         <p>Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:</p>
 
@@ -1025,7 +899,7 @@ function downloadSuratTugas(id) {
             <tr><td class="label">Cabang / Hub</td><td class="colon">:</td><td>${doc.judul}</td></tr>
             <tr><td class="label">Obyektif</td><td class="colon">:</td><td>Observasi Efektivitas serta Efisiensi Operasional Cabang/Hub</td></tr>
             <tr><td class="label">Periode Audit</td><td class="colon">:</td><td>${doc.periodeAudit}</td></tr>
-            <tr><td class="label">Tanggal Pelaksanaan</td><td class="colon">:</td><td>${doc.tglPelaksanaan}</td></tr>
+            <tr><td class="label">Tanggal Pemeriksaan</td><td class="colon">:</td><td>${doc.tglPelaksanaan}</td></tr>
         </table>
 
         <p>Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak & tim<br>berupa penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.</p>
@@ -1046,6 +920,90 @@ function downloadSuratTugas(id) {
     win.document.close();
 }
 
+function uploadBatchPenomoranExcel(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonRows.length === 0) {
+                alert("⚠️ File Excel kosong!");
+                e.target.value = "";
+                return;
+            }
+
+            let insertedCount = 0;
+            jsonRows.forEach((row, idx) => {
+                const findVal = (keywords) => {
+                    const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().trim().includes(kw)));
+                    return key ? String(row[key]).trim() : "";
+                };
+
+                const jenis = findVal(['tipe', 'jenis']) || "Reguler";
+                const noSPP = findVal(['spp', 'no. spp', 'surat tugas', 'no. surat']);
+                const judul = findVal(['judul', 'cabang', 'pool', 'project']);
+
+                if (!noSPP || !judul) return;
+
+                const exists = dbPenomoran.some(x => x.noSPP.toLowerCase() === noSPP.toLowerCase());
+                if (exists) return;
+
+                const tglTerbitRaw = findVal(['terbit', 'tanggal terbit', 'tgl terbit']);
+                let dateObj = tglTerbitRaw ? new Date(tglTerbitRaw) : new Date();
+                if (isNaN(dateObj.getTime())) dateObj = new Date();
+
+                const tglMulai = findVal(['mulai', 'tgl mulai']) || "-";
+                const tglSelesai = findVal(['selesai', 'tgl selesai']) || "-";
+
+                const newDoc = {
+                    id: Date.now() + idx,
+                    jenis: jenis,
+                    year: dateObj.getFullYear(),
+                    noSPP: noSPP,
+                    noLHA: findVal(['lha', 'no. lha']) || "-",
+                    noPICA: findVal(['pica', 'no. pica']) || "-",
+                    tanggalStart: formatIndonesianDate(dateObj),
+                    tglTerbitSPP: dateObj.toISOString().slice(0, 10),
+                    tglMulai: tglMulai,
+                    tglSelesai: tglSelesai,
+                    tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
+                    judul: judul,
+                    regionalHead: regionalMap['reg1'].name,
+                    jabatanRegionalHead: regionalMap['reg1'].title,
+                    periodeAudit: findVal(['periode']) || "N/A",
+                    auditor: findVal(['lead', 'auditor']) || "Auditor",
+                    auditMembers: findVal(['member']) || "-",
+                    emailAuditee: findVal(['email']) || "auditee@jba.co.id",
+                    ccEmail: "-",
+                    hasSignedSPP: true,
+                    created_by: currentUserEmail || "Batch Upload",
+                    statusManager: "Not Approved",
+                    isBackdate: true
+                };
+
+                dbPenomoran.push(newDoc);
+                insertedCount++;
+            });
+
+            syncPenomoranToFirebase();
+            populateDropdowns();
+            refreshUI();
+            alert(`✅ ${insertedCount} dokumen berhasil di-import dari Excel!`);
+        } catch (err) {
+            alert("⚠️ Gagal memproses Excel: " + err.message);
+        }
+        e.target.value = "";
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 function exportPenomoranExcel() {
     if (dbPenomoran.length === 0) return alert("Belum ada register nomor dokumen!");
     logActivity("Penomoran Dokumen", "Export Register Penomoran (Excel)", "All Data");
@@ -1059,13 +1017,12 @@ function exportPenomoranExcel() {
         "Pool / Cabang / Judul Project": p.judul,
         "Regional Head": `${p.regionalHead} (${p.jabatanRegionalHead})`,
         "Periode Audit": p.periodeAudit,
-        "Tanggal Pelaksanaan": p.tglPelaksanaan,
-        "Due Date Project (HK+4)": p.dueDateProject || "-",
+        "Tanggal Pemeriksaan": p.tglPelaksanaan,
+        "Tanggal Selesai Audit": p.tglSelesai ? formatIndonesianDate(new Date(p.tglSelesai)) : "-",
         "Lead Auditor": p.auditor,
         "Audit Members": p.auditMembers,
         "Tanggal Terbit": p.tanggalStart,
         "Email Auditee": p.emailAuditee,
-        "CC Email": p.ccEmail || "-",
         "Status Manager": p.statusManager
     }));
 
@@ -1076,14 +1033,14 @@ function exportPenomoranExcel() {
 }
 
 function populateDropdowns() {
-    const regulerList = dbPenomoran.filter(x => x.jenis === "Reguler");
+    const nonFraudList = dbPenomoran.filter(x => x.jenis !== "Investigasi");
     const regulerSelect = document.getElementById('audit-select-nomor');
     if (regulerSelect) {
-        if (regulerList.length === 0) {
-            regulerSelect.innerHTML = `<option value="">Belum ada project Reguler</option>`;
+        if (nonFraudList.length === 0) {
+            regulerSelect.innerHTML = `<option value="">Belum ada project Reguler/Adhoc/Advisory</option>`;
         } else {
-            regulerSelect.innerHTML = regulerList.map((item, idx) => 
-                `<option value="${idx}">[${item.noSPP}] ${item.judul}</option>`
+            regulerSelect.innerHTML = nonFraudList.map((item, idx) => 
+                `<option value="${idx}">[${item.noSPP}] ${item.judul} (${item.jenis})</option>`
             ).join('');
         }
     }
@@ -1113,7 +1070,7 @@ function renderPenomoranRows(dataList) {
     if (!tbodyPenomoran) return;
 
     if (dataList.length === 0) {
-        tbodyPenomoran.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai filter.</td></tr>`;
+        tbodyPenomoran.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai.</td></tr>`;
         return;
     }
 
@@ -1128,7 +1085,7 @@ function renderPenomoranRows(dataList) {
             </td>
             <td><b>${item.judul}</b></td>
             <td><b>${item.auditor || '-'}</b></td>
-            <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
+            <td><b style="color: var(--danger);">${item.tglSelesai ? formatIndonesianDate(new Date(item.tglSelesai)) : '-'}</b></td>
             <td>${item.tanggalStart}</td>
             <td>
                 <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
@@ -1150,7 +1107,7 @@ function renderLogRows(logs) {
     if (!tbodyLog) return;
 
     if (logs.length === 0) {
-        tbodyLog.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Belum ada riwayat aktivitas recorded.</td></tr>`;
+        tbodyLog.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">Belum ada riwayat aktivitas.</td></tr>`;
         return;
     }
     tbodyLog.innerHTML = logs.map(l => `
@@ -1169,45 +1126,8 @@ function refreshUI() {
     updateExecutiveDashboard();
     updateExcelFilterDropdowns();
     applyExcelFilters();
+    applySummaryAuditFilters();
     renderLogRows(activityLogs);
-
-    const tbodyAudit = document.getElementById('table-audit-body');
-    if (tbodyAudit) {
-        const regulerProjects = dbPenomoran.filter(x => x.jenis === 'Reguler');
-
-        if (regulerProjects.length === 0) {
-            tbodyAudit.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 20px;">Belum ada project Reguler yang diterbitkan.</td></tr>`;
-        } else {
-            tbodyAudit.innerHTML = regulerProjects.map(item => {
-                const isApproved = item.statusManager === "Approved by Manager";
-                let approvalUI = `
-                    <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik untuk otorisasi approval & generate LHA/PICA">
-                        ${isApproved ? 'Approved by Manager' : 'Not Approved'}
-                    </button>
-                `;
-
-                return `
-                <tr>
-                    <td>
-                        <span class="code-tag code-tag-spp" onclick="openAuditDetailWindow('${item.noSPP}', 'Reguler')" title="Klik untuk membuka detail di tab baru">
-                            🔗 ${item.noSPP}
-                        </span>
-                    </td>
-                    <td><span class="code-tag code-tag-lha">${item.noLHA}</span></td>
-                    <td><span class="code-tag code-tag-pica">${item.noPICA}</span></td>
-                    <td><b>${item.judul}</b></td>
-                    <td>${item.auditor}</td>
-                    <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
-                    <td>${item.tanggalStart}</td>
-                    <td>${approvalUI}</td>
-                    <td>
-                        <button class="btn btn-warning" onclick="triggerOutlookReminder('Reguler')" style="padding: 4px 8px; font-size: 11px; width: auto;">📧 Reminder</button>
-                    </td>
-                </tr>
-                `;
-            }).join('');
-        }
-    }
 
     const tbodyFraud = document.getElementById('table-fraud-body');
     if (tbodyFraud) {
@@ -1224,7 +1144,7 @@ function refreshUI() {
                     </td>
                     <td><b>${item.judul}</b></td>
                     <td>${item.auditor}</td>
-                    <td>${item.tanggalStart}</td>
+                    <td>${item.tglSelesai ? formatIndonesianDate(new Date(item.tglSelesai)) : '-'}</td>
                     <td><span class="badge bg-approved">${item.statusManager}</span></td>
                 </tr>
             `).join('');
@@ -1235,9 +1155,7 @@ function refreshUI() {
 initTodayDate();
 autoFillAuditeeEmail();
 
-// -------------------------------------------------------------
-// FIREBASE AUTH & REALTIME DATABASE LISTENERS
-// -------------------------------------------------------------
+// FIREBASE INITIALIZATION & LISTENERS
 const firebaseConfig = {
     apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
     authDomain: "dashboard-audit-e34bd.firebaseapp.com",
