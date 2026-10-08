@@ -72,6 +72,14 @@ function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
     }
 }
 
+// Synchronize Seluruh Array (Dipakai saat Delete / Approval)
+function syncPenomoranToFirebase() {
+    if (typeof database !== 'undefined' && database && database.ref) {
+        database.ref('dbPenomoran').set(dbPenomoran);
+    }
+}
+
+// Synchronize Single Node (Dipakai saat Buat Baru / Edit agar tidak overwrite data lain)
 function syncSinglePenomoranToFirebase(docObj) {
     if (typeof database !== 'undefined' && database && database.ref) {
         database.ref('dbPenomoran/' + docObj.id).set(docObj);
@@ -155,6 +163,9 @@ function updateSPPPreview() {
     document.getElementById('live-spp-preview').innerText = previewSPP;
 }
 
+// -------------------------------------------------------------
+// GENERATE & EDIT PROJECT (DENGAN SINKRONISASI SINGLE NODE)
+// -------------------------------------------------------------
 function generateDocumentNumber(e) {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -218,11 +229,11 @@ function generateDocumentNumber(e) {
 
                 const duplicatePICAObj = newPICA !== "-" && newPICA !== "N/A (Investigasi)" && dbPenomoran.find(x => x.id != editId && x.noPICA.toLowerCase() === newPICA.toLowerCase());
                 if (duplicatePICAObj) {
-                    return alert(`⚠️️ ERROR EDIT MANUAL:\nNomor PICA '${newPICA}' telah terregistrasi pada Project '${duplicatePICAObj.judul}'!`);
+                    return alert(`⚠️ ERROR EDIT MANUAL:\nNomor PICA '${newPICA}' telah terregistrasi pada Project '${duplicatePICAObj.judul}'!`);
                 }
             }
 
-            dbPenomoran[docIdx] = {
+            const updatedDoc = {
                 ...currentDoc,
                 jenis: jenis,
                 noSPP: newSPP,
@@ -240,6 +251,9 @@ function generateDocumentNumber(e) {
                 ccEmail: ccEmail,
                 updated_by: currentUserEmail
             };
+
+            dbPenomoran[docIdx] = updatedDoc;
+            syncSinglePenomoranToFirebase(updatedDoc);
 
             logActivity("Penomoran Dokumen", "Revisi / Edit Project", newSPP);
             alert("Data Penomoran Project Berhasil Diperbarui!");
@@ -287,11 +301,12 @@ function generateDocumentNumber(e) {
         };
 
         dbPenomoran.push(newDoc);
+        syncSinglePenomoranToFirebase(newDoc);
+
         logActivity("Penomoran Dokumen", `Penerbitan Nomor (${isBackdate ? 'Back Date' : 'Otomatis'})`, autoSPP);
         alert(`Nomor Dokumen ${jenis} Berhasil Diterbitkan!\nNo. Surat: ${autoSPP}\nDue Date Project: ${dueDateProject}`);
     }
 
-    syncPenomoranToFirebase();
     resetPenomoranForm();
     populateDropdowns();
     refreshUI();
@@ -393,7 +408,7 @@ function submitUploadSppSigned() {
     const doc = dbPenomoran.find(x => x.id == id);
     if (doc) {
         doc.hasSignedSPP = true;
-        syncPenomoranToFirebase();
+        syncSinglePenomoranToFirebase(doc);
         logActivity("Penomoran Dokumen", "Upload SPP Tanda Tangan Basah", doc.noSPP);
         closeUploadSppModal();
         refreshUI();
@@ -715,7 +730,7 @@ function toggleManagerApproval(id) {
         if (confirm("Project ini sudah di-approve. Apakah Anda ingin MENGBATALKAN status approval?")) {
             doc.statusManager = "Not Approved";
             logActivity("Summary Audit", "Pembatalan Approval Manager", doc.noSPP);
-            syncPenomoranToFirebase();
+            syncSinglePenomoranToFirebase(doc);
             refreshUI();
         }
         return;
@@ -743,7 +758,7 @@ function toggleManagerApproval(id) {
         }
 
         logActivity("Summary Audit", "Otorisasi Approval Manager & Terbit LHA/PICA", doc.noSPP);
-        syncPenomoranToFirebase();
+        syncSinglePenomoranToFirebase(doc);
         refreshUI();
         alert(`🎉 Summary Audit Disetujui!\n\nNomor Resmi Terbit:\n• No. LHA: ${doc.noLHA}\n• No. PICA: ${doc.noPICA}`);
     }
@@ -879,9 +894,6 @@ function updateExecutiveDashboard() {
     document.getElementById('kpi-exec-rate').innerText = (auditDatabase.length + fraudDatabase.length) > 0 ? "85%" : "0%";
 }
 
-// -------------------------------------------------------------
-// RENDER DENGAN POSISI TOMBOL EDIT DI PERTAMA
-// -------------------------------------------------------------
 function renderPenomoranRows(dataList) {
     const tbodyPenomoran = document.getElementById('table-penomoran-body');
     if (!tbodyPenomoran) return;
@@ -1008,7 +1020,7 @@ initTodayDate();
 autoFillAuditeeEmail();
 
 // -------------------------------------------------------------
-// FIREBASE AUTH & REALTIME DATABASE LISTENERS
+// FIREBASE AUTH & REALTIME LISTENERS TERAMANKAN
 // -------------------------------------------------------------
 const firebaseConfig = {
     apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
@@ -1065,13 +1077,18 @@ function handleUserLogout() {
 function listenDatabaseRealtime() {
     database.ref('dbPenomoran').on('value', (snapshot) => {
         const val = snapshot.val();
-        if (Array.isArray(val)) {
-            dbPenomoran = val.filter(Boolean);
-        } else if (val && typeof val === 'object') {
-            dbPenomoran = Object.values(val);
-        } else {
+        
+        if (!val) {
             dbPenomoran = [];
+        } else if (Array.isArray(val)) {
+            dbPenomoran = val.filter(Boolean);
+        } else if (typeof val === 'object') {
+            dbPenomoran = Object.values(val);
         }
+        
+        // Urutkan array berdasarkan ID (Timestamp) agar penomoran konsisten di semua device
+        dbPenomoran.sort((a, b) => a.id - b.id);
+
         populateDropdowns();
         updateSPPPreview();
         refreshUI();
