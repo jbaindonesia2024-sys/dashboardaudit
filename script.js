@@ -28,21 +28,15 @@ function formatIndonesianDate(dateObj) {
     return `${dateObj.getDate()} ${months[dateObj.getMonth()]} ${dateObj.getFullYear()}`;
 }
 
-function initTodayDate() {
-    const today = new Date();
-    const inputTgl = document.getElementById('p-tgl-terbit');
-    if (inputTgl) inputTgl.valueAsDate = today;
-}
-
 let dbPenomoran = [];
 let auditDatabase = [];
 let fraudDatabase = [];
 let activityLogs = [];
 let currentUserEmail = "";
-let currentUserRole = "auditor";
+let currentUserRole = "auditor"; // Role Default: auditor | manager
 
 // State Sorting Penomoran
-let currentSortColumn = 'tglTerbitSPP';
+let currentSortColumn = 'noSPP';
 let currentSortDirection = 'desc';
 
 // State Sorting Summary Audit
@@ -102,7 +96,6 @@ function toggleBackDateFields() {
     updateSPPPreview();
 }
 
-// URUTAN DOKUMEN REALTIME BERDASARKAN TOTAL DATA TERDAFTAR DI TAHUN TERKAIT
 function getNextSPPSequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d.year === targetYear);
     return listInYear.length + 1;
@@ -125,16 +118,11 @@ function updateSPPPreview() {
     if (editId) return;
 
     const jenis = document.getElementById('p-jenis').value;
-    const tglTerbitRaw = document.getElementById('p-tgl-terbit').value;
+    const tglMulai = document.getElementById('p-tgl-mulai').value;
     const isBackdate = document.getElementById('p-is-backdate').checked;
     const manualSeqVal = document.getElementById('p-manual-spp-seq').value;
 
-    if (!tglTerbitRaw) {
-        document.getElementById('live-spp-preview').innerText = "Pilih Tanggal Surat Terbit!";
-        return;
-    }
-
-    const dateObj = new Date(tglTerbitRaw);
+    const dateObj = tglMulai ? new Date(tglMulai) : new Date();
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
 
@@ -172,10 +160,8 @@ function generateDocumentNumber(e) {
 
     const isBackdate = document.getElementById('p-is-backdate').checked;
     const manualSeqVal = document.getElementById('p-manual-spp-seq').value;
-    const tglTerbitRaw = document.getElementById('p-tgl-terbit').value;
 
-    if (!tglTerbitRaw) return alert("Error: Tanggal Surat Terbit wajib diisi!");
-    const dateObj = new Date(tglTerbitRaw);
+    const dateObj = new Date(tglMulai);
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
     const tglTerbitFormatted = formatIndonesianDate(dateObj);
@@ -187,31 +173,12 @@ function generateDocumentNumber(e) {
         const docIdx = dbPenomoran.findIndex(x => x.id == editId);
         if (docIdx !== -1) {
             const currentDoc = dbPenomoran[docIdx];
-            
             let newSPP = document.getElementById('edit-manual-spp-val').value.trim() || currentDoc.noSPP;
-            let newLHA = currentDoc.noLHA;
-            let newPICA = currentDoc.noPICA;
-
-            const duplicateSPPObj = dbPenomoran.find(x => x.id != editId && x.noSPP.toLowerCase() === newSPP.toLowerCase());
-            if (duplicateSPPObj) {
-                return alert(`⚠️ ERROR EDIT MANUAL:\nNomor SPP '${newSPP}' telah terregistrasi pada Project '${duplicateSPPObj.judul}'!`);
-            }
-
-            if (currentDoc.statusManager === "Approved by Manager") {
-                newLHA = document.getElementById('edit-manual-lha').value.trim();
-                newPICA = document.getElementById('edit-manual-pica').value.trim();
-
-                if (!newLHA || !newPICA) {
-                    return alert("⚠️ ERROR: No. LHA dan No. PICA tidak boleh kosong!");
-                }
-            }
 
             dbPenomoran[docIdx] = {
                 ...currentDoc,
                 jenis: jenis,
                 noSPP: newSPP,
-                noLHA: newLHA,
-                noPICA: newPICA,
                 judul: judul,
                 regionalHead: regionalHead,
                 jabatanRegionalHead: jabatanRegionalHead,
@@ -255,7 +222,6 @@ function generateDocumentNumber(e) {
             picaSeq: null,
             noPICA: "-",
             tanggalStart: tglTerbitFormatted,
-            tglTerbitSPP: tglTerbitRaw,
             tglMulai: tglMulai,
             tglSelesai: tglSelesai,
             tglPelaksanaan: tglPemeriksaanFormatted,
@@ -284,7 +250,7 @@ function generateDocumentNumber(e) {
     refreshUI();
 }
 
-// EDIT FORM DENGAN TETAP MEMPERTAHANKAN INFORMASI PADA INPUT FORM
+// FORM EDIT: MEMPERTAHANKAN SELURUH DATA YANG ADA
 function editDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
@@ -297,7 +263,6 @@ function editDocumentNumber(id) {
     
     if (doc.tglMulai) document.getElementById('p-tgl-mulai').value = doc.tglMulai;
     if (doc.tglSelesai) document.getElementById('p-tgl-selesai').value = doc.tglSelesai;
-    if (doc.tglTerbitSPP) document.getElementById('p-tgl-terbit').value = doc.tglTerbitSPP;
 
     const members = (doc.auditMembers || '').split(', ');
     document.getElementById('p-member1').value = members[0] || '';
@@ -354,7 +319,6 @@ function resetPenomoranForm() {
     document.getElementById('container-backdate-toggle').style.display = "block";
     toggleBackDateFields();
     autoFillAuditeeEmail();
-    initTodayDate();
 
     document.getElementById('form-penomoran-title').innerText = "Form Penomoran Dokumen & Surat Tugas";
     document.getElementById('btn-submit-penomoran').innerText = "⚡ Generate Nomor Dokumen";
@@ -500,9 +464,6 @@ function applyExcelFilters() {
             };
             valA = extractNum(valA);
             valB = extractNum(valB);
-        } else if (currentSortColumn === 'tglTerbitSPP' || currentSortColumn === 'id') {
-            valA = new Date(a.tglTerbitSPP || a.id).getTime() || 0;
-            valB = new Date(b.tglTerbitSPP || b.id).getTime() || 0;
         } else if (currentSortColumn === 'tglSelesai') {
             valA = new Date(a.tglSelesai || 0).getTime() || 0;
             valB = new Date(b.tglSelesai || 0).getTime() || 0;
@@ -524,13 +485,10 @@ function resetExcelFilters() {
     document.getElementById('filter-excel-jenis').value = '';
     document.getElementById('filter-excel-auditor').value = '';
     document.getElementById('filter-excel-regional').value = '';
-    currentSortColumn = 'tglTerbitSPP';
+    currentSortColumn = 'noSPP';
     currentSortDirection = 'desc';
     
     document.querySelectorAll('.sort-icon').forEach(el => el.innerText = '⇅');
-    const activeIcon = document.getElementById('sort-icon-tglTerbitSPP');
-    if (activeIcon) activeIcon.innerText = '▼';
-
     applyExcelFilters();
 }
 
@@ -611,25 +569,22 @@ function renderAuditSummaryRows(regulerProjects) {
     if (!tbodyAudit) return;
 
     if (regulerProjects.length === 0) {
-        tbodyAudit.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada data summary audit.</td></tr>`;
+        tbodyAudit.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">Tidak ada data summary audit.</td></tr>`;
         return;
     }
 
     tbodyAudit.innerHTML = regulerProjects.map(item => {
         const isApproved = item.statusManager === "Approved by Manager";
         let approvalUI = `
-            <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Klik otorisasi approval & terbitkan LHA/PICA">
+            <button class="${isApproved ? 'btn-approval-ok' : 'btn-approval-not'}" onclick="toggleManagerApproval(${item.id})" title="Otorisasi Manager">
                 ${isApproved ? 'Approved by Manager' : 'Not Approved'}
             </button>
         `;
 
         return `
         <tr>
-            <td style="text-align: center;">
-                <input type="checkbox" class="chk-select-project" value="${item.noSPP}">
-            </td>
             <td>
-                <span class="code-tag code-tag-spp" onclick="openAuditDetailWindow('${item.noSPP}', '${item.jenis}')" title="Klik untuk membuka detail & cetak LHA/PICA/PPT">
+                <span class="code-tag code-tag-spp" onclick="openAuditDetailWindow('${item.noSPP}', '${item.jenis}')" title="Klik untuk membuka detail di tab baru">
                     🔗 ${item.noSPP}
                 </span>
             </td>
@@ -645,13 +600,63 @@ function renderAuditSummaryRows(regulerProjects) {
 }
 
 // -------------------------------------------------------------
-// DETAIL POP-UP WINDOW & TOMBOL DOWNLOAD PICA, LHA, PPT
+// OTORISASI APPROVAL MANAGER (GENERATE LHA & PICA DENGAN BULAN APPROVAL)
+// -------------------------------------------------------------
+function toggleManagerApproval(id) {
+    if (currentUserRole !== "manager") {
+        return alert("⛔ OTORISASI DITOLAK:\nHanya user dengan Role MANAGER yang dapat melakukan approval laporan dan menerbitkan nomor LHA & PICA!");
+    }
+
+    const doc = dbPenomoran.find(x => x.id === id);
+    if (!doc) return;
+
+    if (doc.statusManager === "Approved by Manager") {
+        if (confirm("Project ini sudah di-approve. Apakah Anda ingin MENGBATALKAN status approval?")) {
+            doc.statusManager = "Not Approved";
+            logActivity("Summary Audit", "Pembatalan Approval Manager", doc.noSPP);
+            syncPenomoranToFirebase();
+            refreshUI();
+        }
+        return;
+    }
+
+    const confirmed = confirm("Apakah Anda telah selesai mereview laporan ini dan hendak menyetujui penerbitan Nomor LHA & PICA?");
+    if (confirmed) {
+        const today = new Date(); // TANGGAL APPROVAL MANAGER
+        const currentYear = today.getFullYear();
+        const approvalMonthRoman = toRoman(today.getMonth() + 1); // BULAN DI-APPROVE OLEH MANAGER
+
+        if (doc.jenis === "Investigasi") {
+            doc.statusManager = "Approved by Manager";
+            doc.noLHA = "N/A (Investigasi)";
+            doc.noPICA = "N/A (Investigasi)";
+        } else {
+            const nextLHASeq = getNextLHASequence(currentYear);
+            const nextPICASeq = getNextPICASequence(currentYear);
+
+            doc.lhaSeq = nextLHASeq;
+            doc.noLHA = `${String(nextLHASeq).padStart(3, '0')}/IA/JBA/LHA/${approvalMonthRoman}/${currentYear}`;
+            doc.picaSeq = nextPICASeq;
+            doc.noPICA = `${String(nextPICASeq).padStart(3, '0')}/IA/JBA/PICA/${approvalMonthRoman}/${currentYear}`;
+            doc.statusManager = "Approved by Manager";
+        }
+
+        logActivity("Summary Audit", "Otorisasi Approval Manager & Terbit LHA/PICA", doc.noSPP);
+        syncPenomoranToFirebase();
+        refreshUI();
+        alert(`🎉 Summary Audit Disetujui!\n\nNomor Resmi Terbit (Bulan Approval: ${approvalMonthRoman}):\n• No. LHA: ${doc.noLHA}\n• No. PICA: ${doc.noPICA}`);
+    }
+}
+
+// -------------------------------------------------------------
+// DETAIL POP-UP WINDOW TAB BARU (SUMMARY & DYNAMIC SLIDE PPT COMBINE)
 // -------------------------------------------------------------
 function openAuditDetailWindow(noSPP, jenis) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Dokumen project tidak ditemukan!");
 
     const projectFindings = auditDatabase.filter(x => x.noSPP === noSPP);
+    const otherProjects = dbPenomoran.filter(x => x.noSPP !== noSPP && x.jenis !== 'Investigasi');
 
     let rowsHTML = "";
     if (projectFindings.length === 0) {
@@ -680,6 +685,8 @@ function openAuditDetailWindow(noSPP, jenis) {
         }).join('');
     }
 
+    const otherProjectOptions = otherProjects.map(p => `<option value="${p.noSPP}">[${p.noSPP}] ${p.judul}</option>`).join('');
+
     const detailHTML = `
     <!DOCTYPE html>
     <html lang="id">
@@ -691,8 +698,10 @@ function openAuditDetailWindow(noSPP, jenis) {
             body { padding: 30px; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
             .detail-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
             .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f1f5f9; padding: 16px; border-radius: 6px; margin: 16px 0; }
-            .btn-export-group { display: flex; gap: 10px; margin-top: 15px; }
+            .btn-export-group { display: flex; gap: 10px; margin-top: 15px; align-items: center; flex-wrap: wrap; }
             .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; }
+            .btn-exp:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed; }
+            .ppt-combine-wrapper { display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; padding: 4px 8px; border-radius: 6px; border: 1px dashed #f59e0b; }
         </style>
     </head>
     <body>
@@ -705,11 +714,29 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <span class="badge ${doc.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}" style="font-size: 13px; padding: 6px 12px;">${doc.jenis}</span>
             </div>
 
-            <!-- ACTION EXPORT BUTTONS (PICA, LHA, PPT) -->
+            <!-- ACTION EXPORT BUTTONS (GENERATE PICA, LHA, PPT & COMBINE) -->
             <div class="btn-export-group">
-                <button class="btn-exp" style="background: #16a34a;" onclick="window.opener.exportPICA_Single('${doc.noSPP}')">📊 Download PICA (Excel)</button>
-                <button class="btn-exp" style="background: #dc2626;" onclick="window.opener.exportLHA_Single('${doc.noSPP}')">📄 Download LHA (PDF)</button>
-                <button class="btn-exp" style="background: #d97706;" onclick="window.opener.exportPPT_Single('${doc.noSPP}')">💻 Download PPT / Ringkasan Slide</button>
+                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove oleh Manager terlebih dahulu"' : ''} onclick="window.opener.exportPICA_Single('${doc.noSPP}')">
+                    📊 Generate PICA (Excel)
+                </button>
+                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove oleh Manager terlebih dahulu"' : ''} onclick="window.opener.exportLHA_Single('${doc.noSPP}')">
+                    📄 Generate LHA (PDF)
+                </button>
+                <button class="btn-exp" style="background: #d97706;" onclick="window.opener.exportPPT_Single('${doc.noSPP}')">
+                    💻 Generate PPT
+                </button>
+
+                <!-- DROPDOWN "+" UNTUK MENGGABUNGKAN PPT MULTIPLE PROJECT -->
+                <div class="ppt-combine-wrapper">
+                    <span style="font-weight: bold; font-size: 14px; color: #b45309;">➕ Gabung PPT:</span>
+                    <select id="select-combine-project" style="font-size: 11px; padding: 4px; border-radius: 4px; border: 1px solid #d97706;">
+                        <option value="">-- Pilih Project Lain --</option>
+                        ${otherProjectOptions}
+                    </select>
+                    <button onclick="combineSelectedFromTab('${doc.noSPP}')" style="background: #b45309; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;">
+                        Gabung & Generate Slide
+                    </button>
+                </div>
             </div>
 
             <div class="meta-grid">
@@ -741,6 +768,14 @@ function openAuditDetailWindow(noSPP, jenis) {
                 </table>
             </div>
         </div>
+
+        <script>
+            function combineSelectedFromTab(primarySPP) {
+                const targetSPP = document.getElementById('select-combine-project').value;
+                if (!targetSPP) return alert("Pilih project lain yang ingin digabungkan!");
+                window.opener.combineTwoProjectsPPT(primarySPP, targetSPP);
+            }
+        </script>
     </body>
     </html>
     `;
@@ -751,7 +786,7 @@ function openAuditDetailWindow(noSPP, jenis) {
 }
 
 // -------------------------------------------------------------
-// EXPORT SINGLE DOKUMEN (PICA, LHA, PPT)
+// GENERATE PICA, LHA, PPT & COMBINE SLIDES
 // -------------------------------------------------------------
 function exportPICA_Single(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
@@ -773,7 +808,7 @@ function exportPICA_Single(noSPP) {
     const ws = XLSX.utils.json_to_sheet(exportData.length ? exportData : [{ "Info": "Belum ada temuan" }]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "PICA");
-    XLSX.writeFile(wb, `PICA_${doc.judul.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+    XLSX.writeFile(wb, `PICA_${doc.noPICA.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
 }
 
 function exportLHA_Single(noSPP) {
@@ -807,117 +842,44 @@ function exportPPT_Single(noSPP) {
     const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Slide_Audit_${doc.judul.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    link.download = `PPT_Slide_${doc.judul.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
     link.click();
 }
 
-// COMBINE MULTIPLE PROJECT PPT (+)
-function combineSelectedProjectsPPT() {
-    const checkboxes = document.querySelectorAll('.chk-select-project:checked');
-    if (checkboxes.length === 0) {
-        return alert("⚠️ Mohon pilih centang minimal 1 project audit pada tabel terlebih dahulu!");
-    }
+function combineTwoProjectsPPT(spp1, spp2) {
+    const doc1 = dbPenomoran.find(x => x.noSPP === spp1);
+    const doc2 = dbPenomoran.find(x => x.noSPP === spp2);
 
-    let combinedContent = `====================================================\n`;
-    combinedContent += `   COMBINED EXECUTIVE SUMMARY PRESENTATION SLIDES\n`;
-    combinedContent += `====================================================\n\n`;
+    if (!doc1 || !doc2) return alert("Data project tidak valid!");
 
-    checkboxes.forEach((cb, idx) => {
-        const noSPP = cb.value;
-        const doc = dbPenomoran.find(x => x.noSPP === noSPP);
-        const findings = auditDatabase.filter(x => x.noSPP === noSPP);
+    const findings1 = auditDatabase.filter(x => x.noSPP === spp1);
+    const findings2 = auditDatabase.filter(x => x.noSPP === spp2);
 
-        if (doc) {
-            combinedContent += `--- SLIDE PROJECT #${idx + 1}: ${doc.judul} ---\n`;
-            combinedContent += `• No. SPP       : ${doc.noSPP}\n`;
-            combinedContent += `• No. LHA       : ${doc.noLHA}\n`;
-            combinedContent += `• Lead Auditor  : ${doc.auditor}\n`;
-            combinedContent += `• Total Temuan  : ${findings.length}\n\n`;
+    let combined = `====================================================\n`;
+    combined += `   COMBINED EXECUTIVE SUMMARY AUDIT SLIDES\n`;
+    combined += `====================================================\n\n`;
 
-            findings.forEach((f, i) => {
-                combinedContent += `  [Temuan ${i+1}] ${f.area}\n`;
-                combinedContent += `  - Fakta       : ${f.fakta}\n`;
-                combinedContent += `  - Root Cause  : ${f.rootCause}\n`;
-                combinedContent += `  - Rekomendasi : ${f.rekomendasi}\n\n`;
-            });
-            combinedContent += `\n`;
-        }
+    [ { doc: doc1, findings: findings1 }, { doc: doc2, findings: findings2 } ].forEach((item, idx) => {
+        combined += `--- SLIDE PROJECT #${idx + 1}: ${item.doc.judul} ---\n`;
+        combined += `• No. SPP       : ${item.doc.noSPP}\n`;
+        combined += `• No. LHA       : ${item.doc.noLHA}\n`;
+        combined += `• Lead Auditor  : ${item.doc.auditor}\n`;
+        combined += `• Total Temuan  : ${item.findings.length}\n\n`;
+
+        item.findings.forEach((f, i) => {
+            combined += `  [Temuan ${i+1}] ${f.area}\n`;
+            combined += `  - Fakta       : ${f.fakta}\n`;
+            combined += `  - Root Cause  : ${f.rootCause}\n`;
+            combined += `  - Rekomendasi : ${f.rekomendasi}\n\n`;
+        });
+        combined += `\n`;
     });
 
-    const blob = new Blob([combinedContent], { type: "text/plain;charset=utf-8" });
+    const blob = new Blob([combined], { type: "text/plain;charset=utf-8" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Combined_Audit_PPT_Slides_${new Date().toISOString().slice(0,10)}.txt`;
+    link.download = `Combined_PPT_Slides_${new Date().toISOString().slice(0,10)}.txt`;
     link.click();
-}
-
-// CETAK SURAT TUGAS FORMAT TANGGAL PEMERIKSAAN
-function downloadSuratTugas(id) {
-    const doc = dbPenomoran.find(x => x.id === id);
-    if (!doc) return alert("Dokumen tidak ditemukan!");
-
-    logActivity("Penomoran Dokumen", "Cetak / Print Surat Tugas", doc.noSPP);
-    const daftarAuditor = doc.auditMembers !== "-" ? `${doc.auditor}, ${doc.auditMembers}` : `${doc.auditor}`;
-
-    const printHTML = `
-    <!DOCTYPE html>
-    <html lang="id">
-    <head>
-        <meta charset="UTF-8">
-        <title>Surat Tugas - ${doc.noSPP}</title>
-       <style>
-        @page { size: A4 portrait; margin: 20mm 25mm 20mm 25mm; }
-        body { font-family: 'Times New Roman', Times, serif; margin: 0; padding: 0; color: #000; line-height: 1.5; font-size: 14px; }
-        .header { text-align: center; margin-bottom: 25px; }
-        .header h2 { font-size: 16px; margin: 0; font-weight: bold; }
-        .header p { margin: 2px 0 0 0; }
-        table.meta-table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-        table.meta-table td { padding: 3px 0; vertical-align: top; }
-        table.meta-table td.label { width: 160px; }
-        table.meta-table td.colon { width: 20px; text-align: left; }
-        .signature-section { margin-top: 50px; float: left; text-align: left; width: 220px; }
-        @media print { body { margin: 0; padding: 0; } .no-print { display: none; } }
-       </style>
-    </head>
-    <body>
-        <div class="no-print" style="margin-bottom: 20px; text-align: right;">
-            <button onclick="window.print()" style="padding: 8px 16px; background: #0284c7; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🖨️ Cetak / Download PDF</button>
-        </div>
-        <div class="header">
-            <h2 style="font-weight: bold; text-decoration: underline;">Surat Pemberitahuan Penugasan</h2>
-            <p>No: ${doc.noSPP}</p>
-        </div>
-
-        <p>Kepada Yth.<br>${doc.jabatanRegionalHead}<br>${doc.regionalHead}<br>ditempat</p>
-        <p style="margin-top: 15px;">Perihal Internal Audit (${doc.jenis})</p>
-        <p style="margin-top: 10px;">Dengan hormat,</p>
-        <p>Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:</p>
-
-        <table class="meta-table">
-            <tr><td class="label">Nama</td><td class="colon">:</td><td>${daftarAuditor}</td></tr>
-            <tr><td class="label">Ruang Lingkup</td><td class="colon">:</td><td>Kegiatan Operasional Cabang/Hub</td></tr>
-            <tr><td class="label">Cabang / Hub</td><td class="colon">:</td><td>${doc.judul}</td></tr>
-            <tr><td class="label">Obyektif</td><td class="colon">:</td><td>Observasi Efektivitas serta Efisiensi Operasional Cabang/Hub</td></tr>
-            <tr><td class="label">Periode Audit</td><td class="colon">:</td><td>${doc.periodeAudit}</td></tr>
-            <tr><td class="label">Tanggal Pemeriksaan</td><td class="colon">:</td><td>${doc.tglPelaksanaan}</td></tr>
-        </table>
-
-        <p>Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak & tim<br>berupa penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.</p>
-        <p style="margin-top: 10px;">Atas perhatian dan bantuannya, kami ucapkan terima kasih.</p>
-
-        <div class="signature-section">
-            <p>Jakarta, ${doc.tanggalStart}</p>
-            <br><br><br><br>
-            <p style="font-weight: bold; text-decoration: underline;"> Shioyama Kazuhiro</p>
-            <p style="font-style: italic"> Chief Executive Officer</p>
-        </div>
-    </body>
-    </html>
-    `;
-
-    const win = window.open('', '_blank');
-    win.document.write(printHTML);
-    win.document.close();
 }
 
 function uploadBatchPenomoranExcel(e) {
@@ -955,22 +917,17 @@ function uploadBatchPenomoranExcel(e) {
                 const exists = dbPenomoran.some(x => x.noSPP.toLowerCase() === noSPP.toLowerCase());
                 if (exists) return;
 
-                const tglTerbitRaw = findVal(['terbit', 'tanggal terbit', 'tgl terbit']);
-                let dateObj = tglTerbitRaw ? new Date(tglTerbitRaw) : new Date();
-                if (isNaN(dateObj.getTime())) dateObj = new Date();
-
                 const tglMulai = findVal(['mulai', 'tgl mulai']) || "-";
                 const tglSelesai = findVal(['selesai', 'tgl selesai']) || "-";
 
                 const newDoc = {
                     id: Date.now() + idx,
                     jenis: jenis,
-                    year: dateObj.getFullYear(),
+                    year: new Date().getFullYear(),
                     noSPP: noSPP,
                     noLHA: findVal(['lha', 'no. lha']) || "-",
                     noPICA: findVal(['pica', 'no. pica']) || "-",
-                    tanggalStart: formatIndonesianDate(dateObj),
-                    tglTerbitSPP: dateObj.toISOString().slice(0, 10),
+                    tanggalStart: formatIndonesianDate(new Date()),
                     tglMulai: tglMulai,
                     tglSelesai: tglSelesai,
                     tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
@@ -1021,7 +978,6 @@ function exportPenomoranExcel() {
         "Tanggal Selesai Audit": p.tglSelesai ? formatIndonesianDate(new Date(p.tglSelesai)) : "-",
         "Lead Auditor": p.auditor,
         "Audit Members": p.auditMembers,
-        "Tanggal Terbit": p.tanggalStart,
         "Email Auditee": p.emailAuditee,
         "Status Manager": p.statusManager
     }));
@@ -1070,7 +1026,7 @@ function renderPenomoranRows(dataList) {
     if (!tbodyPenomoran) return;
 
     if (dataList.length === 0) {
-        tbodyPenomoran.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai.</td></tr>`;
+        tbodyPenomoran.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai.</td></tr>`;
         return;
     }
 
@@ -1086,7 +1042,6 @@ function renderPenomoranRows(dataList) {
             <td><b>${item.judul}</b></td>
             <td><b>${item.auditor || '-'}</b></td>
             <td><b style="color: var(--danger);">${item.tglSelesai ? formatIndonesianDate(new Date(item.tglSelesai)) : '-'}</b></td>
-            <td>${item.tanggalStart}</td>
             <td>
                 <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
                     <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit Data & Nomor Dokumen">✏️</button>
@@ -1152,10 +1107,9 @@ function refreshUI() {
     }
 }
 
-initTodayDate();
 autoFillAuditeeEmail();
 
-// FIREBASE INITIALIZATION & LISTENERS
+// FIREBASE AUTHENTICATION & LISTENERS
 const firebaseConfig = {
     apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
     authDomain: "dashboard-audit-e34bd.firebaseapp.com",
@@ -1187,9 +1141,16 @@ function handleUserLogin(e) {
 auth.onAuthStateChanged((user) => {
     if (user) {
         currentUserEmail = user.email;
-        currentUserRole = "admin";
+        
+        // MENENTUKAN ROLE USER BERDASARKAN EMAIL
+        if (user.email.toLowerCase().includes('manager') || user.email.toLowerCase().includes('head')) {
+            currentUserRole = "manager";
+        } else {
+            currentUserRole = "auditor";
+        }
 
-        document.getElementById('display-user-email').innerText = `${user.email} [ADMIN]`;
+        document.getElementById('display-user-email').innerText = user.email;
+        document.getElementById('display-user-role').innerText = currentUserRole.toUpperCase();
         document.getElementById('user-badge-header').style.display = 'flex';
         document.getElementById('auth-login-overlay').style.display = 'none';
         
