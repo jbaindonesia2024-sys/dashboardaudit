@@ -111,9 +111,8 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear) {
-    const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.sppSeq);
-    if (listInYear.length === 0) return 1;
-    return Math.max(...listInYear.map(d => d.sppSeq)) + 1;
+    const listInYear = dbPenomoran.filter(d => d.year === targetYear);
+    return listInYear.length + 1;
 }
 
 function getNextLHASequence(targetYear) {
