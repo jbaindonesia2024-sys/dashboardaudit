@@ -122,6 +122,7 @@
     <!-- ==================== TAB 2: PENOMORAN DOKUMEN ==================== -->
     <div id="tab-penomoran" class="tab-content">
         <div class="grid-container">
+            <!-- FORM PENOMORAN (KIRI) -->
             <div class="card">
                 <h3 id="form-penomoran-title">Form Penomoran Dokumen & Surat Tugas</h3>
                 <p style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">
@@ -245,6 +246,7 @@
                 </form>
             </div>
 
+            <!-- TABEL REGISTER PENOMORAN (KANAN) -->
             <div class="card">
                 <div class="card-header">
                     <h3>Register Penomoran Dokumen Terbit</h3>
@@ -257,25 +259,58 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <input type="text" id="search-penomoran" class="form-control" style="flex: 1; min-width: 200px;" placeholder="🔍 Cari berdasarkan jenis, No. SPP, No. LHA/PICA, Cabang, atau Regional..." onkeyup="filterPenomoranTable()">
-                    <div style="display: flex; gap: 4px; align-items: center;">
-                        <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); white-space: nowrap;">Urutkan:</span>
-                        <button class="btn-sort" id="btn-sort-desc" onclick="setPenomoranSortOrder('desc')" title="Urutkan Terbaru (Descending)">⬇️ Terbaru</button>
-                        <button class="btn-sort" id="btn-sort-asc" onclick="setPenomoranSortOrder('asc')" title="Urutkan Terlama (Ascending)">⬆️ Terlama</button>
+                <!-- CONTROL BAR FILTER & SORT ALA EXCEL -->
+                <div class="excel-filter-bar">
+                    <div class="filter-item search-box-excel">
+                        <input type="text" id="search-penomoran" class="form-control" placeholder="🔍 Cari global (No. SPP, Lead Auditor, Cabang...)" onkeyup="applyExcelFilters()">
                     </div>
+                    
+                    <div class="filter-item">
+                        <select id="filter-excel-jenis" class="form-control filter-select" onchange="applyExcelFilters()">
+                            <option value="">-- All Jenis --</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <select id="filter-excel-auditor" class="form-control filter-select" onchange="applyExcelFilters()">
+                            <option value="">-- All Lead Auditor --</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-item">
+                        <select id="filter-excel-regional" class="form-control filter-select" onchange="applyExcelFilters()">
+                            <option value="">-- All Regional Head --</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-action btn-danger" onclick="resetExcelFilters()" style="padding: 6px 10px; font-size: 11px;">🔄 Reset Filter</button>
                 </div>
 
                 <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
-                    <table>
+                    <table class="table-excel-sortable">
                         <thead>
                             <tr>
-                                <th>Jenis</th>
-                                <th>No. Surat / SPP</th>
-                                <th>No. LHA & PICA</th>
-                                <th>Pool / Cabang</th>
-                                <th>Due Date Project (HK+4)</th>
-                                <th>Tgl Terbit</th>
+                                <th onclick="sortByColumn('jenis')" class="sortable-th">
+                                    Jenis <span id="sort-icon-jenis" class="sort-icon">⇅</span>
+                                </th>
+                                <th onclick="sortByColumn('noSPP')" class="sortable-th">
+                                    No. Surat / SPP <span id="sort-icon-noSPP" class="sort-icon">⇅</span>
+                                </th>
+                                <th onclick="sortByColumn('noLHA')" class="sortable-th">
+                                    No. LHA & PICA <span id="sort-icon-noLHA" class="sort-icon">⇅</span>
+                                </th>
+                                <th onclick="sortByColumn('judul')" class="sortable-th">
+                                    Pool / Cabang <span id="sort-icon-judul" class="sort-icon">⇅</span>
+                                </th>
+                                <th onclick="sortByColumn('auditor')" class="sortable-th">
+                                    Lead Auditor <span id="sort-icon-auditor" class="sort-icon">⇅</span>
+                                </th>
+                                <th onclick="sortByColumn('dueDateProject')" class="sortable-th">
+                                    Due Date Project <span id="sort-icon-dueDateProject" class="sort-icon">⇅</span>
+                                </th>
+                                <th onclick="sortByColumn('tglTerbitSPP')" class="sortable-th">
+                                    Tgl Terbit <span id="sort-icon-tglTerbitSPP" class="sort-icon">▼</span>
+                                </th>
                                 <th style="text-align: center;">Aksi</th>
                             </tr>
                         </thead>
