@@ -248,13 +248,22 @@
             <div class="card">
                 <div class="card-header">
                     <h3>Register Penomoran Dokumen Terbit</h3>
-                    <div style="display: flex; gap: 8px;">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <label for="input-upload-batch-penomoran" class="btn-action btn-purple" style="cursor: pointer; margin: 0;">
+                            📥 Upload Register (Excel)
+                        </label>
+                        <input type="file" id="input-upload-batch-penomoran" accept=".xlsx, .xls, .csv" style="display: none;" onchange="uploadBatchPenomoranExcel(event)">
                         <button class="btn-action btn-excel" onclick="exportPenomoranExcel()">📊 Download Register (Excel)</button>
                     </div>
                 </div>
 
-                <div style="margin-bottom: 12px;">
-                    <input type="text" id="search-penomoran" class="form-control" placeholder="🔍 Cari berdasarkan jenis, No. SPP, No. LHA/PICA, Cabang, atau Regional..." onkeyup="filterPenomoranTable()">
+                <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" id="search-penomoran" class="form-control" style="flex: 1; min-width: 200px;" placeholder="🔍 Cari berdasarkan jenis, No. SPP, No. LHA/PICA, Cabang, atau Regional..." onkeyup="filterPenomoranTable()">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <span style="font-size: 11px; font-weight: bold; color: var(--text-muted); white-space: nowrap;">Urutkan:</span>
+                        <button class="btn-sort" id="btn-sort-desc" onclick="setPenomoranSortOrder('desc')" title="Urutkan Terbaru (Descending)">⬇️ Terbaru</button>
+                        <button class="btn-sort" id="btn-sort-asc" onclick="setPenomoranSortOrder('asc')" title="Urutkan Terlama (Ascending)">⬆️ Terlama</button>
+                    </div>
                 </div>
 
                 <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
