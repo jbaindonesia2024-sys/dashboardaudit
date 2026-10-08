@@ -22,7 +22,7 @@
             
             <form id="form-login-firebase" onsubmit="handleUserLogin(event)">
                 <div style="margin-bottom: 12px;">
-                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">EMAIL AUDITOR</label>
+                    <label style="font-size: 11px; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">EMAIL AUDITOR / MANAGER</label>
                     <input type="email" id="login-email" class="form-control" placeholder="nama@jba.co.id" required>
                 </div>
                 <div style="margin-bottom: 16px;">
@@ -42,7 +42,7 @@
         <h1>PORTAL INTERNAL AUDIT & ANTI FRAUD ANALYTICS</h1>
         <p>Penomoran Dokumen Otomatis, Synchronized Audit Summary, Surat Tugas Generator & Anti Fraud Portal</p>
         <div id="user-badge-header" style="margin-top: 12px; display: none; align-items: center; justify-content: space-between;">
-            <span class="user-profile-badge">👤 Logged in: <b id="display-user-email">-</b></span>
+            <span class="user-profile-badge">👤 Logged in: <b id="display-user-email">-</b> <span id="display-user-role" class="badge bg-progress" style="margin-left: 6px;">Auditor</span></span>
             <div style="display: flex; gap: 8px;">
                 <button onclick="userUbahPasswordMandiri()" style="background: #475569; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🔑 Ubah Pass</button>
                 <button onclick="handleUserLogout()" style="background: #ef4444; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Logout 🚪</button>
@@ -75,7 +75,7 @@
             <div class="kpi-card">
                 <div class="kpi-title">PICA Open / Progress</div>
                 <div class="kpi-value" id="kpi-exec-open">0</div>
-                <div class="kpi-subtext alert" id="kpi-exec-due-alert">0 Mendekati Due Date</div>
+                <div class="kpi-subtext alert" id="kpi-exec-due-alert">0 Open Findings</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-title">Completion Rate</div>
@@ -196,18 +196,11 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>Tgl Mulai Audit</label>
-                            <input type="date" id="p-tgl-mulai" class="form-control" required>
+                            <input type="date" id="p-tgl-mulai" class="form-control" onchange="updateSPPPreview()" required>
                         </div>
                         <div class="form-group">
                             <label>Tgl Selesai Audit</label>
                             <input type="date" id="p-tgl-selesai" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Tanggal Surat Terbit (Tahun Dokumen)</label>
-                        <div id="tgl-terbit-container">
-                            <input type="date" id="p-tgl-terbit" class="form-control" onchange="updateSPPPreview()" required>
                         </div>
                     </div>
 
@@ -311,9 +304,6 @@
                                 <th onclick="sortByColumn('tglSelesai')" class="sortable-th">
                                     Tanggal Selesai Audit <span id="sort-icon-tglSelesai" class="sort-icon">⇅</span>
                                 </th>
-                                <th onclick="sortByColumn('tglTerbitSPP')" class="sortable-th">
-                                    Tgl Terbit <span id="sort-icon-tglTerbitSPP" class="sort-icon">▼</span>
-                                </th>
                                 <th style="text-align: center;">Aksi</th>
                             </tr>
                         </thead>
@@ -391,13 +381,9 @@
         <div class="card">
             <div class="card-header">
                 <h3>📋 Database Summary Audit & Action Plan Tracking</h3>
-                <!-- FITUR CONCAT / COMBINE SLIDE PPT DARI MULTIPLE PROJECT -->
-                <button class="btn-action btn-purple" onclick="combineSelectedProjectsPPT()" style="font-size: 11px;">
-                    ➕ Combine Selected Project to PPT
-                </button>
             </div>
             <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
-                Menampilkan daftar project terdaftar dari Halaman Penomoran Dokumen. Klik nomor dokumen untuk membuka detail di tab baru.
+                Menampilkan daftar project terdaftar. Klik nomor dokumen untuk membuka detail di tab baru. Otorisasi LHA/PICA hanya dapat dilakukan oleh Manager.
             </p>
 
             <!-- CONTROL BAR FILTER ALA EXCEL UNTUK SUMMARY AUDIT -->
@@ -417,14 +403,13 @@
                 <table class="table-center-audit table-excel-sortable">
                     <thead>
                         <tr>
-                            <th style="width: 40px; text-align: center;">Select</th>
-                            <th onclick="sortSummaryByColumn('noSPP')" class="sortable-th">No. SPP (Klik Detail) <span id="sort-summary-noSPP" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('noSPP')" class="sortable-th">No. SPP (Klik Detail) <span id="sort-summary-noSPP" class="sort-icon">▲</span></th>
                             <th onclick="sortSummaryByColumn('noLHA')" class="sortable-th">No. LHA <span id="sort-summary-noLHA" class="sort-icon">⇅</span></th>
                             <th onclick="sortSummaryByColumn('noPICA')" class="sortable-th">No. PICA <span id="sort-summary-noPICA" class="sort-icon">⇅</span></th>
                             <th onclick="sortSummaryByColumn('judul')" class="sortable-th">Judul Project / Cabang <span id="sort-summary-judul" class="sort-icon">⇅</span></th>
                             <th onclick="sortSummaryByColumn('auditor')" class="sortable-th">Lead Auditor <span id="sort-summary-auditor" class="sort-icon">⇅</span></th>
                             <th onclick="sortSummaryByColumn('tglSelesai')" class="sortable-th">Tanggal Selesai Audit <span id="sort-summary-tglSelesai" class="sort-icon">⇅</span></th>
-                            <th onclick="sortSummaryByColumn('statusManager')" class="sortable-th">Status Otorisasi <span id="sort-summary-statusManager" class="sort-icon">⇅</span></th>
+                            <th onclick="sortSummaryByColumn('statusManager')" class="sortable-th">Status Otorisasi Manager <span id="sort-summary-statusManager" class="sort-icon">⇅</span></th>
                         </tr>
                     </thead>
                     <tbody id="table-audit-body"></tbody>
