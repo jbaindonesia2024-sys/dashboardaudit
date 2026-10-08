@@ -4,6 +4,13 @@ const regionalMap = {
     "reg3": { name: "Tan Hung Pau", title: "Regional Head 3 & 4", email: "tan.pau@jba.co.id" }
 };
 
+// Daftar email yang berhak melakukan Approval (Admin & Manager ke atas)
+const listAdminManagerEmails = [
+    'ahmad.shobri@jba.co.id',
+    'manager@jba.co.id',
+    'head@jba.co.id'
+];
+
 function autoFillAuditeeEmail() {
     const selectedKey = document.getElementById('p-regional').value;
     if (regionalMap[selectedKey]) {
@@ -33,7 +40,7 @@ let auditDatabase = [];
 let fraudDatabase = [];
 let activityLogs = [];
 let currentUserEmail = "";
-let currentUserRole = "auditor"; // Role Default: auditor | manager
+let currentUserRole = "auditor"; // auditor | manager
 
 // State Sorting Penomoran
 let currentSortColumn = 'noSPP';
@@ -54,7 +61,7 @@ function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
         status: status
     };
     activityLogs.unshift(newLog);
-    if (typeof database !== 'undefined') {
+    if (typeof database !== 'undefined' && database && database.ref) {
         database.ref('activityLogs').set(activityLogs);
     }
 }
@@ -250,7 +257,6 @@ function generateDocumentNumber(e) {
     refreshUI();
 }
 
-// FORM EDIT: MEMPERTAHANKAN SELURUH DATA YANG ADA
 function editDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
@@ -383,9 +389,7 @@ function sendSignedSPP_Email(id) {
     window.location.href = mailtoUrl;
 }
 
-// -------------------------------------------------------------
-// FILTER & SORTING ALA EXCEL UNTUK TAB PENOMORAN DOKUMEN
-// -------------------------------------------------------------
+// FILTER & SORTING ALA EXCEL DOKUMEN
 function sortByColumn(columnName) {
     if (currentSortColumn === columnName) {
         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
@@ -492,9 +496,7 @@ function resetExcelFilters() {
     applyExcelFilters();
 }
 
-// -------------------------------------------------------------
-// FILTER & SORTING ALA EXCEL UNTUK TAB SUMMARY AUDIT
-// -------------------------------------------------------------
+// FILTER & SORTING SUMMARY AUDIT
 function sortSummaryByColumn(col) {
     if (summarySortColumn === col) {
         summarySortDirection = summarySortDirection === 'asc' ? 'desc' : 'asc';
@@ -599,12 +601,10 @@ function renderAuditSummaryRows(regulerProjects) {
     }).join('');
 }
 
-// -------------------------------------------------------------
-// OTORISASI APPROVAL MANAGER (GENERATE LHA & PICA DENGAN BULAN APPROVAL)
-// -------------------------------------------------------------
+// APPROVAL MANAGER / ADMIN
 function toggleManagerApproval(id) {
     if (currentUserRole !== "manager") {
-        return alert("⛔ OTORISASI DITOLAK:\nHanya user dengan Role MANAGER yang dapat melakukan approval laporan dan menerbitkan nomor LHA & PICA!");
+        return alert("⛔ OTORISASI DITOLAK:\nHanya user dengan Role Admin / Manager yang dapat melakukan approval laporan!");
     }
 
     const doc = dbPenomoran.find(x => x.id === id);
@@ -622,9 +622,9 @@ function toggleManagerApproval(id) {
 
     const confirmed = confirm("Apakah Anda telah selesai mereview laporan ini dan hendak menyetujui penerbitan Nomor LHA & PICA?");
     if (confirmed) {
-        const today = new Date(); // TANGGAL APPROVAL MANAGER
+        const today = new Date();
         const currentYear = today.getFullYear();
-        const approvalMonthRoman = toRoman(today.getMonth() + 1); // BULAN DI-APPROVE OLEH MANAGER
+        const approvalMonthRoman = toRoman(today.getMonth() + 1);
 
         if (doc.jenis === "Investigasi") {
             doc.statusManager = "Approved by Manager";
@@ -644,13 +644,11 @@ function toggleManagerApproval(id) {
         logActivity("Summary Audit", "Otorisasi Approval Manager & Terbit LHA/PICA", doc.noSPP);
         syncPenomoranToFirebase();
         refreshUI();
-        alert(`🎉 Summary Audit Disetujui!\n\nNomor Resmi Terbit (Bulan Approval: ${approvalMonthRoman}):\n• No. LHA: ${doc.noLHA}\n• No. PICA: ${doc.noPICA}`);
+        alert(`🎉 Summary Audit Disetujui!\n\nNomor Resmi Terbit:\n• No. LHA: ${doc.noLHA}\n• No. PICA: ${doc.noPICA}`);
     }
 }
 
-// -------------------------------------------------------------
-// DETAIL POP-UP WINDOW TAB BARU (SUMMARY & DYNAMIC SLIDE PPT COMBINE)
-// -------------------------------------------------------------
+// OPEN AUDIT DETAIL TAB BARU
 function openAuditDetailWindow(noSPP, jenis) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Dokumen project tidak ditemukan!");
@@ -675,7 +673,7 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <td>${f.rootCause || '-'}</td>
                 <td>${f.rekomendasi || '-'}</td>
                 <td style="text-align: center;">
-                    <button onclick="window.opener.toggleFindingStatus(${f.id}, '${noSPP}'); location.reload();" 
+                    <button onclick="if(window.opener && window.opener.toggleFindingStatus){ window.opener.toggleFindingStatus(${f.id}, '${noSPP}'); location.reload(); }" 
                             style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
                         ${statusText}
                     </button>
@@ -686,6 +684,7 @@ function openAuditDetailWindow(noSPP, jenis) {
     }
 
     const otherProjectOptions = otherProjects.map(p => `<option value="${p.noSPP}">[${p.noSPP}] ${p.judul}</option>`).join('');
+    const tglSelesaiFormatted = doc.tglSelesai ? formatIndonesianDate(new Date(doc.tglSelesai)) : '-';
 
     const detailHTML = `
     <!DOCTYPE html>
@@ -714,19 +713,17 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <span class="badge ${doc.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}" style="font-size: 13px; padding: 6px 12px;">${doc.jenis}</span>
             </div>
 
-            <!-- ACTION EXPORT BUTTONS (GENERATE PICA, LHA, PPT & COMBINE) -->
             <div class="btn-export-group">
-                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove oleh Manager terlebih dahulu"' : ''} onclick="window.opener.exportPICA_Single('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="if(window.opener) window.opener.exportPICA_Single('${doc.noSPP}')">
                     📊 Generate PICA (Excel)
                 </button>
-                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove oleh Manager terlebih dahulu"' : ''} onclick="window.opener.exportLHA_Single('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="if(window.opener) window.opener.exportLHA_Single('${doc.noSPP}')">
                     📄 Generate LHA (PDF)
                 </button>
-                <button class="btn-exp" style="background: #d97706;" onclick="window.opener.exportPPT_Single('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #d97706;" onclick="if(window.opener) window.opener.exportPPT_Single('${doc.noSPP}')">
                     💻 Generate PPT
                 </button>
 
-                <!-- DROPDOWN "+" UNTUK MENGGABUNGKAN PPT MULTIPLE PROJECT -->
                 <div class="ppt-combine-wrapper">
                     <span style="font-weight: bold; font-size: 14px; color: #b45309;">➕ Gabung PPT:</span>
                     <select id="select-combine-project" style="font-size: 11px; padding: 4px; border-radius: 4px; border: 1px solid #d97706;">
@@ -745,7 +742,7 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <div><small style="color: #64748b; font-weight: bold;">NO. PICA</small><br><b style="color: #16a34a;">${doc.noPICA}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">LEAD AUDITOR</small><br><b>${doc.auditor}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">REGIONAL HEAD</small><br><b>${doc.regionalHead}</b></div>
-                <div><small style="color: #64748b; font-weight: bold;">TANGGAL SELESAI AUDIT</small><br><b style="color: #ef4444;">${doc.tglSelesai ? window.opener.formatIndonesianDate(new Date(doc.tglSelesai)) : '-'}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">TANGGAL SELESAI AUDIT</small><br><b style="color: #ef4444;">${tglSelesaiFormatted}</b></div>
             </div>
 
             <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; color: #0f172a;">📋 Ringkasan Daftar Temuan (Summary Findings)</h3>
@@ -773,7 +770,9 @@ function openAuditDetailWindow(noSPP, jenis) {
             function combineSelectedFromTab(primarySPP) {
                 const targetSPP = document.getElementById('select-combine-project').value;
                 if (!targetSPP) return alert("Pilih project lain yang ingin digabungkan!");
-                window.opener.combineTwoProjectsPPT(primarySPP, targetSPP);
+                if (window.opener && window.opener.combineTwoProjectsPPT) {
+                    window.opener.combineTwoProjectsPPT(primarySPP, targetSPP);
+                }
             }
         </script>
     </body>
@@ -785,9 +784,6 @@ function openAuditDetailWindow(noSPP, jenis) {
     win.document.close();
 }
 
-// -------------------------------------------------------------
-// GENERATE PICA, LHA, PPT & COMBINE SLIDES
-// -------------------------------------------------------------
 function exportPICA_Single(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     const findings = auditDatabase.filter(x => x.noSPP === noSPP);
@@ -1109,7 +1105,7 @@ function refreshUI() {
 
 autoFillAuditeeEmail();
 
-// FIREBASE AUTHENTICATION & LISTENERS
+// FIREBASE INITIALIZATION & LISTENERS
 const firebaseConfig = {
     apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
     authDomain: "dashboard-audit-e34bd.firebaseapp.com",
@@ -1140,17 +1136,17 @@ function handleUserLogin(e) {
 
 auth.onAuthStateChanged((user) => {
     if (user) {
-        currentUserEmail = user.email;
+        currentUserEmail = user.email.toLowerCase();
         
-        // MENENTUKAN ROLE USER BERDASARKAN EMAIL
-        if (user.email.toLowerCase().includes('manager') || user.email.toLowerCase().includes('head')) {
-            currentUserRole = "manager";
-        } else {
-            currentUserRole = "auditor";
-        }
+        const isAuthorized = listAdminManagerEmails.includes(currentUserEmail) || 
+                             currentUserEmail.includes('manager') || 
+                             currentUserEmail.includes('head') || 
+                             currentUserEmail.includes('admin');
+
+        currentUserRole = isAuthorized ? "manager" : "auditor";
 
         document.getElementById('display-user-email').innerText = user.email;
-        document.getElementById('display-user-role').innerText = currentUserRole.toUpperCase();
+        document.getElementById('display-user-role').innerText = currentUserRole === "manager" ? "ADMIN / MANAGER" : "AUDITOR";
         document.getElementById('user-badge-header').style.display = 'flex';
         document.getElementById('auth-login-overlay').style.display = 'none';
         
