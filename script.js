@@ -55,7 +55,10 @@ let fraudDatabase = [];
 let activityLogs = [];
 let currentUserEmail = "";
 let currentUserRole = "auditor";
-let penomoranSortOrder = "desc"; // State sort: "desc" | "asc"
+
+// State Sorting & Filtering ala Excel
+let currentSortColumn = 'tglTerbitSPP';
+let currentSortDirection = 'desc';
 
 function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
     const newLog = {
@@ -110,6 +113,7 @@ function toggleBackDateFields() {
     updateSPPPreview();
 }
 
+// PERBAIKAN URUTAN DOKUMEN BERDASARKAN TOTAL JUMLAH DATA TERDAFTAR TAHUN TERKAIT
 function getNextSPPSequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d.year === targetYear);
     return listInYear.length + 1;
@@ -431,41 +435,115 @@ function sendSignedSPP_Email(id) {
 }
 
 // -------------------------------------------------------------
-// FITUR SORTING PENOMORAN (ASC / DESC)
+// FITUR SORTING & FILTERING PENOMORAN ALA EXCEL
 // -------------------------------------------------------------
-function setPenomoranSortOrder(order) {
-    penomoranSortOrder = order;
+function sortByColumn(columnName) {
+    if (currentSortColumn === columnName) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = columnName;
+        currentSortDirection = 'asc';
+    }
     
-    document.getElementById('btn-sort-desc').classList.toggle('active', order === 'desc');
-    document.getElementById('btn-sort-asc').classList.toggle('active', order === 'asc');
+    document.querySelectorAll('.sort-icon').forEach(el => el.innerText = '⇅');
+    const activeIcon = document.getElementById(`sort-icon-${columnName}`);
+    if (activeIcon) {
+        activeIcon.innerText = currentSortDirection === 'asc' ? '▲' : '▼';
+    }
 
-    filterPenomoranTable();
+    applyExcelFilters();
 }
 
-function getSortedPenomoranData(dataList) {
-    return [...dataList].sort((a, b) => {
-        let dateA = new Date(a.tglTerbitSPP || a.id).getTime();
-        let dateB = new Date(b.tglTerbitSPP || b.id).getTime();
-        if (isNaN(dateA)) dateA = Number(a.id) || 0;
-        if (isNaN(dateB)) dateB = Number(b.id) || 0;
+function updateExcelFilterDropdowns() {
+    const auditors = [...new Set(dbPenomoran.map(x => x.auditor).filter(Boolean))].sort();
+    const selAuditor = document.getElementById('filter-excel-auditor');
+    if (selAuditor) {
+        const currentVal = selAuditor.value;
+        selAuditor.innerHTML = `<option value="">-- All Lead Auditor --</option>` + 
+            auditors.map(a => `<option value="${a}" ${a === currentVal ? 'selected' : ''}>${a}</option>`).join('');
+    }
 
-        return penomoranSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-    });
+    const jenisList = [...new Set(dbPenomoran.map(x => x.jenis).filter(Boolean))].sort();
+    const selJenis = document.getElementById('filter-excel-jenis');
+    if (selJenis) {
+        const currentVal = selJenis.value;
+        selJenis.innerHTML = `<option value="">-- All Jenis --</option>` + 
+            jenisList.map(j => `<option value="${j}" ${j === currentVal ? 'selected' : ''}>${j}</option>`).join('');
+    }
+
+    const regList = [...new Set(dbPenomoran.map(x => x.regionalHead).filter(Boolean))].sort();
+    const selRegional = document.getElementById('filter-excel-regional');
+    if (selRegional) {
+        const currentVal = selRegional.value;
+        selRegional.innerHTML = `<option value="">-- All Regional Head --</option>` + 
+            regList.map(r => `<option value="${r}" ${r === currentVal ? 'selected' : ''}>${r}</option>`).join('');
+    }
 }
 
-function filterPenomoranTable() {
-    const query = document.getElementById('search-penomoran').value.toLowerCase().trim();
-    const filteredData = dbPenomoran.filter(item => {
-        return (item.jenis && item.jenis.toLowerCase().includes(query)) ||
-               (item.noSPP && item.noSPP.toLowerCase().includes(query)) ||
-               (item.noLHA && item.noLHA.toLowerCase().includes(query)) ||
-               (item.noPICA && item.noPICA.toLowerCase().includes(query)) ||
-               (item.judul && item.judul.toLowerCase().includes(query)) ||
-               (item.regionalHead && item.regionalHead.toLowerCase().includes(query));
+function applyExcelFilters() {
+    const globalQuery = (document.getElementById('search-penomoran').value || '').toLowerCase().trim();
+    const selectedJenis = document.getElementById('filter-excel-jenis').value;
+    const selectedAuditor = document.getElementById('filter-excel-auditor').value;
+    const selectedRegional = document.getElementById('filter-excel-regional').value;
+
+    let filtered = dbPenomoran.filter(item => {
+        const matchGlobal = !globalQuery || 
+            (item.jenis && item.jenis.toLowerCase().includes(globalQuery)) ||
+            (item.noSPP && item.noSPP.toLowerCase().includes(globalQuery)) ||
+            (item.noLHA && item.noLHA.toLowerCase().includes(globalQuery)) ||
+            (item.noPICA && item.noPICA.toLowerCase().includes(globalQuery)) ||
+            (item.judul && item.judul.toLowerCase().includes(globalQuery)) ||
+            (item.auditor && item.auditor.toLowerCase().includes(globalQuery)) ||
+            (item.regionalHead && item.regionalHead.toLowerCase().includes(globalQuery)) ||
+            (item.periodeAudit && item.periodeAudit.toLowerCase().includes(globalQuery));
+
+        const matchJenis = !selectedJenis || item.jenis === selectedJenis;
+        const matchAuditor = !selectedAuditor || item.auditor === selectedAuditor;
+        const matchRegional = !selectedRegional || item.regionalHead === selectedRegional;
+
+        return matchGlobal && matchJenis && matchAuditor && matchRegional;
     });
 
-    const sortedAndFiltered = getSortedPenomoranData(filteredData);
-    renderPenomoranRows(sortedAndFiltered);
+    filtered.sort((a, b) => {
+        let valA = a[currentSortColumn] || '';
+        let valB = b[currentSortColumn] || '';
+
+        if (currentSortColumn === 'noSPP' || currentSortColumn === 'noLHA' || currentSortColumn === 'noPICA') {
+            const extractNum = (str) => {
+                const match = String(str).match(/^(\d+)\//);
+                return match ? parseInt(match[1], 10) : 0;
+            };
+            valA = extractNum(valA);
+            valB = extractNum(valB);
+        } else if (currentSortColumn === 'tglTerbitSPP' || currentSortColumn === 'id') {
+            valA = new Date(a.tglTerbitSPP || a.id).getTime() || 0;
+            valB = new Date(b.tglTerbitSPP || b.id).getTime() || 0;
+        } else {
+            valA = String(valA).toLowerCase();
+            valB = String(valB).toLowerCase();
+        }
+
+        if (valA < valB) return currentSortDirection === 'asc' ? -1 : 1;
+        if (valA > valB) return currentSortDirection === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    renderPenomoranRows(filtered);
+}
+
+function resetExcelFilters() {
+    document.getElementById('search-penomoran').value = '';
+    document.getElementById('filter-excel-jenis').value = '';
+    document.getElementById('filter-excel-auditor').value = '';
+    document.getElementById('filter-excel-regional').value = '';
+    currentSortColumn = 'tglTerbitSPP';
+    currentSortDirection = 'desc';
+    
+    document.querySelectorAll('.sort-icon').forEach(el => el.innerText = '⇅');
+    const activeIcon = document.getElementById('sort-icon-tglTerbitSPP');
+    if (activeIcon) activeIcon.innerText = '▼';
+
+    applyExcelFilters();
 }
 
 // -------------------------------------------------------------
@@ -1035,7 +1113,7 @@ function renderPenomoranRows(dataList) {
     if (!tbodyPenomoran) return;
 
     if (dataList.length === 0) {
-        tbodyPenomoran.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai.</td></tr>`;
+        tbodyPenomoran.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 16px;">Tidak ada nomor dokumen yang sesuai filter.</td></tr>`;
         return;
     }
 
@@ -1049,6 +1127,7 @@ function renderPenomoranRows(dataList) {
                 }
             </td>
             <td><b>${item.judul}</b></td>
+            <td><b>${item.auditor || '-'}</b></td>
             <td><b style="color: var(--danger);">${item.dueDateProject || '-'}</b></td>
             <td>${item.tanggalStart}</td>
             <td>
@@ -1088,7 +1167,8 @@ function renderLogRows(logs) {
 
 function refreshUI() {
     updateExecutiveDashboard();
-    filterPenomoranTable();
+    updateExcelFilterDropdowns();
+    applyExcelFilters();
     renderLogRows(activityLogs);
 
     const tbodyAudit = document.getElementById('table-audit-body');
