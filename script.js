@@ -55,6 +55,7 @@ let fraudDatabase = [];
 let activityLogs = [];
 let currentUserEmail = "";
 let currentUserRole = "auditor";
+let penomoranSortOrder = "desc"; // State sort: "desc" | "asc"
 
 function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
     const newLog = {
@@ -72,17 +73,9 @@ function logActivity(kategori, aktivitas, detailDoc, status = "Success") {
     }
 }
 
-// Synchronize Seluruh Array (Dipakai saat Delete / Approval)
 function syncPenomoranToFirebase() {
     if (typeof database !== 'undefined' && database && database.ref) {
         database.ref('dbPenomoran').set(dbPenomoran);
-    }
-}
-
-// Synchronize Single Node (Dipakai saat Buat Baru / Edit agar tidak overwrite data lain)
-function syncSinglePenomoranToFirebase(docObj) {
-    if (typeof database !== 'undefined' && database && database.ref) {
-        database.ref('dbPenomoran/' + docObj.id).set(docObj);
     }
 }
 
@@ -163,9 +156,6 @@ function updateSPPPreview() {
     document.getElementById('live-spp-preview').innerText = previewSPP;
 }
 
-// -------------------------------------------------------------
-// GENERATE & EDIT PROJECT (DENGAN SINKRONISASI SINGLE NODE)
-// -------------------------------------------------------------
 function generateDocumentNumber(e) {
     if (e && e.preventDefault) e.preventDefault();
 
@@ -233,7 +223,7 @@ function generateDocumentNumber(e) {
                 }
             }
 
-            const updatedDoc = {
+            dbPenomoran[docIdx] = {
                 ...currentDoc,
                 jenis: jenis,
                 noSPP: newSPP,
@@ -251,9 +241,6 @@ function generateDocumentNumber(e) {
                 ccEmail: ccEmail,
                 updated_by: currentUserEmail
             };
-
-            dbPenomoran[docIdx] = updatedDoc;
-            syncSinglePenomoranToFirebase(updatedDoc);
 
             logActivity("Penomoran Dokumen", "Revisi / Edit Project", newSPP);
             alert("Data Penomoran Project Berhasil Diperbarui!");
@@ -301,12 +288,11 @@ function generateDocumentNumber(e) {
         };
 
         dbPenomoran.push(newDoc);
-        syncSinglePenomoranToFirebase(newDoc);
-
         logActivity("Penomoran Dokumen", `Penerbitan Nomor (${isBackdate ? 'Back Date' : 'Otomatis'})`, autoSPP);
         alert(`Nomor Dokumen ${jenis} Berhasil Diterbitkan!\nNo. Surat: ${autoSPP}\nDue Date Project: ${dueDateProject}`);
     }
 
+    syncPenomoranToFirebase();
     resetPenomoranForm();
     populateDropdowns();
     refreshUI();
@@ -408,7 +394,7 @@ function submitUploadSppSigned() {
     const doc = dbPenomoran.find(x => x.id == id);
     if (doc) {
         doc.hasSignedSPP = true;
-        syncSinglePenomoranToFirebase(doc);
+        syncPenomoranToFirebase();
         logActivity("Penomoran Dokumen", "Upload SPP Tanda Tangan Basah", doc.noSPP);
         closeUploadSppModal();
         refreshUI();
@@ -445,6 +431,29 @@ function sendSignedSPP_Email(id) {
     window.location.href = mailtoUrl;
 }
 
+// -------------------------------------------------------------
+// FITUR SORTING PENOMORAN (ASC / DESC)
+// -------------------------------------------------------------
+function setPenomoranSortOrder(order) {
+    penomoranSortOrder = order;
+    
+    document.getElementById('btn-sort-desc').classList.toggle('active', order === 'desc');
+    document.getElementById('btn-sort-asc').classList.toggle('active', order === 'asc');
+
+    filterPenomoranTable();
+}
+
+function getSortedPenomoranData(dataList) {
+    return [...dataList].sort((a, b) => {
+        let dateA = new Date(a.tglTerbitSPP || a.id).getTime();
+        let dateB = new Date(b.tglTerbitSPP || b.id).getTime();
+        if (isNaN(dateA)) dateA = Number(a.id) || 0;
+        if (isNaN(dateB)) dateB = Number(b.id) || 0;
+
+        return penomoranSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+}
+
 function filterPenomoranTable() {
     const query = document.getElementById('search-penomoran').value.toLowerCase().trim();
     const filteredData = dbPenomoran.filter(item => {
@@ -455,7 +464,135 @@ function filterPenomoranTable() {
                (item.judul && item.judul.toLowerCase().includes(query)) ||
                (item.regionalHead && item.regionalHead.toLowerCase().includes(query));
     });
-    renderPenomoranRows(filteredData);
+
+    const sortedAndFiltered = getSortedPenomoranData(filteredData);
+    renderPenomoranRows(sortedAndFiltered);
+}
+
+// -------------------------------------------------------------
+// FITUR UPLOAD BATCH EXCEL PENOMORAN DOKUMEN LAMA
+// -------------------------------------------------------------
+function uploadBatchPenomoranExcel(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+        try {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonRows.length === 0) {
+                alert("⚠️ File Excel kosong atau format tidak sesuai!");
+                e.target.value = "";
+                return;
+            }
+
+            let insertedCount = 0;
+            let duplicateCount = 0;
+
+            jsonRows.forEach((row, idx) => {
+                const findVal = (keywords) => {
+                    const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().trim().includes(kw)));
+                    return key ? String(row[key]).trim() : "";
+                };
+
+                const jenis = findVal(['tipe', 'jenis']) || "Reguler";
+                const noSPP = findVal(['spp', 'no. spp', 'surat tugas', 'no. surat']);
+                const noLHA = findVal(['lha', 'no. lha']) || "-";
+                const noPICA = findVal(['pica', 'no. pica']) || "-";
+                const judul = findVal(['judul', 'cabang', 'pool', 'project']);
+
+                if (!noSPP || !judul) return;
+
+                const exists = dbPenomoran.some(x => x.noSPP.toLowerCase() === noSPP.toLowerCase());
+                if (exists) {
+                    duplicateCount++;
+                    return;
+                }
+
+                const regHeadInput = findVal(['regional head', 'regional']);
+                let matchedRegName = regHeadInput || regionalMap['reg1'].name;
+                let matchedRegTitle = regionalMap['reg1'].title;
+
+                Object.values(regionalMap).forEach(reg => {
+                    if (regHeadInput && regHeadInput.toLowerCase().includes(reg.name.toLowerCase())) {
+                        matchedRegName = reg.name;
+                        matchedRegTitle = reg.title;
+                    }
+                });
+
+                const tglTerbitRaw = findVal(['terbit', 'tanggal terbit', 'tgl terbit']);
+                let dateObj = tglTerbitRaw ? new Date(tglTerbitRaw) : new Date();
+                if (isNaN(dateObj.getTime())) dateObj = new Date();
+                
+                const targetYear = dateObj.getFullYear();
+                const tglTerbitFormatted = formatIndonesianDate(dateObj);
+                const tglMulai = findVal(['mulai', 'tgl mulai']) || "-";
+                const tglSelesai = findVal(['selesai', 'tgl selesai']) || "-";
+                const tglPelaksanaan = findVal(['pelaksanaan', 'tanggal pelaksanaan']) || `${tglMulai} s.d ${tglSelesai}`;
+                const dueDateProject = findVal(['due date', 'due']) || addBusinessDays(tglSelesai !== "-" ? tglSelesai : new Date().toISOString().slice(0,10), 4);
+
+                const auditor = findVal(['lead', 'auditor', 'lead auditor']) || "Auditor";
+                const auditMembers = findVal(['member', 'members', 'anggota']) || "-";
+                const emailAuditee = findVal(['email auditee', 'email']) || "auditee@jba.co.id";
+                const ccEmail = findVal(['cc', 'cc email']) || "-";
+                const statusMgr = findVal(['status manager', 'status']) || ((noLHA !== "-" && noLHA !== "N/A (Investigasi)") ? "Approved by Manager" : "Not Approved");
+
+                const extractSeq = (str) => {
+                    if (!str) return null;
+                    const match = str.match(/^(\d+)\//);
+                    return match ? parseInt(match[1], 10) : null;
+                };
+
+                const newDoc = {
+                    id: Date.now() + idx,
+                    jenis: jenis.toLowerCase().includes('investigasi') ? "Investigasi" : "Reguler",
+                    year: targetYear,
+                    sppSeq: extractSeq(noSPP),
+                    noSPP: noSPP,
+                    lhaSeq: extractSeq(noLHA),
+                    noLHA: noLHA,
+                    picaSeq: extractSeq(noPICA),
+                    noPICA: noPICA,
+                    tanggalStart: tglTerbitFormatted,
+                    tglTerbitSPP: dateObj.toISOString().slice(0, 10),
+                    tglSelesai: tglSelesai,
+                    dueDateProject: dueDateProject,
+                    judul: judul,
+                    regionalHead: matchedRegName,
+                    jabatanRegionalHead: matchedRegTitle,
+                    periodeAudit: findVal(['periode', 'periode audit']) || "N/A",
+                    tglPelaksanaan: tglPelaksanaan,
+                    auditor: auditor,
+                    auditMembers: auditMembers,
+                    emailAuditee: emailAuditee,
+                    ccEmail: ccEmail,
+                    hasSignedSPP: true,
+                    created_by: currentUserEmail || "Batch Upload",
+                    statusManager: statusMgr,
+                    isBackdate: true
+                };
+
+                dbPenomoran.push(newDoc);
+                insertedCount++;
+            });
+
+            syncPenomoranToFirebase();
+            logActivity("Penomoran Dokumen", "Batch Upload Register Excel", `${insertedCount} dokumen berhasil di-import`);
+            populateDropdowns();
+            refreshUI();
+
+            alert(`✅ Upload Selesai!\n\n• ${insertedCount} dokumen berhasil ditambahkan.\n• ${duplicateCount} dokumen dilewati karena nomor SPP sudah ada.`);
+        } catch (err) {
+            alert("⚠️ Gagal memproses file Excel: " + err.message);
+        }
+        e.target.value = "";
+    };
+    reader.readAsArrayBuffer(file);
 }
 
 function filterLogTable() {
@@ -730,7 +867,7 @@ function toggleManagerApproval(id) {
         if (confirm("Project ini sudah di-approve. Apakah Anda ingin MENGBATALKAN status approval?")) {
             doc.statusManager = "Not Approved";
             logActivity("Summary Audit", "Pembatalan Approval Manager", doc.noSPP);
-            syncSinglePenomoranToFirebase(doc);
+            syncPenomoranToFirebase();
             refreshUI();
         }
         return;
@@ -758,7 +895,7 @@ function toggleManagerApproval(id) {
         }
 
         logActivity("Summary Audit", "Otorisasi Approval Manager & Terbit LHA/PICA", doc.noSPP);
-        syncSinglePenomoranToFirebase(doc);
+        syncPenomoranToFirebase();
         refreshUI();
         alert(`🎉 Summary Audit Disetujui!\n\nNomor Resmi Terbit:\n• No. LHA: ${doc.noLHA}\n• No. PICA: ${doc.noPICA}`);
     }
@@ -952,7 +1089,7 @@ function renderLogRows(logs) {
 
 function refreshUI() {
     updateExecutiveDashboard();
-    renderPenomoranRows(dbPenomoran);
+    filterPenomoranTable();
     renderLogRows(activityLogs);
 
     const tbodyAudit = document.getElementById('table-audit-body');
@@ -1020,7 +1157,7 @@ initTodayDate();
 autoFillAuditeeEmail();
 
 // -------------------------------------------------------------
-// FIREBASE AUTH & REALTIME LISTENERS TERAMANKAN
+// FIREBASE AUTH & REALTIME DATABASE LISTENERS
 // -------------------------------------------------------------
 const firebaseConfig = {
     apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
@@ -1077,18 +1214,13 @@ function handleUserLogout() {
 function listenDatabaseRealtime() {
     database.ref('dbPenomoran').on('value', (snapshot) => {
         const val = snapshot.val();
-        
-        if (!val) {
-            dbPenomoran = [];
-        } else if (Array.isArray(val)) {
+        if (Array.isArray(val)) {
             dbPenomoran = val.filter(Boolean);
-        } else if (typeof val === 'object') {
+        } else if (val && typeof val === 'object') {
             dbPenomoran = Object.values(val);
+        } else {
+            dbPenomoran = [];
         }
-        
-        // Urutkan array berdasarkan ID (Timestamp) agar penomoran konsisten di semua device
-        dbPenomoran.sort((a, b) => a.id - b.id);
-
         populateDropdowns();
         updateSPPPreview();
         refreshUI();
