@@ -104,23 +104,32 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear, targetJenis) {
-    // Filter dokumen berdasarkan tahun DAN jenis surat tugas/audit yang sama
-    const listInYearAndType = dbPenomoran.filter(d => d.year === targetYear && d.jenis === targetJenis);
+    // 1. Validasi objek dan pastikan konversi Tahun sesuai (String/Number)
+    const validList = dbPenomoran.filter(d => 
+        d && 
+        typeof d === 'object' && 
+        String(d.year) === String(targetYear) && 
+        d.jenis === targetJenis
+    );
     
-    if (listInYearAndType.length === 0) return 1;
+    if (validList.length === 0) return 1;
 
-    // Ambil semua nomor urut dengan mengekstrak digit angka pertama dari sppSeq atau noSPP
-    const sequences = listInYearAndType.map(d => {
-        // Jika sppSeq berupa angka murni
-        if (typeof d.sppSeq === 'number' && !isNaN(d.sppSeq)) return d.sppSeq;
+    // 2. Ekstrak nomor urut dari sppSeq atau noSPP
+    const sequences = validList.map(d => {
+        if (typeof d.sppSeq === 'number' && !isNaN(d.sppSeq)) {
+            return d.sppSeq;
+        }
         
-        // Ekstrak angka pertama sebelum tanda '/' (contoh: "027/SPP/..." -> 27)
-        const strVal = String(d.sppSeq || d.noSPP || '');
+        // Ambil angka sebelum karakter '/' pertama
+        const strVal = String(d.sppSeq || d.noSPP || '').trim();
         const match = strVal.match(/^(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
-    });
+    }).filter(num => !isNaN(num) && num > 0);
 
-    const maxSeq = Math.max(...sequences, 0);
+    if (sequences.length === 0) return 1;
+
+    // 3. Ambil nomor tertinggi dari data aktif
+    const maxSeq = Math.max(...sequences);
     return maxSeq + 1;
 }
 
@@ -328,13 +337,12 @@ function deleteDocumentNumber(id) {
     if (!doc) return;
 
     if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}`)) {
+        // Hapus dari array lokal
         dbPenomoran = dbPenomoran.filter(item => item.id !== id);
 
-        if (typeof database !== 'undefined' && database && database.ref) {
-            database.ref('dbPenomoran/' + id).remove();
-        }
-
+        // Timpa seluruh node dbPenomoran di Firebase agar data terhapus sempurna
         syncPenomoranToFirebase();
+
         logActivity("Penomoran Dokumen", "Hapus Permanen Nomor SPP", doc.noSPP);
         populateDropdowns();
         refreshUI();
