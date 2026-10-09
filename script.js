@@ -104,8 +104,9 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear) {
-    const listInYear = dbPenomoran.filter(d => d.year === targetYear);
-    return listInYear.length + 1;
+    const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.sppSeq);
+    if (listInYear.length === 0) return 1;
+    return Math.max(...listInYear.map(d => Number(d.sppSeq) || 0)) + 1;
 }
 
 function getNextLHASequence(targetYear) {
@@ -122,6 +123,7 @@ function getNextPICASequence(targetYear) {
 
 function updateSPPPreview() {
     const editId = document.getElementById('edit-doc-id').value;
+    // Jika sedang mode edit, hentikan pengubahan otomatis preview
     if (editId) return;
 
     const jenis = document.getElementById('p-jenis').value;
@@ -261,7 +263,10 @@ function editDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
+    // Set ID dokumen yang sedang diedit
     document.getElementById('edit-doc-id').value = doc.id;
+    
+    // Mengisi kembali seluruh input form sesuai data terdaftar
     document.getElementById('p-jenis').value = doc.jenis || "Reguler";
     document.getElementById('p-judul').value = doc.judul || "";
     document.getElementById('p-periode').value = doc.periodeAudit || "";
@@ -277,22 +282,29 @@ function editDocumentNumber(id) {
     document.getElementById('p-email').value = doc.emailAuditee || '';
     document.getElementById('p-cc-email').value = doc.ccEmail || '';
 
+    // Tampilkan field edit nomor manual dan isi dengan nomor yang terdaftar
     document.getElementById('container-edit-manual-spp').style.display = "block";
     document.getElementById('edit-manual-spp-val').value = doc.noSPP;
+    
+    // Sembunyikan elemen yang tidak diperlukan saat edit
     document.getElementById('container-live-spp-preview').style.display = "none";
+    document.getElementById('container-backdate-toggle').style.display = "none";
 
+    // Jika status sudah di-approve manager, tampilkan bidang edit LHA & PICA
     if (doc.statusManager === "Approved by Manager") {
         document.getElementById('container-edit-manual-approved').style.display = "block";
-        document.getElementById('edit-manual-lha').value = doc.noLHA;
-        document.getElementById('edit-manual-pica').value = doc.noPICA;
+        document.getElementById('edit-manual-lha').value = doc.noLHA || "";
+        document.getElementById('edit-manual-pica').value = doc.noPICA || "";
     } else {
         document.getElementById('container-edit-manual-approved').style.display = "none";
     }
 
+    // Ubah tampilan UI Tombol & Judul
     document.getElementById('form-penomoran-title').innerText = "⚙️ Edit Project & Penomoran Dokumen";
     document.getElementById('btn-submit-penomoran').innerText = "💾 Simpan Perubahan";
     document.getElementById('btn-cancel-edit').style.display = "block";
 
+    // Scroll ke atas dengan halus
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
