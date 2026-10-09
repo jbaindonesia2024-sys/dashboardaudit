@@ -105,12 +105,23 @@ function toggleBackDateFields() {
 
 function getNextSPPSequence(targetYear, targetJenis) {
     // Filter dokumen berdasarkan tahun DAN jenis surat tugas/audit yang sama
-    const listInYearAndType = dbPenomoran.filter(d => d.year === targetYear && d.jenis === targetJenis && d.sppSeq);
+    const listInYearAndType = dbPenomoran.filter(d => d.year === targetYear && d.jenis === targetJenis);
     
     if (listInYearAndType.length === 0) return 1;
-    
-    // Cari nilai sppSeq paling tinggi dari jenis tersebut, lalu tambahkan 1
-    return Math.max(...listInYearAndType.map(d => Number(d.sppSeq) || 0)) + 1;
+
+    // Ambil semua nomor urut dengan mengekstrak digit angka pertama dari sppSeq atau noSPP
+    const sequences = listInYearAndType.map(d => {
+        // Jika sppSeq berupa angka murni
+        if (typeof d.sppSeq === 'number' && !isNaN(d.sppSeq)) return d.sppSeq;
+        
+        // Ekstrak angka pertama sebelum tanda '/' (contoh: "027/SPP/..." -> 27)
+        const strVal = String(d.sppSeq || d.noSPP || '');
+        const match = strVal.match(/^(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+    });
+
+    const maxSeq = Math.max(...sequences, 0);
+    return maxSeq + 1;
 }
 
 function getNextLHASequence(targetYear) {
