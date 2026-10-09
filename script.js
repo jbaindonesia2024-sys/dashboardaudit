@@ -361,10 +361,10 @@ function deleteDocumentNumber(id) {
     if (!doc) return;
 
     if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}`)) {
-        // Hapus dari array lokal
+        // 1. Hapus dari array lokal
         dbPenomoran = dbPenomoran.filter(item => item.id !== id);
 
-        // Timpa seluruh node dbPenomoran di Firebase agar data terhapus sempurna
+        // 2. Sync ulang seluruh array yang sudah bersih ke Firebase
         syncPenomoranToFirebase();
 
         logActivity("Penomoran Dokumen", "Hapus Permanen Nomor SPP", doc.noSPP);
