@@ -951,46 +951,82 @@ function uploadBatchPenomoranExcel(e) {
             }
 
             let insertedCount = 0;
+            let duplicatesFound = [];
+            let missingRequiredCount = 0;
+
             jsonRows.forEach((row, idx) => {
                 const findVal = (keywords) => {
                     const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().trim().includes(kw)));
                     return key ? String(row[key]).trim() : "";
                 };
 
-                const jenis = findVal(['tipe', 'jenis']) || "Reguler";
-                const noSPP = findVal(['spp', 'no. spp', 'surat tugas', 'no. surat']);
+                const noSPP = findVal(['spp', 'no. spp', 'surat tugas', 'no. surat', 'nomor dokumen']);
                 const judul = findVal(['judul', 'cabang', 'pool', 'project']);
+                const auditor = findVal(['lead', 'auditor', 'lead auditor']);
+                const auditMembers = findVal(['member', 'members', 'anggota', 'audit members']) || "-";
 
-                if (!noSPP || !judul) return;
+                // Validasi Komponen Wajib (Nomor Dokumen, Judul Project, Lead Auditor)
+                if (!noSPP || !judul || !auditor) {
+                    missingRequiredCount++;
+                    return;
+                }
 
-                const exists = dbPenomoran.some(x => x.noSPP.toLowerCase() === noSPP.toLowerCase());
-                if (exists) return;
+                // Validasi Duplikasi Nomor Dokumen dengan sistem yang sudah ada
+                const isDuplicate = dbPenomoran.some(x => x.noSPP && x.noSPP.toLowerCase() === noSPP.toLowerCase());
+                if (isDuplicate) {
+                    duplicatesFound.push(noSPP);
+                    return;
+                }
 
-                const tglMulai = findVal(['mulai', 'tgl mulai']) || "-";
-                const tglSelesai = findVal(['selesai', 'tgl selesai']) || "-";
+                const jenis = findVal(['tipe', 'jenis']) || "Reguler";
+                let noLHA = findVal(['lha', 'no. lha', 'nomor lha']);
+                let noPICA = findVal(['pica', 'no. pica', 'nomor pica']);
+
+                // Ekstrak tahun dari nomor SPP atau gunakan tahun saat ini
+                const matchYear = noSPP.match(/\b(20\d{2})\b/);
+                const targetYear = matchYear ? parseInt(matchYear[1], 10) : new Date().getFullYear();
+
+                // Ambil urutan 3 digit angka awal dari noSPP
+                const matchSeq = noSPP.match(/^(\d+)/);
+                const sppSeq = matchSeq ? parseInt(matchSeq[1], 10) : (idx + 1);
+
+                // Pengelolaan LHA & PICA jika belum ada di Excel
+                let statusManager = "Not Approved";
+                if (noLHA && noPICA && noLHA !== "-" && noPICA !== "-") {
+                    statusManager = "Approved by Manager";
+                } else {
+                    noLHA = "-";
+                    noPICA = "-";
+                }
+
+                const tglMulai = findVal(['mulai', 'tgl mulai']) || new Date().toISOString().slice(0, 10);
+                const tglSelesai = findVal(['selesai', 'tgl selesai']) || new Date().toISOString().slice(0, 10);
 
                 const newDoc = {
                     id: Date.now() + idx,
                     jenis: jenis,
-                    year: new Date().getFullYear(),
+                    year: targetYear,
+                    sppSeq: sppSeq,
                     noSPP: noSPP,
-                    noLHA: findVal(['lha', 'no. lha']) || "-",
-                    noPICA: findVal(['pica', 'no. pica']) || "-",
-                    tanggalStart: formatIndonesianDate(new Date()),
+                    lhaSeq: null,
+                    noLHA: noLHA,
+                    picaSeq: null,
+                    noPICA: noPICA,
+                    tanggalStart: formatIndonesianDate(new Date(tglMulai)),
                     tglMulai: tglMulai,
                     tglSelesai: tglSelesai,
-                    tglPelaksanaan: `${tglMulai} s.d ${tglSelesai}`,
+                    tglPelaksanaan: `${formatIndonesianDate(new Date(tglMulai))} s.d ${formatIndonesianDate(new Date(tglSelesai))}`,
                     judul: judul,
                     regionalHead: regionalMap['reg1'].name,
                     jabatanRegionalHead: regionalMap['reg1'].title,
                     periodeAudit: findVal(['periode']) || "N/A",
-                    auditor: findVal(['lead', 'auditor']) || "Auditor",
-                    auditMembers: findVal(['member']) || "-",
+                    auditor: auditor,
+                    auditMembers: auditMembers,
                     emailAuditee: findVal(['email']) || "auditee@jba.co.id",
                     ccEmail: "-",
                     hasSignedSPP: true,
                     created_by: currentUserEmail || "Batch Upload",
-                    statusManager: "Not Approved",
+                    statusManager: statusManager,
                     isBackdate: true
                 };
 
@@ -1001,7 +1037,17 @@ function uploadBatchPenomoranExcel(e) {
             syncPenomoranToFirebase();
             populateDropdowns();
             refreshUI();
-            alert(`✅ ${insertedCount} dokumen berhasil di-import dari Excel!`);
+
+            // Notifikasi Detail Hasil Upload
+            let msg = `✅ Berhasil meng-import ${insertedCount} dokumen dari Excel!\n`;
+            if (duplicatesFound.length > 0) {
+                msg += `\n⚠️ Terdapat ${duplicatesFound.length} nomor dokumen DUPLIKAT yang dilewati:\n- ` + duplicatesFound.join('\n- ');
+            }
+            if (missingRequiredCount > 0) {
+                msg += `\n\n⚠️ ${missingRequiredCount} baris dilewati karena komponen wajib (Nomor Dokumen, Judul Project, atau Lead Auditor) tidak lengkap. Silakan lakukan pengeditan.`;
+            }
+            alert(msg);
+
         } catch (err) {
             alert("⚠️ Gagal memproses Excel: " + err.message);
         }
