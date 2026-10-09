@@ -104,7 +104,7 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear, targetJenis) {
-    // 1. Filter dokumen berdasarkan tahun DAN jenis surat tugas/audit yang sama
+    // Filter dokumen aktif berdasarkan TAHUN dan JENIS yang sama
     const listInYearAndType = dbPenomoran.filter(d => 
         d && 
         typeof d === 'object' && 
@@ -114,14 +114,14 @@ function getNextSPPSequence(targetYear, targetJenis) {
     
     if (listInYearAndType.length === 0) return 1;
 
-    // 2. Kumpulkan semua nomor urut aktif dan masukkan ke Set/Array unik
+// Kumpulkan seluruh nomor 3 digit depan yang sudah terpakai di tahun tersebut
     const existingSeqs = new Set();
     listInYearAndType.forEach(d => {
         let seq = 0;
         if (typeof d.sppSeq === 'number' && !isNaN(d.sppSeq)) {
             seq = d.sppSeq;
         } else {
-            // Ekstrak digit angka pertama dari format noSPP (misal: "025/SPP/..." -> 25)
+            // Ambil 3 digit angka pertama sebelum tanda '/' (misal: "025/SPP/..." -> 25)
             const strVal = String(d.sppSeq || d.noSPP || '');
             const match = strVal.match(/^(\d+)/);
             if (match) seq = parseInt(match[1], 10);
@@ -129,7 +129,7 @@ function getNextSPPSequence(targetYear, targetJenis) {
         if (seq > 0) existingSeqs.add(seq);
     });
 
-    // 3. Cari nomor urut terkecil yang kosong (mulai dari 1, 2, 3...)
+    // Cari nomor urut terkecil yang belum terpakai (gap) mulai dari 1
     let nextSeq = 1;
     while (existingSeqs.has(nextSeq)) {
         nextSeq++;
@@ -237,6 +237,25 @@ function generateDocumentNumber(e) {
     } else {
         let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
         const seqStr = String(seqNum).padStart(3, '0');
+
+        // Validasi Duplikasi: Cek apakah 3 digit nomor urut ini sudah pernah dipakai di jenis & TAHUN yang sama
+        const duplicate3Digit = dbPenomoran.find(item => {
+            if (!item || Number(item.year) !== Number(targetYear) || item.jenis !== jenis) return false;
+
+            let existingSeqNum = 0;
+            if (typeof item.sppSeq === 'number' && !isNaN(item.sppSeq)) {
+                existingSeqNum = item.sppSeq;
+            } else {
+                const match = String(item.sppSeq || item.noSPP || '').match(/^(\d+)/);
+                if (match) existingSeqNum = parseInt(match[1], 10);
+            }
+
+            return existingSeqNum === seqNum;
+        });
+
+        if (duplicate3Digit) {
+            return alert(`⚠️ NOMOR DOKUMEN TELAH TERPAKAI:\nNomor urut '${seqStr}' sudah digunakan pada Project '${duplicate3Digit.judul}' (No. SPP: ${duplicate3Digit.noSPP}) di tahun ${targetYear}.\n\nNomor 3 digit awal tidak boleh sama dalam tahun yang sama!`);
+        }
 
         let autoSPP = "";
         if (jenis === "Investigasi") autoSPP = `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}`;
