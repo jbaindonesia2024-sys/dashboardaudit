@@ -137,18 +137,31 @@ function getNextSPPSequence(targetYear, targetJenis) {
     return nextSeq;
 }
 
+// 2. PENULISAN ULANG PENENTUAN NOMOR LHA TERKECIL YANG KOSONG (REUSE GAP)
 function getNextLHASequence(targetYear) {
-    const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.lhaSeq);
+    const listInYear = dbPenomoran.filter(d => d && Number(d.year) === Number(targetYear) && d.lhaSeq);
     if (listInYear.length === 0) return 1;
-    return Math.max(...listInYear.map(d => d.lhaSeq)) + 1;
+
+    const existingSeqs = new Set(listInYear.map(d => Number(d.lhaSeq)).filter(num => !isNaN(num) && num > 0));
+    let nextSeq = 1;
+    while (existingSeqs.has(nextSeq)) {
+        nextSeq++;
+    }
+    return nextSeq;
 }
 
+// 3. PENULISAN ULANG PENENTUAN NOMOR PICA TERKECIL YANG KOSONG (REUSE GAP)
 function getNextPICASequence(targetYear) {
-    const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.picaSeq);
+    const listInYear = dbPenomoran.filter(d => d && Number(d.year) === Number(targetYear) && d.picaSeq);
     if (listInYear.length === 0) return 1;
-    return Math.max(...listInYear.map(d => d.picaSeq)) + 1;
-}
 
+    const existingSeqs = new Set(listInYear.map(d => Number(d.picaSeq)).filter(num => !isNaN(num) && num > 0));
+    let nextSeq = 1;
+    while (existingSeqs.has(nextSeq)) {
+        nextSeq++;
+    }
+    return nextSeq;
+}
 function updateSPPPreview() {
     const editId = document.getElementById('edit-doc-id').value;
     if (editId) return;
@@ -663,16 +676,24 @@ function toggleManagerApproval(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
+    // JIKA PEMBATALAN APPROVAL (CANCEL APPROVE)
     if (doc.statusManager === "Approved by Manager") {
-        if (confirm("Project ini sudah di-approve. Apakah Anda ingin MENGBATALKAN status approval?")) {
+        if (confirm(`Apakah Anda ingin MENGBATALKAN status approval untuk project ini?\n\nNomor LHA (${doc.noLHA}) dan PICA (${doc.noPICA}) akan dihapus dan menjadi available kembali.`)) {
             doc.statusManager = "Not Approved";
-            logActivity("Summary Audit", "Pembatalan Approval Manager", doc.noSPP);
+            doc.lhaSeq = null;
+            doc.noLHA = "-";
+            doc.picaSeq = null;
+            doc.noPICA = "-";
+
+            logActivity("Summary Audit", "Pembatalan Approval Manager & Reset LHA/PICA", doc.noSPP);
             syncPenomoranToFirebase();
             refreshUI();
+            alert("⚠️ Approval dibatalkan. Nomor LHA & PICA telah dihapus dan siap digunakan untuk project lain!");
         }
         return;
     }
 
+    // JIKA PROSES APPROVAL BARU
     const confirmed = confirm("Apakah Anda telah selesai mereview laporan ini dan hendak menyetujui penerbitan Nomor LHA & PICA?");
     if (confirmed) {
         const today = new Date();
@@ -684,6 +705,7 @@ function toggleManagerApproval(id) {
             doc.noLHA = "N/A (Investigasi)";
             doc.noPICA = "N/A (Investigasi)";
         } else {
+            // Generasi nomor LHA & PICA mengambil urutan terkecil yang kosong/terhapus
             const nextLHASeq = getNextLHASequence(currentYear);
             const nextPICASeq = getNextPICASequence(currentYear);
 
@@ -955,42 +977,56 @@ function uploadBatchPenomoranExcel(e) {
             let missingRequiredCount = 0;
 
             jsonRows.forEach((row, idx) => {
-                const findVal = (keywords) => {
-                    const key = Object.keys(row).find(k => keywords.some(kw => k.toLowerCase().trim().includes(kw)));
+                // Fungsi pencarian key dengan memprioritaskan kata kunci yang spesifik agar tidak tertukar
+                const findValStrict = (exactKeywords, containsKeywords) => {
+                    const keys = Object.keys(row);
+                    // Cek pencarian persis (exact match)
+                    let key = keys.find(k => exactKeywords.some(kw => k.toLowerCase().trim() === kw));
+                    if (!key && containsKeywords) {
+                        // Cek pencarian mengandung frasa
+                        key = keys.find(k => containsKeywords.some(kw => k.toLowerCase().trim().includes(kw)));
+                    }
                     return key ? String(row[key]).trim() : "";
                 };
 
-                const noSPP = findVal(['spp', 'no. spp', 'surat tugas', 'no. surat', 'nomor dokumen']);
-                const judul = findVal(['judul', 'cabang', 'pool', 'project']);
-                const auditor = findVal(['lead', 'auditor', 'lead auditor']);
-                const auditMembers = findVal(['member', 'members', 'anggota', 'audit members']) || "-";
+                // Kolom B: Tipe Project / Jenis
+                const jenis = findValStrict(['tipe project', 'tipe', 'jenis'], ['tipe', 'jenis']) || "Reguler";
+                
+                // Kolom C: Nomor Surat Tugas / SPP
+                const noSPP = findValStrict(['no. surat tugas / spp', 'no. spp', 'spp', 'no. surat'], ['spp', 'surat']);
+                
+                // Kolom F: Judul Project / Pool / Cabang
+                const judul = findValStrict(['judul project', 'pool / cabang / judul project', 'judul', 'cabang', 'pool'], ['judul', 'cabang', 'pool']);
+                
+                // Kolom G: Lead Auditor
+                const auditor = findValStrict(['lead auditor', 'lead', 'auditor'], ['lead', 'auditor']);
+                
+                // Kolom H: Audit Members
+                const auditMembers = findValStrict(['audit members', 'members', 'member'], ['member']) || "-";
 
-                // Validasi Komponen Wajib (Nomor Dokumen, Judul Project, Lead Auditor)
+                // Validasi komponen wajib
                 if (!noSPP || !judul || !auditor) {
                     missingRequiredCount++;
                     return;
                 }
 
-                // Validasi Duplikasi Nomor Dokumen dengan sistem yang sudah ada
-                const isDuplicate = dbPenomoran.some(x => x.noSPP && x.noSPP.toLowerCase() === noSPP.toLowerCase());
+                // Validasi duplikasi nomor dokumen pada sistem
+                const isDuplicate = dbPenomoran.some(x => x && x.noSPP && x.noSPP.toLowerCase() === noSPP.toLowerCase());
                 if (isDuplicate) {
                     duplicatesFound.push(noSPP);
                     return;
                 }
 
-                const jenis = findVal(['tipe', 'jenis']) || "Reguler";
-                let noLHA = findVal(['lha', 'no. lha', 'nomor lha']);
-                let noPICA = findVal(['pica', 'no. pica', 'nomor pica']);
+                let noLHA = findValStrict(['no. lha', 'lha'], ['lha']);
+                let noPICA = findValStrict(['no. pica', 'pica'], ['pica']);
 
-                // Ekstrak tahun dari nomor SPP atau gunakan tahun saat ini
+                // Ekstrak tahun dari nomor SPP atau gunakan tahun berjalan
                 const matchYear = noSPP.match(/\b(20\d{2})\b/);
                 const targetYear = matchYear ? parseInt(matchYear[1], 10) : new Date().getFullYear();
 
-                // Ambil urutan 3 digit angka awal dari noSPP
                 const matchSeq = noSPP.match(/^(\d+)/);
                 const sppSeq = matchSeq ? parseInt(matchSeq[1], 10) : (idx + 1);
 
-                // Pengelolaan LHA & PICA jika belum ada di Excel
                 let statusManager = "Not Approved";
                 if (noLHA && noPICA && noLHA !== "-" && noPICA !== "-") {
                     statusManager = "Approved by Manager";
@@ -999,12 +1035,12 @@ function uploadBatchPenomoranExcel(e) {
                     noPICA = "-";
                 }
 
-                const tglMulai = findVal(['mulai', 'tgl mulai']) || new Date().toISOString().slice(0, 10);
-                const tglSelesai = findVal(['selesai', 'tgl selesai']) || new Date().toISOString().slice(0, 10);
+                const tglMulai = findValStrict(['mulai', 'tgl mulai'], ['mulai']) || new Date().toISOString().slice(0, 10);
+                const tglSelesai = findValStrict(['selesai', 'tgl selesai'], ['selesai']) || new Date().toISOString().slice(0, 10);
 
                 const newDoc = {
                     id: Date.now() + idx,
-                    jenis: jenis,
+                    jenis: jenis, // Tipe Project masuk ke Jenis
                     year: targetYear,
                     sppSeq: sppSeq,
                     noSPP: noSPP,
@@ -1016,13 +1052,13 @@ function uploadBatchPenomoranExcel(e) {
                     tglMulai: tglMulai,
                     tglSelesai: tglSelesai,
                     tglPelaksanaan: `${formatIndonesianDate(new Date(tglMulai))} s.d ${formatIndonesianDate(new Date(tglSelesai))}`,
-                    judul: judul,
+                    judul: judul, // Judul Project masuk ke Pool/Cabang/Judul
                     regionalHead: regionalMap['reg1'].name,
                     jabatanRegionalHead: regionalMap['reg1'].title,
-                    periodeAudit: findVal(['periode']) || "N/A",
+                    periodeAudit: findValStrict(['periode audit', 'periode'], ['periode']) || "N/A",
                     auditor: auditor,
                     auditMembers: auditMembers,
-                    emailAuditee: findVal(['email']) || "auditee@jba.co.id",
+                    emailAuditee: findValStrict(['email auditee', 'email'], ['email']) || "auditee@jba.co.id",
                     ccEmail: "-",
                     hasSignedSPP: true,
                     created_by: currentUserEmail || "Batch Upload",
@@ -1038,13 +1074,12 @@ function uploadBatchPenomoranExcel(e) {
             populateDropdowns();
             refreshUI();
 
-            // Notifikasi Detail Hasil Upload
             let msg = `✅ Berhasil meng-import ${insertedCount} dokumen dari Excel!\n`;
             if (duplicatesFound.length > 0) {
                 msg += `\n⚠️ Terdapat ${duplicatesFound.length} nomor dokumen DUPLIKAT yang dilewati:\n- ` + duplicatesFound.join('\n- ');
             }
             if (missingRequiredCount > 0) {
-                msg += `\n\n⚠️ ${missingRequiredCount} baris dilewati karena komponen wajib (Nomor Dokumen, Judul Project, atau Lead Auditor) tidak lengkap. Silakan lakukan pengeditan.`;
+                msg += `\n\n⚠️ ${missingRequiredCount} baris dilewati karena komponen wajib (Nomor Dokumen, Judul Project, atau Lead Auditor) tidak lengkap.`;
             }
             alert(msg);
 
