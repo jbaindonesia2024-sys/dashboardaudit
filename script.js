@@ -103,10 +103,14 @@ function toggleBackDateFields() {
     updateSPPPreview();
 }
 
-function getNextSPPSequence(targetYear) {
-    const listInYear = dbPenomoran.filter(d => d.year === targetYear && d.sppSeq);
-    if (listInYear.length === 0) return 1;
-    return Math.max(...listInYear.map(d => Number(d.sppSeq) || 0)) + 1;
+function getNextSPPSequence(targetYear, targetJenis) {
+    // Filter dokumen berdasarkan tahun DAN jenis surat tugas/audit yang sama
+    const listInYearAndType = dbPenomoran.filter(d => d.year === targetYear && d.jenis === targetJenis && d.sppSeq);
+    
+    if (listInYearAndType.length === 0) return 1;
+    
+    // Cari nilai sppSeq paling tinggi dari jenis tersebut, lalu tambahkan 1
+    return Math.max(...listInYearAndType.map(d => Number(d.sppSeq) || 0)) + 1;
 }
 
 function getNextLHASequence(targetYear) {
@@ -123,7 +127,6 @@ function getNextPICASequence(targetYear) {
 
 function updateSPPPreview() {
     const editId = document.getElementById('edit-doc-id').value;
-    // Jika sedang mode edit, hentikan pengubahan otomatis preview
     if (editId) return;
 
     const jenis = document.getElementById('p-jenis').value;
@@ -135,7 +138,8 @@ function updateSPPPreview() {
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
 
-    let targetSeq = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear);
+    // Kirim targetYear dan jenis ke fungsi getNextSPPSequence
+    let targetSeq = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
     const seqStr = String(targetSeq).padStart(3, '0');
 
     let previewSPP = "";
@@ -206,7 +210,7 @@ function generateDocumentNumber(e) {
             alert("Data Penomoran Project Berhasil Diperbarui!");
         }
     } else {
-        let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear);
+        let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
         const seqStr = String(seqNum).padStart(3, '0');
 
         let autoSPP = "";
