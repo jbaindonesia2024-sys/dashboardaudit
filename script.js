@@ -104,7 +104,7 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear, targetJenis) {
-    // Filter dokumen aktif berdasarkan TAHUN dan JENIS yang sama
+    // Filter dokumen berdasarkan TAHUN dan JENIS yang dipilih
     const listInYearAndType = dbPenomoran.filter(d => 
         d && 
         typeof d === 'object' && 
@@ -114,14 +114,13 @@ function getNextSPPSequence(targetYear, targetJenis) {
     
     if (listInYearAndType.length === 0) return 1;
 
-// Kumpulkan seluruh nomor 3 digit depan yang sudah terpakai di tahun tersebut
+    // Kumpulkan seluruh 3 digit angka awal yang aktif tersimpan
     const existingSeqs = new Set();
     listInYearAndType.forEach(d => {
         let seq = 0;
         if (typeof d.sppSeq === 'number' && !isNaN(d.sppSeq)) {
             seq = d.sppSeq;
         } else {
-            // Ambil 3 digit angka pertama sebelum tanda '/' (misal: "025/SPP/..." -> 25)
             const strVal = String(d.sppSeq || d.noSPP || '');
             const match = strVal.match(/^(\d+)/);
             if (match) seq = parseInt(match[1], 10);
@@ -129,7 +128,7 @@ function getNextSPPSequence(targetYear, targetJenis) {
         if (seq > 0) existingSeqs.add(seq);
     });
 
-    // Cari nomor urut terkecil yang belum terpakai (gap) mulai dari 1
+    // Cari angka terkecil yang belum terpakai (dimulai dari 1)
     let nextSeq = 1;
     while (existingSeqs.has(nextSeq)) {
         nextSeq++;
@@ -238,8 +237,8 @@ function generateDocumentNumber(e) {
         let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
         const seqStr = String(seqNum).padStart(3, '0');
 
-        // Validasi Duplikasi: Cek apakah 3 digit nomor urut ini sudah pernah dipakai di jenis & TAHUN yang sama
-        const duplicate3Digit = dbPenomoran.find(item => {
+        // VALIDASI RULE 2: Tidak boleh duplikat 3 digit angka awal pada JENIS & TAHUN yang sama
+        const isDuplicate3Digit = dbPenomoran.some(item => {
             if (!item || Number(item.year) !== Number(targetYear) || item.jenis !== jenis) return false;
 
             let existingSeqNum = 0;
@@ -253,8 +252,8 @@ function generateDocumentNumber(e) {
             return existingSeqNum === seqNum;
         });
 
-        if (duplicate3Digit) {
-            return alert(`⚠️ NOMOR DOKUMEN TELAH TERPAKAI:\nNomor urut '${seqStr}' sudah digunakan pada Project '${duplicate3Digit.judul}' (No. SPP: ${duplicate3Digit.noSPP}) di tahun ${targetYear}.\n\nNomor 3 digit awal tidak boleh sama dalam tahun yang sama!`);
+        if (isDuplicate3Digit) {
+            return alert(`⚠️ NOMOR DOKUMEN DITOLAK:\nNomor urut '${seqStr}' sudah digunakan untuk jenis '${jenis}' pada tahun ${targetYear}.\n\n3 digit angka pertama tidak boleh duplikat dalam jenis & tahun yang sama!`);
         }
 
         let autoSPP = "";
@@ -262,11 +261,6 @@ function generateDocumentNumber(e) {
         else if (jenis === "Adhoc") autoSPP = `${seqStr}/SPP-ADH/JBA-IA/${monthRoman}/${targetYear}`;
         else if (jenis === "Advisory") autoSPP = `${seqStr}/SPP-ADV/JBA-IA/${monthRoman}/${targetYear}`;
         else autoSPP = `${seqStr}/SPP/JBA-IA/${monthRoman}/${targetYear}`;
-
-        const duplicateObj = dbPenomoran.find(item => item.noSPP && item.noSPP.toLowerCase() === autoSPP.toLowerCase());
-        if (duplicateObj) {
-            return alert(`⚠️ ERROR DUPLIKASI DOKUMEN:\nNomor SPP '${autoSPP}' telah terregistrasi pada Project '${duplicateObj.judul}'!`);
-        }
 
         const newDoc = {
             id: Date.now(),
@@ -361,10 +355,10 @@ function deleteDocumentNumber(id) {
     if (!doc) return;
 
     if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}`)) {
-        // 1. Hapus dari array lokal
+        // Hapus dari array lokal
         dbPenomoran = dbPenomoran.filter(item => item.id !== id);
 
-        // 2. Sync ulang seluruh array yang sudah bersih ke Firebase
+        // Timpa dan sinkronkan data utuh ke Firebase
         syncPenomoranToFirebase();
 
         logActivity("Penomoran Dokumen", "Hapus Permanen Nomor SPP", doc.noSPP);
