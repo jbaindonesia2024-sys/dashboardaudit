@@ -104,33 +104,38 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear, targetJenis) {
-    // 1. Validasi objek dan pastikan konversi Tahun sesuai (String/Number)
-    const validList = dbPenomoran.filter(d => 
+    // 1. Filter dokumen berdasarkan tahun DAN jenis surat tugas/audit yang sama
+    const listInYearAndType = dbPenomoran.filter(d => 
         d && 
         typeof d === 'object' && 
-        String(d.year) === String(targetYear) && 
+        Number(d.year) === Number(targetYear) && 
         d.jenis === targetJenis
     );
     
-    if (validList.length === 0) return 1;
+    if (listInYearAndType.length === 0) return 1;
 
-    // 2. Ekstrak nomor urut dari sppSeq atau noSPP
-    const sequences = validList.map(d => {
+    // 2. Kumpulkan semua nomor urut aktif dan masukkan ke Set/Array unik
+    const existingSeqs = new Set();
+    listInYearAndType.forEach(d => {
+        let seq = 0;
         if (typeof d.sppSeq === 'number' && !isNaN(d.sppSeq)) {
-            return d.sppSeq;
+            seq = d.sppSeq;
+        } else {
+            // Ekstrak digit angka pertama dari format noSPP (misal: "025/SPP/..." -> 25)
+            const strVal = String(d.sppSeq || d.noSPP || '');
+            const match = strVal.match(/^(\d+)/);
+            if (match) seq = parseInt(match[1], 10);
         }
-        
-        // Ambil angka sebelum karakter '/' pertama
-        const strVal = String(d.sppSeq || d.noSPP || '').trim();
-        const match = strVal.match(/^(\d+)/);
-        return match ? parseInt(match[1], 10) : 0;
-    }).filter(num => !isNaN(num) && num > 0);
+        if (seq > 0) existingSeqs.add(seq);
+    });
 
-    if (sequences.length === 0) return 1;
+    // 3. Cari nomor urut terkecil yang kosong (mulai dari 1, 2, 3...)
+    let nextSeq = 1;
+    while (existingSeqs.has(nextSeq)) {
+        nextSeq++;
+    }
 
-    // 3. Ambil nomor tertinggi dari data aktif
-    const maxSeq = Math.max(...sequences);
-    return maxSeq + 1;
+    return nextSeq;
 }
 
 function getNextLHASequence(targetYear) {
