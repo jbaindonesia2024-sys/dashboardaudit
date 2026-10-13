@@ -1419,7 +1419,3 @@ function downloadSuratTugas(id) {
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (PDF)", doc.noSPP);
     pdf.save(`Surat_Tugas_${doc.noSPP.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
 }
-```[cite: 2]
-
-4. **Save** file `script.js`[cite: 2], lalu reload/refresh halaman browser.
-5. Coba klik lagi tombol 🖨️ di tabel penomoran dokumen[cite: 1, 2]. File PDF Surat Tugas akan langsung otomatis terunduh[cite: 2].
