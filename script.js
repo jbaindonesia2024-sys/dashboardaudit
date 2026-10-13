@@ -1360,86 +1360,120 @@ function downloadSuratTugas(id) {
     }
 
     const { jsPDF } = window.jspdf;
+    // Page Setting A4 Portrait dengan Margin Standard Word (Left/Right: 25.4mm, Top/Bottom: 25.4mm)
     const pdf = new jsPDF('p', 'mm', 'a4');
 
-    // Kop Surat
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(14);
-    pdf.text("PT JBA INDONESIA", 105, 20, { align: "center" });
-    pdf.setFontSize(12);
-    pdf.text("INTERNAL AUDIT DEPARTMENT", 105, 26, { align: "center" });
-    pdf.setLineWidth(0.5);
-    pdf.line(20, 30, 190, 30);
+    const marginLeft = 25.4;
+    let y = 25.4;
 
-    // Judul & Nomor Surat
+    // Headings
+    pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
-    pdf.text("SURAT PERINTAH PENUGASAN (SPP)", 105, 40, { align: "center" });
-    pdf.setFont("helvetica", "normal");
+    pdf.text("Surat Pemberitahuan Penugasan", marginLeft, y);
+
+    y += 6;
     pdf.setFontSize(10);
-    pdf.text(`Nomor: ${doc.noSPP}`, 105, 46, { align: "center" });
+    pdf.text(`No: ${doc.noSPP || '-'}`, marginLeft, y);
 
-    // Isi Surat
-    let y = 58;
-    pdf.text("Dengan ini Menugaskan Tim Internal Audit di bawah ini:", 20, y);
-
-    y += 8;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("1. Lead Auditor", 25, y);
+    // Kepada Yth.
+    y += 10;
     pdf.setFont("helvetica", "normal");
-    pdf.text(`: ${doc.auditor}`, 65, y);
-
-    y += 6;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("2. Anggota Tim", 25, y);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`: ${doc.auditMembers || '-'}`, 65, y);
-
-    y += 12;
-    pdf.text("Untuk melaksanakan tugas audit operasional dengan rincian sebagai berikut:", 20, y);
-
-    y += 8;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Jenis Pemeriksaan", 25, y);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`: ${doc.jenis}`, 65, y);
-
-    y += 6;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Cabang / Unit / Pool", 25, y);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`: ${doc.judul}`, 65, y);
-
-    y += 6;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Periode Audit", 25, y);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`: ${doc.periodeAudit}`, 65, y);
-
-    y += 6;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Waktu Pelaksanaan", 25, y);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`: ${doc.tglPelaksanaan}`, 65, y);
-
-    // Penutup & Tanda Tangan
-    y += 14;
-    pdf.text("Demikian Surat Perintah Penugasan ini dibuat untuk dilaksanakan sebagaimana mestinya.", 20, y);
-    
-    y += 25;
-    const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
-    pdf.text(`Jakarta, ${tglTerbit}`, 130, y);
-    y += 6;
-    pdf.setFont("helvetica", "bold");
-    pdf.text("Pemberi Tugas,", 130, y);
-    y += 25;
-    pdf.text(doc.regionalHead || "Regional Head", 130, y);
-    pdf.setFont("helvetica", "normal");
+    pdf.text("Kepada Yth.", marginLeft, y);
     y += 5;
-    pdf.text(doc.jabatanRegionalHead || "Regional Head", 130, y);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(doc.jabatanRegionalHead || "Regional Head", marginLeft, y);
+    y += 5;
+    pdf.text(doc.regionalHead || "-", marginLeft, y);
+    y += 5;
+    pdf.setFont("helvetica", "normal");
+    pdf.text("ditempat", marginLeft, y);
+
+    // Perihal & Salam Pembuka
+    y += 8;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Perihal", marginLeft, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: Internal Audit ${doc.jenis || 'Rutin'}`, marginLeft + 20, y);
+
+    y += 8;
+    pdf.text("Dengan hormat,", marginLeft, y);
+    y += 6;
+    pdf.text("Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:", marginLeft, y);
+
+    // Format Tabel Rincian Penugasan (Sesuai Anchor Template Word)
+    y += 8;
+    const colLabelX = marginLeft + 4;
+    const colColonX = marginLeft + 50;
+    const colValX = marginLeft + 54;
+
+    // 1. Nama
+    pdf.text("Nama", colLabelX, y);
+    pdf.text(":", colColonX, y);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(doc.auditor || "-", colValX, y);
+    if (doc.auditMembers && doc.auditMembers !== "-") {
+        y += 5;
+        pdf.setFont("helvetica", "normal");
+        pdf.text(doc.auditMembers, colValX, y);
+    }
+
+    // 2. Ruang Lingkup
+    y += 6;
+    pdf.setFont("helvetica", "normal");
+    pdf.text("Ruang Lingkup", colLabelX, y);
+    pdf.text(":", colColonX, y);
+    pdf.text(`Kegiatan Operasional Pool ${doc.jenis === 'Investigasi' ? '(& Special Investigation)' : ''}`, colValX, y);
+
+    // 3. Cabang / Hub
+    y += 6;
+    pdf.text("Cabang / Hub", colLabelX, y);
+    pdf.text(":", colColonX, y);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(doc.judul || "-", colValX, y);
+
+    // 4. Obyektif
+    y += 6;
+    pdf.setFont("helvetica", "normal");
+    pdf.text("Obyektif", colLabelX, y);
+    pdf.text(":", colColonX, y);
+    pdf.text("Observasi Efektivitas serta Efisiensi Operasional Pool", colValX, y);
+
+    // 5. Periode Audit
+    y += 6;
+    pdf.text("Periode Audit", colLabelX, y);
+    pdf.text(":", colColonX, y);
+    pdf.text(doc.periodeAudit || "-", colValX, y);
+
+    // 6. Tanggal Pemeriksaan
+    y += 6;
+    pdf.text("Tanggal Pemeriksaan", colLabelX, y);
+    pdf.text(":", colColonX, y);
+    pdf.text(doc.tglPelaksanaan || "-", colValX, y);
+
+    // Penutup
+    y += 12;
+    pdf.text("Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa", marginLeft, y);
+    y += 5;
+    pdf.text("penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.", marginLeft, y);
+
+    y += 8;
+    pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
+
+    // Tanda Tangan CEO (Sesuai Template Word)
+    y += 18;
+    const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
+    pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
+
+    y += 24;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Shioyama Kazuhiro", marginLeft, y);
+    y += 5;
+    pdf.setFont("helvetica", "normal");
+    pdf.text("Chief Executive Officer", marginLeft, y);
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
 
-    // Buka dialog Print langsung di tab baru tanpa auto-download
+    // Buka Print Dialog di Tab Baru
     pdf.autoPrint();
     window.open(pdf.output('bloburl'), '_blank');
 }
