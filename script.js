@@ -1360,23 +1360,28 @@ function downloadSuratTugas(id) {
     }
 
     const { jsPDF } = window.jspdf;
-    // Page Setting A4 Portrait dengan Margin Standard Word (Left/Right: 25.4mm, Top/Bottom: 25.4mm)
     const pdf = new jsPDF('p', 'mm', 'a4');
 
     const marginLeft = 25.4;
     let y = 25.4;
 
-    // Headings (Posisi Tengah)
+    // ==========================================
+    // HEADER & JUDUL (Tetap Bold 13pt + Underline)
+    // ==========================================
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
-    pdf.text("Surat Pemberitahuan Penugasan", 105, y, { align: "center" });
+    pdf.text("Surat Pemberitahuan Penugasan", marginLeft, y);
     pdf.setLineWidth(0.5);
-    pdf.line(70, y + 1, 140, y + 1); // Garis underline di tengah
-    
+    pdf.line(marginLeft, y + 1, marginLeft + 68, y + 1); // Garis Underline
+
     y += 6;
-    pdf.setFontSize(10);
-    pdf.setFont("helvetica", "normal");
-    pdf.text(`No: ${doc.noSPP || '-'}`, 105, y, { align: "center" });
+    pdf.setFontSize(11); // Set ke 11pt untuk No Surat
+    pdf.text(`No: ${doc.noSPP || '-'}`, marginLeft, y);
+
+    // ==========================================
+    // BODY TEKS (Di-set ke Ukuran 11pt)
+    // ==========================================
+    pdf.setFontSize(11); // Ukuran Body 11pt
 
     // Kepada Yth.
     y += 10;
@@ -1403,11 +1408,11 @@ function downloadSuratTugas(id) {
     y += 6;
     pdf.text("Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:", marginLeft, y);
 
-    // Format Tabel Rincian Penugasan (Sesuai Anchor Template Word)
+    // TABEL RINCIAN TUGAS (Ukuran 11pt)
     y += 8;
     const colLabelX = marginLeft + 4;
     const colColonX = marginLeft + 50;
-    const colValX = marginLeft + 54;
+    const colValX   = marginLeft + 54;
 
     // 1. Nama
     pdf.text("Nama", colLabelX, y);
@@ -1453,7 +1458,7 @@ function downloadSuratTugas(id) {
     pdf.text(":", colColonX, y);
     pdf.text(doc.tglPelaksanaan || "-", colValX, y);
 
-    // Penutup
+    // Penutup (Ukuran 11pt)
     y += 12;
     pdf.text("Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa", marginLeft, y);
     y += 5;
@@ -1462,7 +1467,7 @@ function downloadSuratTugas(id) {
     y += 8;
     pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
 
-    // Tanda Tangan CEO (Sesuai Template Word)
+    // Tanda Tangan CEO (Ukuran 11pt)
     y += 18;
     const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
     pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
@@ -1476,7 +1481,7 @@ function downloadSuratTugas(id) {
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
 
-    // Buka Print Dialog di Tab Baru
+    // Print Preview Window
     pdf.autoPrint();
     window.open(pdf.output('bloburl'), '_blank');
 }
