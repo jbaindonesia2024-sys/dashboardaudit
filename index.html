@@ -186,10 +186,21 @@
 
                     <div class="form-group">
                         <label>Regional Head</label>
-                        <select id="p-regional" class="form-control" onchange="autoFillAuditeeEmail()" required>
+                        <select id="p-regional" class="form-control" required>
                             <option value="reg1" selected>Irfan Baharudin [Regional Head 1]</option>
                             <option value="reg2">Syafi Munawir Almaki [Regional Head 2]</option>
                             <option value="reg3">Tan Hung Pau [Regional Head 3 & 4]</option>
+                        </select>
+                    </div>
+
+                    <!-- DROPDOWN SUB REGIONAL HEAD -->
+                    <div class="form-group">
+                        <label>Sub Regional Head</label>
+                        <select id="p-sub-regional" class="form-control" required>
+                            <option value="sub1" selected>Abdul Rozzaq [abdul.rozzaq@jba.co.id]</option>
+                            <option value="sub2">Isna Novaliany [isna.novaliany@jba.co.id]</option>
+                            <option value="sub3">Arkan Muharram Mahadika [arkan.mahadika@jba.co.id]</option>
+                            <option value="sub4">Alit Pamrihnan [alit.pamrihnan@jba.co.id]</option>
                         </select>
                     </div>
 
@@ -225,14 +236,10 @@
                         </div>
                     </div>
 
+                    <!-- AREA INPUT EMAIL KEPALA POOL -->
                     <div class="form-group">
-                        <label>Email Auditee / Target (Auto-filled dari Regional Head)</label>
-                        <input type="email" id="p-email" class="form-control" placeholder="auditee@jba.co.id" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>CC Email (Salinan Surat Tugas)</label>
-                        <input type="text" id="p-cc-email" class="form-control" placeholder="manager.auditee@jba.co.id, regional.head@jba.co.id">
+                        <label>Email Kepala Pool / Auditee Terkait</label>
+                        <input type="email" id="p-email-kepala-pool" class="form-control" placeholder="kepala.pool@jba.co.id" required>
                     </div>
 
                     <!-- LIVE PREVIEW SPP BANNER -->
