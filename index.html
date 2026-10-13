@@ -184,32 +184,13 @@
                         </div>
                     </div>
 
-                    <!-- Regional Head (Email otomatis dibaca oleh sistem) -->
                     <div class="form-group">
                         <label>Regional Head</label>
-                        <select id="p-regional" class="form-control" required>
+                        <select id="p-regional" class="form-control" onchange="autoFillAuditeeEmail()" required>
                             <option value="reg1" selected>Irfan Baharudin [Regional Head 1]</option>
                             <option value="reg2">Syafi Munawir Almaki [Regional Head 2]</option>
                             <option value="reg3">Tan Hung Pau [Regional Head 3 & 4]</option>
                         </select>
-                    </div>
-
-                    <!-- Dropdown Sub Regional Head (Nama saja) -->
-                    <div class="form-group">
-                        <label>Sub Regional Head (Opsional)</label>
-                        <select id="p-subregional" class="form-control">
-                            <option value="">-- Pilih Sub Regional Head (Jika ada) --</option>
-                            <option value="abdul.rozzaq@jba.co.id|Abdul Rozzaq">Abdul Rozzaq</option>
-                            <option value="isna.novaliany@jba.co.id|Isna Novaliany">Isna Novaliany</option>
-                            <option value="alit.pamrihnan@jba.co.id|Alit Pamrihnan">Alit Pamrihnan</option>
-                            <option value="arkan.mahadika@jba.co.id|Arkan Muharram Mahadika">Arkan Muharram Mahadika</option>
-                        </select>
-                    </div>
-
-                    <!-- Kolom CC Email khusus Kepala Pool -->
-                    <div class="form-group">
-                        <label>Email Kepala Pool (Opsional untuk CC)</label>
-                        <input type="email" id="p-kepalapool-email" class="form-control" placeholder="kepalapool@jba.co.id">
                     </div>
 
                     <div class="form-group">
@@ -242,6 +223,16 @@
                             <label>Audit Member 2 (Opsional)</label>
                             <input type="text" id="p-member2" class="form-control" placeholder="Nama Anggota Tim 2">
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Email Auditee / Target (Auto-filled dari Regional Head)</label>
+                        <input type="email" id="p-email" class="form-control" placeholder="auditee@jba.co.id" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>CC Email (Salinan Surat Tugas)</label>
+                        <input type="text" id="p-cc-email" class="form-control" placeholder="manager.auditee@jba.co.id, regional.head@jba.co.id">
                     </div>
 
                     <!-- LIVE PREVIEW SPP BANNER -->
