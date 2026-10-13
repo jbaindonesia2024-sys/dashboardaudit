@@ -4,19 +4,19 @@ const regionalMap = {
     "reg3": { name: "Tan Hung Pau", title: "Regional Head 3 & 4", email: "tan.pau@jba.co.id" }
 };
 
+const subRegionalMap = {
+    "sub1": { name: "Abdul Rozzaq", title: "Sub Regional Head", email: "abdul.rozzaq@jba.co.id" },
+    "sub2": { name: "Isna Novaliany", title: "Sub Regional Head", email: "isna.novaliany@jba.co.id" },
+    "sub3": { name: "Arkan Muharram Mahadika", title: "Sub Regional Head", email: "arkan.mahadika@jba.co.id" },
+    "sub4": { name: "Alit Pamrihnan", title: "Sub Regional Head", email: "alit.pamrihnan@jba.co.id" }
+};
+
 // Daftar email yang berhak melakukan Approval (Admin & Manager ke atas)
 const listAdminManagerEmails = [
     'ahmad.shobri@jba.co.id',
     'manager@jba.co.id',
     'head@jba.co.id'
 ];
-
-function autoFillAuditeeEmail() {
-    const selectedKey = document.getElementById('p-regional').value;
-    if (regionalMap[selectedKey]) {
-        document.getElementById('p-email').value = regionalMap[selectedKey].email;
-    }
-}
 
 function toRoman(num) {
     const romanMap = [
@@ -104,7 +104,6 @@ function toggleBackDateFields() {
 }
 
 function getNextSPPSequence(targetYear, targetJenis) {
-    // Filter dokumen berdasarkan TAHUN dan JENIS yang dipilih
     const listInYearAndType = dbPenomoran.filter(d => 
         d && 
         typeof d === 'object' && 
@@ -114,7 +113,6 @@ function getNextSPPSequence(targetYear, targetJenis) {
     
     if (listInYearAndType.length === 0) return 1;
 
-    // Kumpulkan seluruh 3 digit angka awal yang aktif tersimpan
     const existingSeqs = new Set();
     listInYearAndType.forEach(d => {
         let seq = 0;
@@ -128,7 +126,6 @@ function getNextSPPSequence(targetYear, targetJenis) {
         if (seq > 0) existingSeqs.add(seq);
     });
 
-    // Cari angka terkecil yang belum terpakai (dimulai dari 1)
     let nextSeq = 1;
     while (existingSeqs.has(nextSeq)) {
         nextSeq++;
@@ -137,7 +134,6 @@ function getNextSPPSequence(targetYear, targetJenis) {
     return nextSeq;
 }
 
-// 2. PENULISAN ULANG PENENTUAN NOMOR LHA TERKECIL YANG KOSONG (REUSE GAP)
 function getNextLHASequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d && Number(d.year) === Number(targetYear) && d.lhaSeq);
     if (listInYear.length === 0) return 1;
@@ -150,7 +146,6 @@ function getNextLHASequence(targetYear) {
     return nextSeq;
 }
 
-// 3. PENULISAN ULANG PENENTUAN NOMOR PICA TERKECIL YANG KOSONG (REUSE GAP)
 function getNextPICASequence(targetYear) {
     const listInYear = dbPenomoran.filter(d => d && Number(d.year) === Number(targetYear) && d.picaSeq);
     if (listInYear.length === 0) return 1;
@@ -172,7 +167,6 @@ function updateSPPPreview() {
     const isBackdate = document.getElementById('p-is-backdate').checked;
     const manualSeqVal = document.getElementById('p-manual-spp-seq').value;
 
-    // Membaca tanggal terbit dari input baru
     const tglTerbitEl = document.getElementById('p-tgl-terbit');
     const tglTerbitVal = tglTerbitEl ? tglTerbitEl.value : '';
     const dateObj = tglTerbitVal ? new Date(tglTerbitVal) : (tglMulai ? new Date(tglMulai) : new Date());
@@ -180,7 +174,6 @@ function updateSPPPreview() {
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
 
-    // Kirim targetYear dan jenis ke fungsi getNextSPPSequence
     let targetSeq = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
     const seqStr = String(targetSeq).padStart(3, '0');
 
@@ -199,9 +192,21 @@ function generateDocumentNumber(e) {
     const editId = document.getElementById('edit-doc-id').value;
     const jenis = document.getElementById('p-jenis').value;
     const judul = document.getElementById('p-judul').value;
+    
+    // Regional Head Data
     const regKey = document.getElementById('p-regional').value;
     const regionalHead = regionalMap[regKey].name;
     const jabatanRegionalHead = regionalMap[regKey].title;
+    const emailRegionalHead = regionalMap[regKey].email;
+
+    // Sub Regional Head Data
+    const subRegKey = document.getElementById('p-sub-regional').value;
+    const subRegionalHead = subRegionalMap[subRegKey].name;
+    const emailSubRegional = subRegionalMap[subRegKey].email;
+
+    // Kepala Pool Email
+    const emailKepalaPool = document.getElementById('p-email-kepala-pool').value;
+
     const periode = document.getElementById('p-periode').value;
 
     const tglMulai = document.getElementById('p-tgl-mulai').value;
@@ -216,16 +221,12 @@ function generateDocumentNumber(e) {
     const isBackdate = document.getElementById('p-is-backdate').checked;
     const manualSeqVal = document.getElementById('p-manual-spp-seq').value;
 
-    // Membaca Tanggal Terbit dari Form
     const tglTerbitEl = document.getElementById('p-tgl-terbit');
     const tglTerbitVal = tglTerbitEl ? tglTerbitEl.value : '';
     const dateObj = tglTerbitVal ? new Date(tglTerbitVal) : new Date(tglMulai);
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
     const tglTerbitFormatted = formatIndonesianDate(dateObj);
-
-    const email = document.getElementById('p-email').value;
-    const ccEmail = document.getElementById('p-cc-email').value;
 
     if (editId) {
         const docIdx = dbPenomoran.findIndex(x => x.id == editId);
@@ -241,14 +242,16 @@ function generateDocumentNumber(e) {
                 judul: judul,
                 regionalHead: regionalHead,
                 jabatanRegionalHead: jabatanRegionalHead,
+                emailRegionalHead: emailRegionalHead,
+                subRegionalHead: subRegionalHead,
+                emailSubRegional: emailSubRegional,
+                emailKepalaPool: emailKepalaPool,
                 periodeAudit: periode,
                 tglMulai: tglMulai,
                 tglSelesai: tglSelesai,
                 tglPelaksanaan: tglPemeriksaanFormatted,
                 auditor: auditor,
                 auditMembers: auditMembers,
-                emailAuditee: email,
-                ccEmail: ccEmail,
                 updated_by: currentUserEmail
             };
 
@@ -259,7 +262,6 @@ function generateDocumentNumber(e) {
         let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
         const seqStr = String(seqNum).padStart(3, '0');
 
-        // VALIDASI RULE 2: Tidak boleh duplikat 3 digit angka awal pada JENIS & TAHUN yang sama
         const isDuplicate3Digit = dbPenomoran.some(item => {
             if (!item || Number(item.year) !== Number(targetYear) || item.jenis !== jenis) return false;
 
@@ -301,11 +303,13 @@ function generateDocumentNumber(e) {
             judul: judul,
             regionalHead: regionalHead,
             jabatanRegionalHead: jabatanRegionalHead,
+            emailRegionalHead: emailRegionalHead,
+            subRegionalHead: subRegionalHead,
+            emailSubRegional: emailSubRegional,
+            emailKepalaPool: emailKepalaPool,
             periodeAudit: periode,
             auditor: auditor,
             auditMembers: auditMembers,
-            emailAuditee: email,
-            ccEmail: ccEmail,
             hasSignedSPP: false,
             created_by: currentUserEmail,
             statusManager: "Not Approved",
@@ -327,19 +331,25 @@ function editDocumentNumber(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
-    // Set ID dokumen yang sedang diedit
     document.getElementById('edit-doc-id').value = doc.id;
     
-    // Mengisi kembali seluruh input form sesuai data terdaftar
     document.getElementById('p-jenis').value = doc.jenis || "Reguler";
     document.getElementById('p-judul').value = doc.judul || "";
     document.getElementById('p-periode').value = doc.periodeAudit || "";
     document.getElementById('p-auditor').value = doc.auditor || "";
+    document.getElementById('p-email-kepala-pool').value = doc.emailKepalaPool || "";
+
+    // Set Regional Dropdown
+    const regEntry = Object.entries(regionalMap).find(([_, v]) => v.name === doc.regionalHead);
+    if (regEntry) document.getElementById('p-regional').value = regEntry[0];
+
+    // Set Sub Regional Dropdown
+    const subRegEntry = Object.entries(subRegionalMap).find(([_, v]) => v.name === doc.subRegionalHead);
+    if (subRegEntry) document.getElementById('p-sub-regional').value = subRegEntry[0];
     
     if (doc.tglMulai) document.getElementById('p-tgl-mulai').value = doc.tglMulai;
     if (doc.tglSelesai) document.getElementById('p-tgl-selesai').value = doc.tglSelesai;
 
-    // Mengisi kembali Tanggal Terbit jika ada
     const elTglTerbit = document.getElementById('p-tgl-terbit');
     if (elTglTerbit && doc.tglMulai) {
         elTglTerbit.value = doc.tglMulai;
@@ -348,19 +358,13 @@ function editDocumentNumber(id) {
     const members = (doc.auditMembers || '').split(', ');
     document.getElementById('p-member1').value = members[0] || '';
     document.getElementById('p-member2').value = members[1] || '';
-    
-    document.getElementById('p-email').value = doc.emailAuditee || '';
-    document.getElementById('p-cc-email').value = doc.ccEmail || '';
 
-    // Tampilkan field edit nomor manual dan isi dengan nomor yang terdaftar
     document.getElementById('container-edit-manual-spp').style.display = "block";
     document.getElementById('edit-manual-spp-val').value = doc.noSPP;
     
-    // Sembunyikan elemen yang tidak diperlukan saat edit
     document.getElementById('container-live-spp-preview').style.display = "none";
     document.getElementById('container-backdate-toggle').style.display = "none";
 
-    // Jika status sudah di-approve manager, tampilkan bidang edit LHA & PICA
     if (doc.statusManager === "Approved by Manager") {
         document.getElementById('container-edit-manual-approved').style.display = "block";
         document.getElementById('edit-manual-lha').value = doc.noLHA || "";
@@ -369,12 +373,10 @@ function editDocumentNumber(id) {
         document.getElementById('container-edit-manual-approved').style.display = "none";
     }
 
-    // Ubah tampilan UI Tombol & Judul
     document.getElementById('form-penomoran-title').innerText = "⚙️ Edit Project & Penomoran Dokumen";
     document.getElementById('btn-submit-penomoran').innerText = "💾 Simpan Perubahan";
     document.getElementById('btn-cancel-edit').style.display = "block";
 
-    // Scroll ke atas dengan halus
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -383,10 +385,8 @@ function deleteDocumentNumber(id) {
     if (!doc) return;
 
     if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN nomor SPP berikut?\n\nNo. SPP: ${doc.noSPP}\nJudul: ${doc.judul}`)) {
-        // Hapus dari array lokal
         dbPenomoran = dbPenomoran.filter(item => item.id !== id);
 
-        // Timpa dan sinkronkan data utuh ke Firebase
         syncPenomoranToFirebase();
 
         logActivity("Penomoran Dokumen", "Hapus Permanen Nomor SPP", doc.noSPP);
@@ -411,7 +411,6 @@ function resetPenomoranForm() {
     }
 
     toggleBackDateFields();
-    autoFillAuditeeEmail();
 
     document.getElementById('form-penomoran-title').innerText = "Form Penomoran Dokumen & Surat Tugas";
     document.getElementById('btn-submit-penomoran').innerText = "⚡ Generate Nomor Dokumen";
@@ -451,12 +450,18 @@ function sendSignedSPP_Email(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
-    let toEmail = doc.emailAuditee || "auditee@jba.co.id";
-    let ccEmail = doc.ccEmail || "";
+    // Email Auditee diisi otomatis dengan Email Regional Head
+    let toEmail = doc.emailRegionalHead || "regional.head@jba.co.id";
+    
+    // CC Email diisi otomatis dengan Email Sub Regional & Email Kepala Pool
+    let ccList = [];
+    if (doc.emailSubRegional) ccList.push(doc.emailSubRegional);
+    if (doc.emailKepalaPool) ccList.push(doc.emailKepalaPool);
+    let ccEmail = ccList.join(", ");
 
     let subject = encodeURIComponent(`[SURAT PENUGASAN INTERNAL AUDIT] ${doc.judul} - ${doc.noSPP}`);
     let body = encodeURIComponent(
-        `Yth. Tim Auditee / Management ${doc.judul},\n\n` +
+        `Yth. Bapak/Ibu ${doc.regionalHead} (${doc.jabatanRegionalHead}),\n\n` +
         `Bersama email ini kami sampaikan Surat Perintah Penugasan Internal Audit resmi yang telah ditandatangani:\n\n` +
         ` Nomor Surat        : ${doc.noSPP}\n` +
         ` Cabang / Hub       : ${doc.judul}\n` +
@@ -476,7 +481,6 @@ function sendSignedSPP_Email(id) {
     window.location.href = mailtoUrl;
 }
 
-// FILTER & SORTING ALA EXCEL DOKUMEN
 function sortByColumn(columnName) {
     if (currentSortColumn === columnName) {
         currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
@@ -583,7 +587,6 @@ function resetExcelFilters() {
     applyExcelFilters();
 }
 
-// FILTER & SORTING SUMMARY AUDIT
 function sortSummaryByColumn(col) {
     if (summarySortColumn === col) {
         summarySortDirection = summarySortDirection === 'asc' ? 'desc' : 'asc';
@@ -688,7 +691,6 @@ function renderAuditSummaryRows(regulerProjects) {
     }).join('');
 }
 
-// APPROVAL MANAGER / ADMIN
 function toggleManagerApproval(id) {
     if (currentUserRole !== "manager") {
         return alert("⛔ OTORISASI DITOLAK:\nHanya user dengan Role Admin / Manager yang dapat melakukan approval laporan!");
@@ -697,7 +699,6 @@ function toggleManagerApproval(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
-    // JIKA PEMBATALAN APPROVAL (CANCEL APPROVE)
     if (doc.statusManager === "Approved by Manager") {
         if (confirm(`Apakah Anda ingin MENGBATALKAN status approval untuk project ini?\n\nNomor LHA (${doc.noLHA}) dan PICA (${doc.noPICA}) akan dihapus dan menjadi available kembali.`)) {
             doc.statusManager = "Not Approved";
@@ -714,7 +715,6 @@ function toggleManagerApproval(id) {
         return;
     }
 
-    // JIKA PROSES APPROVAL BARU
     const confirmed = confirm("Apakah Anda telah selesai mereview laporan ini dan hendak menyetujui penerbitan Nomor LHA & PICA?");
     if (confirmed) {
         const today = new Date();
@@ -726,7 +726,6 @@ function toggleManagerApproval(id) {
             doc.noLHA = "N/A (Investigasi)";
             doc.noPICA = "N/A (Investigasi)";
         } else {
-            // Generasi nomor LHA & PICA mengambil urutan terkecil yang kosong/terhapus
             const nextLHASeq = getNextLHASequence(currentYear);
             const nextPICASeq = getNextPICASequence(currentYear);
 
@@ -744,7 +743,6 @@ function toggleManagerApproval(id) {
     }
 }
 
-// OPEN AUDIT DETAIL TAB BARU
 function openAuditDetailWindow(noSPP, jenis) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Dokumen project tidak ditemukan!");
@@ -838,6 +836,7 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <div><small style="color: #64748b; font-weight: bold;">NO. PICA</small><br><b style="color: #16a34a;">${doc.noPICA}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">LEAD AUDITOR</small><br><b>${doc.auditor}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">REGIONAL HEAD</small><br><b>${doc.regionalHead}</b></div>
+                <div><small style="color: #64748b; font-weight: bold;">SUB REGIONAL HEAD</small><br><b>${doc.subRegionalHead || '-'}</b></div>
                 <div><small style="color: #64748b; font-weight: bold;">TANGGAL SELESAI AUDIT</small><br><b style="color: #ef4444;">${tglSelesaiFormatted}</b></div>
             </div>
 
@@ -998,40 +997,26 @@ function uploadBatchPenomoranExcel(e) {
             let missingRequiredCount = 0;
 
             jsonRows.forEach((row, idx) => {
-                // Fungsi pencarian key dengan memprioritaskan kata kunci yang spesifik agar tidak tertukar
                 const findValStrict = (exactKeywords, containsKeywords) => {
                     const keys = Object.keys(row);
-                    // Cek pencarian persis (exact match)
                     let key = keys.find(k => exactKeywords.some(kw => k.toLowerCase().trim() === kw));
                     if (!key && containsKeywords) {
-                        // Cek pencarian mengandung frasa
                         key = keys.find(k => containsKeywords.some(kw => k.toLowerCase().trim().includes(kw)));
                     }
                     return key ? String(row[key]).trim() : "";
                 };
 
-                // Kolom B: Tipe Project / Jenis
                 const jenis = findValStrict(['tipe project', 'tipe', 'jenis'], ['tipe', 'jenis']) || "Reguler";
-                
-                // Kolom C: Nomor Surat Tugas / SPP
                 const noSPP = findValStrict(['no. surat tugas / spp', 'no. spp', 'spp', 'no. surat'], ['spp', 'surat']);
-                
-                // Kolom F: Judul Project / Pool / Cabang
                 const judul = findValStrict(['judul project', 'pool / cabang / judul project', 'judul', 'cabang', 'pool'], ['judul', 'cabang', 'pool']);
-                
-                // Kolom G: Lead Auditor
                 const auditor = findValStrict(['lead auditor', 'lead', 'auditor'], ['lead', 'auditor']);
-                
-                // Kolom H: Audit Members
                 const auditMembers = findValStrict(['audit members', 'members', 'member'], ['member']) || "-";
 
-                // Validasi komponen wajib
                 if (!noSPP || !judul || !auditor) {
                     missingRequiredCount++;
                     return;
                 }
 
-                // Validasi duplikasi nomor dokumen pada sistem
                 const isDuplicate = dbPenomoran.some(x => x && x.noSPP && x.noSPP.toLowerCase() === noSPP.toLowerCase());
                 if (isDuplicate) {
                     duplicatesFound.push(noSPP);
@@ -1041,7 +1026,6 @@ function uploadBatchPenomoranExcel(e) {
                 let noLHA = findValStrict(['no. lha', 'lha'], ['lha']);
                 let noPICA = findValStrict(['no. pica', 'pica'], ['pica']);
 
-                // Ekstrak tahun dari nomor SPP atau gunakan tahun berjalan
                 const matchYear = noSPP.match(/\b(20\d{2})\b/);
                 const targetYear = matchYear ? parseInt(matchYear[1], 10) : new Date().getFullYear();
 
@@ -1061,7 +1045,7 @@ function uploadBatchPenomoranExcel(e) {
 
                 const newDoc = {
                     id: Date.now() + idx,
-                    jenis: jenis, // Tipe Project masuk ke Jenis
+                    jenis: jenis,
                     year: targetYear,
                     sppSeq: sppSeq,
                     noSPP: noSPP,
@@ -1073,14 +1057,16 @@ function uploadBatchPenomoranExcel(e) {
                     tglMulai: tglMulai,
                     tglSelesai: tglSelesai,
                     tglPelaksanaan: `${formatIndonesianDate(new Date(tglMulai))} s.d ${formatIndonesianDate(new Date(tglSelesai))}`,
-                    judul: judul, // Judul Project masuk ke Pool/Cabang/Judul
+                    judul: judul,
                     regionalHead: regionalMap['reg1'].name,
                     jabatanRegionalHead: regionalMap['reg1'].title,
+                    emailRegionalHead: regionalMap['reg1'].email,
+                    subRegionalHead: subRegionalMap['sub1'].name,
+                    emailSubRegional: subRegionalMap['sub1'].email,
+                    emailKepalaPool: "kepala.pool@jba.co.id",
                     periodeAudit: findValStrict(['periode audit', 'periode'], ['periode']) || "N/A",
                     auditor: auditor,
                     auditMembers: auditMembers,
-                    emailAuditee: findValStrict(['email auditee', 'email'], ['email']) || "auditee@jba.co.id",
-                    ccEmail: "-",
                     hasSignedSPP: true,
                     created_by: currentUserEmail || "Batch Upload",
                     statusManager: statusManager,
@@ -1124,12 +1110,13 @@ function exportPenomoranExcel() {
         "No. PICA": p.noPICA,
         "Pool / Cabang / Judul Project": p.judul,
         "Regional Head": `${p.regionalHead} (${p.jabatanRegionalHead})`,
+        "Sub Regional Head": p.subRegionalHead || "-",
         "Periode Audit": p.periodeAudit,
         "Tanggal Pemeriksaan": p.tglPelaksanaan,
         "Tanggal Selesai Audit": p.tglSelesai ? formatIndonesianDate(new Date(p.tglSelesai)) : "-",
         "Lead Auditor": p.auditor,
         "Audit Members": p.auditMembers,
-        "Email Auditee": p.emailAuditee,
+        "Email Kepala Pool": p.emailKepalaPool || "-",
         "Status Manager": p.statusManager
     }));
 
@@ -1258,8 +1245,6 @@ function refreshUI() {
     }
 }
 
-autoFillAuditeeEmail();
-
 // FIREBASE INITIALIZATION & LISTENERS
 const firebaseConfig = {
     apiKey: "AIzaSyA0aVH-JzpEztsnv8kwSpKPaa5qg2xzabI",
@@ -1361,41 +1346,33 @@ function downloadSuratTugas(id) {
 
     const { jsPDF } = window.jspdf;
 
-    // 1. PAGE SETTING: Orientation Portrait, Unit mm, Paper Size A4 (210mm x 297mm)
     const pdf = new jsPDF({
         orientation: 'p',
         unit: 'mm',
         format: 'a4'
     });
 
-    // 2. MARGIN SETTING: Top = 37.5 mm, Bottom = 25.4 mm, Left = 37.5 mm, Right = 25.4 mm
     const marginLeft = 37.5;
-    let y = 37.5; // Top Margin
-    const centerX = 105; // Titik tengah A4
+    let y = 37.5;
+    const centerX = 105;
 
-    const maxTextWidth = 147.1; // Lebar maks teks
-    const lineSpacing15 = 7.5;  // Line spacing 1.5
+    const maxTextWidth = 147.1;
+    const lineSpacing15 = 7.5;
 
-    // ==========================================
-    // JUDUL & NOMOR SURAT (Center Alignment)
-    // ==========================================
+    // JUDUL & NOMOR SURAT
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
     pdf.text("Surat Pemberitahuan Penugasan", centerX, y, { align: "center" });
 
-    // Garis Underline di bawah Judul
     pdf.setLineWidth(0.5);
     pdf.line(68, y + 1.2, 142, y + 1.2);
 
-    // Nomor Surat
     y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(11);
     pdf.text(`No: ${doc.noSPP || '-'}`, centerX, y, { align: "center" });
 
-    // ==========================================
     // KEPADA YTH & TUJUAN
-    // ==========================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("Kepada Yth.", marginLeft, y);
@@ -1411,14 +1388,12 @@ function downloadSuratTugas(id) {
     pdf.setFont("helvetica", "normal");
     pdf.text("ditempat", marginLeft, y);
 
-    // ==========================================
     // PERIHAL & SALAM PEMBUKA
-    // ==========================================
     y += lineSpacing15 * 1.2;
     pdf.setFont("helvetica", "bold");
     pdf.text("Perihal", marginLeft, y);
     pdf.setLineWidth(0.3);
-    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8); // Underline 'Perihal'
+    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8);
 
     pdf.setFont("helvetica", "normal");
     pdf.text(`: Internal Audit ${doc.jenis || 'Rutin'}`, marginLeft + 18, y);
@@ -1428,9 +1403,7 @@ function downloadSuratTugas(id) {
     y += lineSpacing15;
     pdf.text("Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:", marginLeft, y);
 
-    // ==========================================
     // TABEL RINCIAN PENUGASAN
-    // ==========================================
     y += lineSpacing15 * 1.1;
     const colLabelX = marginLeft + 2;
     const colColonX = marginLeft + 46;
@@ -1480,9 +1453,7 @@ function downloadSuratTugas(id) {
     pdf.text(":", colColonX, y);
     pdf.text(doc.tglPelaksanaan || "-", colValX, y);
 
-    // ==========================================
     // PENUTUP
-    // ==========================================
     y += lineSpacing15 * 1.3;
     const p1 = "Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.";
     const linesP1 = pdf.splitTextToSize(p1, maxTextWidth);
@@ -1491,37 +1462,32 @@ function downloadSuratTugas(id) {
     y += (linesP1.length * lineSpacing15) + 2;
     pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
 
-    // ==========================================
-    // TANDA TANGAN CEO & CC (REV 1 FORMAT)
-    // ==========================================
+    // TANDA TANGAN CEO & CC (SESUAI TEMPLATE SURAT TUGAS REV1)
     y += lineSpacing15 * 1.5;
     const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
     pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
 
-    y += 22; // Area ruang tanda tangan
-    // Nama CEO (Bold + Underline)
+    y += 22;
     pdf.setFont("helvetica", "bold");
     pdf.text("Shioyama Kazuhiro", marginLeft, y);
     pdf.setLineWidth(0.3);
     pdf.line(marginLeft, y + 0.8, marginLeft + 35, y + 0.8);
 
-    // Jabatan CEO (Italic)
     y += lineSpacing15 * 0.7;
     pdf.setFont("helvetica", "bolditalic");
     pdf.text("Chief Executive Officer", marginLeft, y);
 
-    // CC Section (Format Template Rev1)
+    // CC Section
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
     y += lineSpacing15 * 0.8;
-    pdf.text("1. Sub Regional", marginLeft, y);
+    pdf.text(`1. Sub Regional (${doc.subRegionalHead || '-'})`, marginLeft, y);
     y += lineSpacing15 * 0.8;
     pdf.text("2. Kepala Pool", marginLeft, y);
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
 
-    // Buka Print Dialog di Tab Baru
     pdf.autoPrint();
     window.open(pdf.output('bloburl'), '_blank');
 }
