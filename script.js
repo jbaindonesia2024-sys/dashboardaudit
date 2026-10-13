@@ -1366,13 +1366,17 @@ function downloadSuratTugas(id) {
     const marginLeft = 25.4;
     let y = 25.4;
 
-    // Headings
+    // Headings (Posisi Tengah)
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
-    pdf.text("Surat Pemberitahuan Penugasan", marginCenter, y);
+    pdf.text("Surat Pemberitahuan Penugasan", 105, y, { align: "center" });
+    pdf.setLineWidth(0.5);
+    pdf.line(70, y + 1, 140, y + 1); // Garis underline di tengah
     
-    pdf.setLineWidth(0.5); // Ketebalan garis
-    pdf.line(marginLeft, y + 1, marginLeft + 68, y + 1); // Garis sepanjang 68mm
+    y += 6;
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`No: ${doc.noSPP || '-'}`, 105, y, { align: "center" });
 
     // Kepada Yth.
     y += 10;
