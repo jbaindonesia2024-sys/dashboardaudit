@@ -162,6 +162,7 @@ function getNextPICASequence(targetYear) {
     }
     return nextSeq;
 }
+
 function updateSPPPreview() {
     const editId = document.getElementById('edit-doc-id').value;
     if (editId) return;
@@ -171,7 +172,11 @@ function updateSPPPreview() {
     const isBackdate = document.getElementById('p-is-backdate').checked;
     const manualSeqVal = document.getElementById('p-manual-spp-seq').value;
 
-    const dateObj = tglMulai ? new Date(tglMulai) : new Date();
+    // Membaca tanggal terbit dari input baru
+    const tglTerbitEl = document.getElementById('p-tgl-terbit');
+    const tglTerbitVal = tglTerbitEl ? tglTerbitEl.value : '';
+    const dateObj = tglTerbitVal ? new Date(tglTerbitVal) : (tglMulai ? new Date(tglMulai) : new Date());
+
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
 
@@ -211,7 +216,10 @@ function generateDocumentNumber(e) {
     const isBackdate = document.getElementById('p-is-backdate').checked;
     const manualSeqVal = document.getElementById('p-manual-spp-seq').value;
 
-    const dateObj = new Date(tglMulai);
+    // Membaca Tanggal Terbit dari Form
+    const tglTerbitEl = document.getElementById('p-tgl-terbit');
+    const tglTerbitVal = tglTerbitEl ? tglTerbitEl.value : '';
+    const dateObj = tglTerbitVal ? new Date(tglTerbitVal) : new Date(tglMulai);
     const targetYear = dateObj.getFullYear();
     const monthRoman = toRoman(dateObj.getMonth() + 1);
     const tglTerbitFormatted = formatIndonesianDate(dateObj);
@@ -229,6 +237,7 @@ function generateDocumentNumber(e) {
                 ...currentDoc,
                 jenis: jenis,
                 noSPP: newSPP,
+                tanggalStart: tglTerbitFormatted,
                 judul: judul,
                 regionalHead: regionalHead,
                 jabatanRegionalHead: jabatanRegionalHead,
@@ -330,6 +339,12 @@ function editDocumentNumber(id) {
     if (doc.tglMulai) document.getElementById('p-tgl-mulai').value = doc.tglMulai;
     if (doc.tglSelesai) document.getElementById('p-tgl-selesai').value = doc.tglSelesai;
 
+    // Mengisi kembali Tanggal Terbit jika ada
+    const elTglTerbit = document.getElementById('p-tgl-terbit');
+    if (elTglTerbit && doc.tglMulai) {
+        elTglTerbit.value = doc.tglMulai;
+    }
+
     const members = (doc.auditMembers || '').split(', ');
     document.getElementById('p-member1').value = members[0] || '';
     document.getElementById('p-member2').value = members[1] || '';
@@ -389,6 +404,12 @@ function resetPenomoranForm() {
     document.getElementById('container-edit-manual-approved').style.display = "none";
     document.getElementById('container-live-spp-preview').style.display = "block";
     document.getElementById('container-backdate-toggle').style.display = "block";
+    
+    const elTglTerbit = document.getElementById('p-tgl-terbit');
+    if (elTglTerbit) {
+        elTglTerbit.value = new Date().toISOString().slice(0, 10);
+    }
+
     toggleBackDateFields();
     autoFillAuditeeEmail();
 
