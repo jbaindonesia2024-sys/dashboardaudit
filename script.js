@@ -1455,29 +1455,29 @@ function downloadSuratTugas(id) {
     pdf.text("Chief Executive Officer", marginLeft, y);
 
     // =========================================================
-    // SECTION CC DENGAN SINKRONISASI NAMA
+    // SECTION CC DENGAN FORMAT FORMAT: Nama (Jabatan)
     // =========================================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
 
-    // Format Nama Kepala Pool
-    const namaPoolStr = (doc.namaKepalaPool && doc.namaKepalaPool.trim() !== "") 
-        ? doc.namaKepalaPool 
-        : "";
+    // Format label Kepala Pool: Nama (Kepala Pool) atau Kepala Pool (jika nama kosong)
+    const poolLabel = (doc.namaKepalaPool && doc.namaKepalaPool.trim() !== "") 
+        ? `${doc.namaKepalaPool} (Kepala Pool)` 
+        : "Kepala Pool";
 
-    // Jika Sub Regional Head diisi
+    // Jika Sub Regional Head dipilih/diisi: Nama (Sub Regional Head)
     if (doc.subRegionalHead && doc.subRegionalHead.trim() !== "") {
         y += lineSpacing15 * 0.8;
-        pdf.text(`1. Sub Regional Head (${doc.subRegionalHead})`, marginLeft, y);
+        pdf.text(`1. ${doc.subRegionalHead} (Sub Regional Head)`, marginLeft, y);
         
         y += lineSpacing15 * 0.8;
-        pdf.text(`2. Kepala Pool${namaPoolStr ? ` (${namaPoolStr})` : ''}`, marginLeft, y);
+        pdf.text(`2. ${poolLabel}`, marginLeft, y);
     } 
     // Jika Sub Regional Head KOSONG
     else {
         y += lineSpacing15 * 0.8;
-        pdf.text(`1. Kepala Pool${namaPoolStr ? ` (${namaPoolStr})` : ''}`, marginLeft, y);
+        pdf.text(`1. ${poolLabel}`, marginLeft, y);
     }
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
