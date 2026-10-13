@@ -1416,6 +1416,9 @@ function downloadSuratTugas(id) {
     y += 5;
     pdf.text(doc.jabatanRegionalHead || "Regional Head", 130, y);
 
-    logActivity("Penomoran Dokumen", "Cetak Surat Tugas (PDF)", doc.noSPP);
-    pdf.save(`Surat_Tugas_${doc.noSPP.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
+
+    // Buka dialog Print langsung di tab baru tanpa auto-download
+    pdf.autoPrint();
+    window.open(pdf.output('bloburl'), '_blank');
 }
