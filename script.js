@@ -1371,61 +1371,71 @@ function downloadSuratTugas(id) {
     // 2. MARGIN SETTING: Top = 37.5 mm, Bottom = 25.4 mm, Left = 37.5 mm, Right = 25.4 mm
     const marginLeft = 37.5;
     let y = 37.5; // Top Margin
+    const centerX = 105; // Titik tengah kertas A4
 
-    // Titik Tengah Kertas A4 (210mm / 2 = 105mm)
-    const centerX = 105;
+    // Lebar maksimum area teks (210 - 37.5 - 25.4 = 147.1 mm)
+    const maxTextWidth = 147.1;
 
     // ==========================================
-    // HEADER & JUDUL (Size 13pt, Center Alignment)
+    // JUDUL & NOMOR SURAT (Center Alignment)
     // ==========================================
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
     pdf.text("Surat Pemberitahuan Penugasan", centerX, y, { align: "center" });
 
-    // Garis Underline di tengah (Sebelum Nomor Surat)
+    // Garis Underline tepat di bawah Judul Surat Pemberitahuan Penugasan
     pdf.setLineWidth(0.5);
-    pdf.line(70, y + 1.5, 140, y + 1.5);
+    pdf.line(68, y + 1.2, 142, y + 1.2);
 
-    // Nomor Surat Tugas (Size 13pt, Center Alignment)
-    y += 7;
-    pdf.setFontSize(13);
+    // Nomor Surat Tugas (Size 11pt, Regular)
+    y += 6;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
     pdf.text(`No: ${doc.noSPP || '-'}`, centerX, y, { align: "center" });
 
     // ==========================================
-    // BODY TEKS (Calibri / Helvetica Size 11pt, Rata Kiri)
+    // KEPADA YTH & TUJUAN (Size 11pt)
     // ==========================================
-    pdf.setFontSize(11);
-
-    // Kepada Yth.
     y += 12;
     pdf.setFont("helvetica", "normal");
     pdf.text("Kepada Yth.", marginLeft, y);
+    
     y += 5;
     pdf.setFont("helvetica", "bold");
     pdf.text(doc.jabatanRegionalHead || "Regional Head", marginLeft, y);
+    
     y += 5;
     pdf.text(doc.regionalHead || "-", marginLeft, y);
+    
     y += 5;
     pdf.setFont("helvetica", "normal");
     pdf.text("ditempat", marginLeft, y);
 
-    // Perihal & Salam Pembuka
+    // ==========================================
+    // PERIHAL & SALAM PEMBUKA
+    // ==========================================
     y += 8;
+    // Perihal (Bold + Underline)
     pdf.setFont("helvetica", "bold");
     pdf.text("Perihal", marginLeft, y);
+    pdf.setLineWidth(0.3);
+    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8); // Garis bawah 'Perihal'
+
     pdf.setFont("helvetica", "normal");
-    pdf.text(`: Internal Audit ${doc.jenis || 'Rutin'}`, marginLeft + 20, y);
+    pdf.text(`: Internal Audit ${doc.jenis || 'Rutin'}`, marginLeft + 18, y);
 
     y += 8;
     pdf.text("Dengan hormat,", marginLeft, y);
-    y += 6;
+    y += 5;
     pdf.text("Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:", marginLeft, y);
 
-    // TABEL RINCIAN TUGAS (Size 11pt)
-    y += 8;
-    const colLabelX = marginLeft + 4;
-    const colColonX = marginLeft + 48;
-    const colValX   = marginLeft + 52;
+    // ==========================================
+    // TABEL RINCIAN PENUGASAN (Size 11pt)
+    // ==========================================
+    y += 7;
+    const colLabelX = marginLeft + 2;
+    const colColonX = marginLeft + 46;
+    const colValX   = marginLeft + 50;
 
     // 1. Nama / Lead Auditor & Members
     pdf.text("Nama", colLabelX, y);
@@ -1443,7 +1453,7 @@ function downloadSuratTugas(id) {
     pdf.setFont("helvetica", "normal");
     pdf.text("Ruang Lingkup", colLabelX, y);
     pdf.text(":", colColonX, y);
-    pdf.text(`Kegiatan Operasional Pool ${doc.jenis === 'Investigasi' ? '(& Special Investigation)' : ''}`, colValX, y);
+    pdf.text(`Kegiatan Operasional Pool`, colValX, y);
 
     // 3. Cabang / Hub
     y += 6;
@@ -1471,25 +1481,34 @@ function downloadSuratTugas(id) {
     pdf.text(":", colColonX, y);
     pdf.text(doc.tglPelaksanaan || "-", colValX, y);
 
-    // Penutup (Size 11pt)
-    y += 12;
-    pdf.text("Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa", marginLeft, y);
-    y += 5;
-    pdf.text("penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.", marginLeft, y);
+    // ==========================================
+    // PENUTUP (Auto-Wrap Paragraf)
+    // ==========================================
+    y += 10;
+    const p1 = "Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.";
+    const linesP1 = pdf.splitTextToSize(p1, maxTextWidth);
+    pdf.text(linesP1, marginLeft, y);
 
-    y += 8;
+    y += (linesP1.length * 5) + 4;
     pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
 
-    // Tanda Tangan CEO (Size 11pt)
-    y += 18;
+    // ==========================================
+    // TANDA TANGAN CEO
+    // ==========================================
+    y += 10;
     const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
     pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
 
-    y += 24;
+    y += 22;
+    // Nama CEO (Bold + Underline)
     pdf.setFont("helvetica", "bold");
     pdf.text("Shioyama Kazuhiro", marginLeft, y);
+    pdf.setLineWidth(0.3);
+    pdf.line(marginLeft, y + 0.8, marginLeft + 35, y + 0.8); // Garis bawah Nama CEO
+
+    // Jabatan CEO (Italic)
     y += 5;
-    pdf.setFont("helvetica", "normal");
+    pdf.setFont("helvetica", "bolditalic");
     pdf.text("Chief Executive Officer", marginLeft, y);
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
