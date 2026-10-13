@@ -199,16 +199,15 @@ function generateDocumentNumber(e) {
     const jabatanRegionalHead = regionalMap[regKey].title;
     const emailRegionalHead = regionalMap[regKey].email;
 
-    // Sub Regional Head Data
+    // Sub Regional Head Data (Opsional)
     const subRegKey = document.getElementById('p-sub-regional').value;
-    const subRegionalHead = subRegionalMap[subRegKey].name;
-    const emailSubRegional = subRegionalMap[subRegKey].email;
+    const subRegionalHead = subRegKey && subRegionalMap[subRegKey] ? subRegionalMap[subRegKey].name : "";
+    const emailSubRegional = subRegKey && subRegionalMap[subRegKey] ? subRegionalMap[subRegKey].email : "";
 
-    // Kepala Pool Email
+    // Email Kepala Pool
     const emailKepalaPool = document.getElementById('p-email-kepala-pool').value;
 
     const periode = document.getElementById('p-periode').value;
-
     const tglMulai = document.getElementById('p-tgl-mulai').value;
     const tglSelesai = document.getElementById('p-tgl-selesai').value;
     const tglPemeriksaanFormatted = `${formatIndonesianDate(new Date(tglMulai))} s.d ${formatIndonesianDate(new Date(tglSelesai))}`;
@@ -261,24 +260,6 @@ function generateDocumentNumber(e) {
     } else {
         let seqNum = (isBackdate && manualSeqVal) ? parseInt(manualSeqVal, 10) : getNextSPPSequence(targetYear, jenis);
         const seqStr = String(seqNum).padStart(3, '0');
-
-        const isDuplicate3Digit = dbPenomoran.some(item => {
-            if (!item || Number(item.year) !== Number(targetYear) || item.jenis !== jenis) return false;
-
-            let existingSeqNum = 0;
-            if (typeof item.sppSeq === 'number' && !isNaN(item.sppSeq)) {
-                existingSeqNum = item.sppSeq;
-            } else {
-                const match = String(item.sppSeq || item.noSPP || '').match(/^(\d+)/);
-                if (match) existingSeqNum = parseInt(match[1], 10);
-            }
-
-            return existingSeqNum === seqNum;
-        });
-
-        if (isDuplicate3Digit) {
-            return alert(`⚠️ NOMOR DOKUMEN DITOLAK:\nNomor urut '${seqStr}' sudah digunakan untuk jenis '${jenis}' pada tahun ${targetYear}.\n\n3 digit angka pertama tidak boleh duplikat dalam jenis & tahun yang sama!`);
-        }
 
         let autoSPP = "";
         if (jenis === "Investigasi") autoSPP = `${seqStr}/FOC-SRT TUGAS/${monthRoman}/${targetYear}`;
@@ -450,13 +431,17 @@ function sendSignedSPP_Email(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
-    // Email Auditee diisi otomatis dengan Email Regional Head
+    // Email Auditee utama: Regional Head
     let toEmail = doc.emailRegionalHead || "regional.head@jba.co.id";
     
-    // CC Email diisi otomatis dengan Email Sub Regional & Email Kepala Pool
+    // CC List: Masukkan Sub Regional (jika ada) dan Kepala Pool
     let ccList = [];
-    if (doc.emailSubRegional) ccList.push(doc.emailSubRegional);
-    if (doc.emailKepalaPool) ccList.push(doc.emailKepalaPool);
+    if (doc.emailSubRegional && doc.emailSubRegional.trim() !== "") {
+        ccList.push(doc.emailSubRegional);
+    }
+    if (doc.emailKepalaPool && doc.emailKepalaPool.trim() !== "") {
+        ccList.push(doc.emailKepalaPool);
+    }
     let ccEmail = ccList.join(", ");
 
     let subject = encodeURIComponent(`[SURAT PENUGASAN INTERNAL AUDIT] ${doc.judul} - ${doc.noSPP}`);
@@ -1345,17 +1330,11 @@ function downloadSuratTugas(id) {
     }
 
     const { jsPDF } = window.jspdf;
-
-    const pdf = new jsPDF({
-        orientation: 'p',
-        unit: 'mm',
-        format: 'a4'
-    });
+    const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
 
     const marginLeft = 37.5;
     let y = 37.5;
     const centerX = 105;
-
     const maxTextWidth = 147.1;
     const lineSpacing15 = 7.5;
 
@@ -1409,7 +1388,6 @@ function downloadSuratTugas(id) {
     const colColonX = marginLeft + 46;
     const colValX   = marginLeft + 50;
 
-    // 1. Nama
     pdf.text("Nama", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.setFont("helvetica", "bold");
@@ -1420,34 +1398,29 @@ function downloadSuratTugas(id) {
         pdf.text(doc.auditMembers, colValX, y);
     }
 
-    // 2. Ruang Lingkup
     y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.text("Ruang Lingkup", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.text("Kegiatan Operasional Pool", colValX, y);
 
-    // 3. Cabang / Hub
     y += lineSpacing15;
     pdf.text("Cabang / Hub", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.setFont("helvetica", "bold");
     pdf.text(doc.judul || "-", colValX, y);
 
-    // 4. Obyektif
     y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.text("Obyektif", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.text("Observasi Efektivitas serta Efisiensi Operasional Pool", colValX, y);
 
-    // 5. Periode Audit
     y += lineSpacing15;
     pdf.text("Periode Audit", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.text(doc.periodeAudit || "-", colValX, y);
 
-    // 6. Tanggal Pemeriksaan
     y += lineSpacing15;
     pdf.text("Tanggal Pemeriksaan", colLabelX, y);
     pdf.text(":", colColonX, y);
@@ -1462,7 +1435,7 @@ function downloadSuratTugas(id) {
     y += (linesP1.length * lineSpacing15) + 2;
     pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
 
-    // TANDA TANGAN CEO & CC (SESUAI TEMPLATE SURAT TUGAS REV1)
+    // TANDA TANGAN CEO
     y += lineSpacing15 * 1.5;
     const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
     pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
@@ -1477,14 +1450,22 @@ function downloadSuratTugas(id) {
     pdf.setFont("helvetica", "bolditalic");
     pdf.text("Chief Executive Officer", marginLeft, y);
 
-    // CC Section
+    // =========================================================
+    // DYNAMIC CC SECTION (SESUAI OPSI SUB REGIONAL HEAD)
+    // =========================================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
-    y += lineSpacing15 * 0.8;
-    pdf.text(`1. Sub Regional (${doc.subRegionalHead || '-'})`, marginLeft, y);
-    y += lineSpacing15 * 0.8;
-    pdf.text("2. Kepala Pool", marginLeft, y);
+
+    if (doc.subRegionalHead && doc.subRegionalHead.trim() !== "") {
+        y += lineSpacing15 * 0.8;
+        pdf.text(`1. Sub Regional Head (${doc.subRegionalHead})`, marginLeft, y);
+        y += lineSpacing15 * 0.8;
+        pdf.text("2. Kepala Pool", marginLeft, y);
+    } else {
+        y += lineSpacing15 * 0.8;
+        pdf.text("1. Kepala Pool", marginLeft, y);
+    }
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
 
