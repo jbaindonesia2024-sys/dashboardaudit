@@ -1329,3 +1329,97 @@ function listenDatabaseRealtime() {
         refreshUI();
     });
 }
+
+function downloadSuratTugas(id) {
+    const doc = dbPenomoran.find(x => x.id === id);
+    if (!doc) return alert("Data dokumen tidak ditemukan!");
+
+    if (typeof window.jspdf === 'undefined') {
+        return alert("Library jsPDF belum siap. Silakan muat ulang halaman!");
+    }
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    // Kop Surat
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(14);
+    pdf.text("PT JBA INDONESIA", 105, 20, { align: "center" });
+    pdf.setFontSize(12);
+    pdf.text("INTERNAL AUDIT DEPARTMENT", 105, 26, { align: "center" });
+    pdf.setLineWidth(0.5);
+    pdf.line(20, 30, 190, 30);
+
+    // Judul & Nomor Surat
+    pdf.setFontSize(13);
+    pdf.text("SURAT PERINTAH PENUGASAN (SPP)", 105, 40, { align: "center" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    pdf.text(`Nomor: ${doc.noSPP}`, 105, 46, { align: "center" });
+
+    // Isi Surat
+    let y = 58;
+    pdf.text("Dengan ini Menugaskan Tim Internal Audit di bawah ini:", 20, y);
+
+    y += 8;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("1. Lead Auditor", 25, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: ${doc.auditor}`, 65, y);
+
+    y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("2. Anggota Tim", 25, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: ${doc.auditMembers || '-'}`, 65, y);
+
+    y += 12;
+    pdf.text("Untuk melaksanakan tugas audit operasional dengan rincian sebagai berikut:", 20, y);
+
+    y += 8;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Jenis Pemeriksaan", 25, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: ${doc.jenis}`, 65, y);
+
+    y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Cabang / Unit / Pool", 25, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: ${doc.judul}`, 65, y);
+
+    y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Periode Audit", 25, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: ${doc.periodeAudit}`, 65, y);
+
+    y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Waktu Pelaksanaan", 25, y);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`: ${doc.tglPelaksanaan}`, 65, y);
+
+    // Penutup & Tanda Tangan
+    y += 14;
+    pdf.text("Demikian Surat Perintah Penugasan ini dibuat untuk dilaksanakan sebagaimana mestinya.", 20, y);
+    
+    y += 25;
+    const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
+    pdf.text(`Jakarta, ${tglTerbit}`, 130, y);
+    y += 6;
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Pemberi Tugas,", 130, y);
+    y += 25;
+    pdf.text(doc.regionalHead || "Regional Head", 130, y);
+    pdf.setFont("helvetica", "normal");
+    y += 5;
+    pdf.text(doc.jabatanRegionalHead || "Regional Head", 130, y);
+
+    logActivity("Penomoran Dokumen", "Cetak Surat Tugas (PDF)", doc.noSPP);
+    pdf.save(`Surat_Tugas_${doc.noSPP.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+}
+```[cite: 2]
+
+4. **Save** file `script.js`[cite: 2], lalu reload/refresh halaman browser.
+5. Coba klik lagi tombol 🖨️ di tabel penomoran dokumen[cite: 1, 2]. File PDF Surat Tugas akan langsung otomatis terunduh[cite: 2].
