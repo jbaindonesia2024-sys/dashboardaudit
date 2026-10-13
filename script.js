@@ -1376,6 +1376,9 @@ function downloadSuratTugas(id) {
     // Lebar maksimum area teks (210 - 37.5 - 25.4 = 147.1 mm)
     const maxTextWidth = 147.1;
 
+    // Line Spacing 1.5 multiplier (standar 11pt/4.2mm * 1.5 = ~6.5mm - 7.5mm per baris)
+    const lineSpacing15 = 7.5;
+
     // ==========================================
     // JUDUL & NOMOR SURAT (Center Alignment)
     // ==========================================
@@ -1388,51 +1391,51 @@ function downloadSuratTugas(id) {
     pdf.line(68, y + 1.2, 142, y + 1.2);
 
     // Nomor Surat Tugas (Size 11pt, Regular)
-    y += 6;
+    y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(11);
     pdf.text(`No: ${doc.noSPP || '-'}`, centerX, y, { align: "center" });
 
     // ==========================================
-    // KEPADA YTH & TUJUAN (Size 11pt)
+    // KEPADA YTH & TUJUAN (Size 11pt, Spacing 1.5)
     // ==========================================
-    y += 12;
+    y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("Kepada Yth.", marginLeft, y);
     
-    y += 5;
+    y += lineSpacing15;
     pdf.setFont("helvetica", "bold");
     pdf.text(doc.jabatanRegionalHead || "Regional Head", marginLeft, y);
     
-    y += 5;
+    y += lineSpacing15;
     pdf.text(doc.regionalHead || "-", marginLeft, y);
     
-    y += 5;
+    y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.text("ditempat", marginLeft, y);
 
     // ==========================================
-    // PERIHAL & SALAM PEMBUKA
+    // PERIHAL & SALAM PEMBUKA (Spacing 1.5)
     // ==========================================
-    y += 8;
+    y += lineSpacing15 * 1.2;
     // Perihal (Bold + Underline)
     pdf.setFont("helvetica", "bold");
     pdf.text("Perihal", marginLeft, y);
     pdf.setLineWidth(0.3);
-    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8); // Garis bawah 'Perihal'
+    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8);
 
     pdf.setFont("helvetica", "normal");
     pdf.text(`: Internal Audit ${doc.jenis || 'Rutin'}`, marginLeft + 18, y);
 
-    y += 8;
+    y += lineSpacing15 * 1.2;
     pdf.text("Dengan hormat,", marginLeft, y);
-    y += 5;
+    y += lineSpacing15;
     pdf.text("Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:", marginLeft, y);
 
     // ==========================================
-    // TABEL RINCIAN PENUGASAN (Size 11pt)
+    // TABEL RINCIAN PENUGASAN (Size 11pt, Spacing 1.5)
     // ==========================================
-    y += 7;
+    y += lineSpacing15 * 1.1;
     const colLabelX = marginLeft + 2;
     const colColonX = marginLeft + 46;
     const colValX   = marginLeft + 50;
@@ -1443,73 +1446,80 @@ function downloadSuratTugas(id) {
     pdf.setFont("helvetica", "bold");
     pdf.text(doc.auditor || "-", colValX, y);
     if (doc.auditMembers && doc.auditMembers !== "-") {
-        y += 5;
+        y += lineSpacing15;
         pdf.setFont("helvetica", "normal");
         pdf.text(doc.auditMembers, colValX, y);
     }
 
     // 2. Ruang Lingkup
-    y += 6;
+    y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.text("Ruang Lingkup", colLabelX, y);
     pdf.text(":", colColonX, y);
-    pdf.text(`Kegiatan Operasional Pool`, colValX, y);
+    pdf.text("Kegiatan Operasional Pool", colValX, y);
 
     // 3. Cabang / Hub
-    y += 6;
+    y += lineSpacing15;
     pdf.text("Cabang / Hub", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.setFont("helvetica", "bold");
     pdf.text(doc.judul || "-", colValX, y);
 
     // 4. Obyektif
-    y += 6;
+    y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.text("Obyektif", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.text("Observasi Efektivitas serta Efisiensi Operasional Pool", colValX, y);
 
     // 5. Periode Audit
-    y += 6;
+    y += lineSpacing15;
     pdf.text("Periode Audit", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.text(doc.periodeAudit || "-", colValX, y);
 
     // 6. Tanggal Pemeriksaan
-    y += 6;
+    y += lineSpacing15;
     pdf.text("Tanggal Pemeriksaan", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.text(doc.tglPelaksanaan || "-", colValX, y);
 
     // ==========================================
-    // PENUTUP (Auto-Wrap Paragraf)
+    // PENUTUP (Auto-Wrap Paragraf + Spacing 1.5)
     // ==========================================
-    y += 10;
+    y += lineSpacing15 * 1.3;
     const p1 = "Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.";
     const linesP1 = pdf.splitTextToSize(p1, maxTextWidth);
-    pdf.text(linesP1, marginLeft, y);
+    pdf.text(linesP1, marginLeft, y, { lineHeightFactor: 1.5 });
 
-    y += (linesP1.length * 5) + 4;
+    y += (linesP1.length * lineSpacing15) + 2;
     pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
 
     // ==========================================
-    // TANDA TANGAN CEO
+    // TANDA TANGAN CEO & CC
     // ==========================================
-    y += 10;
+    y += lineSpacing15 * 1.5;
     const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
     pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
 
-    y += 22;
+    y += 22; // Space area tanda tangan
     // Nama CEO (Bold + Underline)
     pdf.setFont("helvetica", "bold");
     pdf.text("Shioyama Kazuhiro", marginLeft, y);
     pdf.setLineWidth(0.3);
-    pdf.line(marginLeft, y + 0.8, marginLeft + 35, y + 0.8); // Garis bawah Nama CEO
+    pdf.line(marginLeft, y + 0.8, marginLeft + 35, y + 0.8);
 
     // Jabatan CEO (Italic)
-    y += 5;
+    y += lineSpacing15 * 0.7;
     pdf.setFont("helvetica", "bolditalic");
     pdf.text("Chief Executive Officer", marginLeft, y);
+
+    // CC Section (1 Enter di bawah Jabatan CEO)
+    y += lineSpacing15 * 1.5;
+    pdf.setFont("helvetica", "normal");
+    pdf.text("CC : 1. Sub Regional", marginLeft, y);
+    y += lineSpacing15 * 0.8;
+    pdf.text("       2. Kepala Pool", marginLeft, y);
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
 
