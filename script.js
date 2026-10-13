@@ -1369,11 +1369,10 @@ function downloadSuratTugas(id) {
     // Headings
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(13);
-    pdf.text("Surat Pemberitahuan Penugasan", marginLeft, y);
-
-    y += 6;
-    pdf.setFontSize(10);
-    pdf.text(`No: ${doc.noSPP || '-'}`, marginLeft, y);
+    pdf.text("Surat Pemberitahuan Penugasan", marginCenter, y);
+    
+    pdf.setLineWidth(0.5); // Ketebalan garis
+    pdf.line(marginLeft, y + 1, marginLeft + 68, y + 1); // Garis sepanjang 68mm
 
     // Kepada Yth.
     y += 10;
