@@ -1371,13 +1371,10 @@ function downloadSuratTugas(id) {
     // 2. MARGIN SETTING: Top = 37.5 mm, Bottom = 25.4 mm, Left = 37.5 mm, Right = 25.4 mm
     const marginLeft = 37.5;
     let y = 37.5; // Top Margin
-    const centerX = 105; // Titik tengah kertas A4
+    const centerX = 105; // Titik tengah A4
 
-    // Lebar maksimum area teks (210 - 37.5 - 25.4 = 147.1 mm)
-    const maxTextWidth = 147.1;
-
-    // Line Spacing 1.5 multiplier (standar 11pt/4.2mm * 1.5 = ~6.5mm - 7.5mm per baris)
-    const lineSpacing15 = 7.5;
+    const maxTextWidth = 147.1; // Lebar maks teks
+    const lineSpacing15 = 7.5;  // Line spacing 1.5
 
     // ==========================================
     // JUDUL & NOMOR SURAT (Center Alignment)
@@ -1386,18 +1383,18 @@ function downloadSuratTugas(id) {
     pdf.setFontSize(13);
     pdf.text("Surat Pemberitahuan Penugasan", centerX, y, { align: "center" });
 
-    // Garis Underline tepat di bawah Judul Surat Pemberitahuan Penugasan
+    // Garis Underline di bawah Judul
     pdf.setLineWidth(0.5);
     pdf.line(68, y + 1.2, 142, y + 1.2);
 
-    // Nomor Surat Tugas (Size 11pt, Regular)
+    // Nomor Surat
     y += lineSpacing15;
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(11);
     pdf.text(`No: ${doc.noSPP || '-'}`, centerX, y, { align: "center" });
 
     // ==========================================
-    // KEPADA YTH & TUJUAN (Size 11pt, Spacing 1.5)
+    // KEPADA YTH & TUJUAN
     // ==========================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
@@ -1415,14 +1412,13 @@ function downloadSuratTugas(id) {
     pdf.text("ditempat", marginLeft, y);
 
     // ==========================================
-    // PERIHAL & SALAM PEMBUKA (Spacing 1.5)
+    // PERIHAL & SALAM PEMBUKA
     // ==========================================
     y += lineSpacing15 * 1.2;
-    // Perihal (Bold + Underline)
     pdf.setFont("helvetica", "bold");
     pdf.text("Perihal", marginLeft, y);
     pdf.setLineWidth(0.3);
-    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8);
+    pdf.line(marginLeft, y + 0.8, marginLeft + 12, y + 0.8); // Underline 'Perihal'
 
     pdf.setFont("helvetica", "normal");
     pdf.text(`: Internal Audit ${doc.jenis || 'Rutin'}`, marginLeft + 18, y);
@@ -1433,14 +1429,14 @@ function downloadSuratTugas(id) {
     pdf.text("Sehubungan dengan pelaksanaan Internal Audit JBA, maka kami akan menugaskan:", marginLeft, y);
 
     // ==========================================
-    // TABEL RINCIAN PENUGASAN (Size 11pt, Spacing 1.5)
+    // TABEL RINCIAN PENUGASAN
     // ==========================================
     y += lineSpacing15 * 1.1;
     const colLabelX = marginLeft + 2;
     const colColonX = marginLeft + 46;
     const colValX   = marginLeft + 50;
 
-    // 1. Nama / Lead Auditor & Members
+    // 1. Nama
     pdf.text("Nama", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.setFont("helvetica", "bold");
@@ -1485,7 +1481,7 @@ function downloadSuratTugas(id) {
     pdf.text(doc.tglPelaksanaan || "-", colValX, y);
 
     // ==========================================
-    // PENUTUP (Auto-Wrap Paragraf + Spacing 1.5)
+    // PENUTUP
     // ==========================================
     y += lineSpacing15 * 1.3;
     const p1 = "Berkenaan dengan penugasan tersebut, maka kami mengharapkan dukungan Bapak/Ibu & tim berupa penyediaan informasi dan data dari pihak yang terkait dengan kegiatan tersebut.";
@@ -1496,13 +1492,13 @@ function downloadSuratTugas(id) {
     pdf.text("Atas perhatian dan bantuannya, kami ucapkan terima kasih.", marginLeft, y);
 
     // ==========================================
-    // TANDA TANGAN CEO & CC
+    // TANDA TANGAN CEO & CC (REV 1 FORMAT)
     // ==========================================
     y += lineSpacing15 * 1.5;
     const tglTerbit = doc.tanggalStart || formatIndonesianDate(new Date());
     pdf.text(`Jakarta, ${tglTerbit}`, marginLeft, y);
 
-    y += 22; // Space area tanda tangan
+    y += 22; // Area ruang tanda tangan
     // Nama CEO (Bold + Underline)
     pdf.setFont("helvetica", "bold");
     pdf.text("Shioyama Kazuhiro", marginLeft, y);
@@ -1514,12 +1510,14 @@ function downloadSuratTugas(id) {
     pdf.setFont("helvetica", "bolditalic");
     pdf.text("Chief Executive Officer", marginLeft, y);
 
-    // CC Section (1 Enter di bawah Jabatan CEO)
+    // CC Section (Format Template Rev1)
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
-    pdf.text("CC : 1. Sub Regional", marginLeft, y);
+    pdf.text("CC :", marginLeft, y);
     y += lineSpacing15 * 0.8;
-    pdf.text("       2. Kepala Pool", marginLeft, y);
+    pdf.text("1. Sub Regional", marginLeft, y);
+    y += lineSpacing15 * 0.8;
+    pdf.text("2. Kepala Pool", marginLeft, y);
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
 
