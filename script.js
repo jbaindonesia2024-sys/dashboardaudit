@@ -204,7 +204,8 @@ function generateDocumentNumber(e) {
     const subRegionalHead = subRegKey && subRegionalMap[subRegKey] ? subRegionalMap[subRegKey].name : "";
     const emailSubRegional = subRegKey && subRegionalMap[subRegKey] ? subRegionalMap[subRegKey].email : "";
 
-    // Email Kepala Pool
+    // Nama & Email Kepala Pool Baru
+    const namaKepalaPool = document.getElementById('p-nama-kepala-pool').value;
     const emailKepalaPool = document.getElementById('p-email-kepala-pool').value;
 
     const periode = document.getElementById('p-periode').value;
@@ -244,6 +245,7 @@ function generateDocumentNumber(e) {
                 emailRegionalHead: emailRegionalHead,
                 subRegionalHead: subRegionalHead,
                 emailSubRegional: emailSubRegional,
+                namaKepalaPool: namaKepalaPool,
                 emailKepalaPool: emailKepalaPool,
                 periodeAudit: periode,
                 tglMulai: tglMulai,
@@ -287,6 +289,7 @@ function generateDocumentNumber(e) {
             emailRegionalHead: emailRegionalHead,
             subRegionalHead: subRegionalHead,
             emailSubRegional: emailSubRegional,
+            namaKepalaPool: namaKepalaPool,
             emailKepalaPool: emailKepalaPool,
             periodeAudit: periode,
             auditor: auditor,
@@ -318,13 +321,14 @@ function editDocumentNumber(id) {
     document.getElementById('p-judul').value = doc.judul || "";
     document.getElementById('p-periode').value = doc.periodeAudit || "";
     document.getElementById('p-auditor').value = doc.auditor || "";
+    
+    // Set Nama & Email Kepala Pool
+    document.getElementById('p-nama-kepala-pool').value = doc.namaKepalaPool || "";
     document.getElementById('p-email-kepala-pool').value = doc.emailKepalaPool || "";
 
-    // Set Regional Dropdown
     const regEntry = Object.entries(regionalMap).find(([_, v]) => v.name === doc.regionalHead);
     if (regEntry) document.getElementById('p-regional').value = regEntry[0];
 
-    // Set Sub Regional Dropdown
     const subRegEntry = Object.entries(subRegionalMap).find(([_, v]) => v.name === doc.subRegionalHead);
     if (subRegEntry) document.getElementById('p-sub-regional').value = subRegEntry[0];
     
@@ -1451,20 +1455,24 @@ function downloadSuratTugas(id) {
     pdf.text("Chief Executive Officer", marginLeft, y);
 
     // =========================================================
-    // DYNAMIC CC SECTION (SESUAI OPSI SUB REGIONAL HEAD)
+    // ANCHOR CC SECTION SINKRON DENGAN NAMA KEPALA POOL & SUB REGIONAL
     // =========================================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
 
+    const poolLabel = doc.namaKepalaPool && doc.namaKepalaPool.trim() !== "" 
+        ? `Kepala Pool (${doc.namaKepalaPool})` 
+        : "Kepala Pool";
+
     if (doc.subRegionalHead && doc.subRegionalHead.trim() !== "") {
         y += lineSpacing15 * 0.8;
         pdf.text(`1. Sub Regional Head (${doc.subRegionalHead})`, marginLeft, y);
         y += lineSpacing15 * 0.8;
-        pdf.text("2. Kepala Pool", marginLeft, y);
+        pdf.text(`2. ${poolLabel}`, marginLeft, y);
     } else {
         y += lineSpacing15 * 0.8;
-        pdf.text("1. Kepala Pool", marginLeft, y);
+        pdf.text(`1. ${poolLabel}`, marginLeft, y);
     }
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
