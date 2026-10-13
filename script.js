@@ -435,10 +435,10 @@ function sendSignedSPP_Email(id) {
     const doc = dbPenomoran.find(x => x.id === id);
     if (!doc) return;
 
-    // Email Auditee utama: Regional Head
+    // Email Auditee Utama (TO)
     let toEmail = doc.emailRegionalHead || "regional.head@jba.co.id";
     
-    // CC List: Masukkan Sub Regional (jika ada) dan Kepala Pool
+    // Logika Email CC
     let ccList = [];
     if (doc.emailSubRegional && doc.emailSubRegional.trim() !== "") {
         ccList.push(doc.emailSubRegional);
@@ -1455,24 +1455,29 @@ function downloadSuratTugas(id) {
     pdf.text("Chief Executive Officer", marginLeft, y);
 
     // =========================================================
-    // ANCHOR CC SECTION SINKRON DENGAN NAMA KEPALA POOL & SUB REGIONAL
+    // SECTION CC DENGAN SINKRONISASI NAMA
     // =========================================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
 
-    const poolLabel = doc.namaKepalaPool && doc.namaKepalaPool.trim() !== "" 
-        ? `Kepala Pool (${doc.namaKepalaPool})` 
-        : "Kepala Pool";
+    // Format Nama Kepala Pool
+    const namaPoolStr = (doc.namaKepalaPool && doc.namaKepalaPool.trim() !== "") 
+        ? doc.namaKepalaPool 
+        : "";
 
+    // Jika Sub Regional Head diisi
     if (doc.subRegionalHead && doc.subRegionalHead.trim() !== "") {
         y += lineSpacing15 * 0.8;
         pdf.text(`1. Sub Regional Head (${doc.subRegionalHead})`, marginLeft, y);
+        
         y += lineSpacing15 * 0.8;
-        pdf.text(`2. ${poolLabel}`, marginLeft, y);
-    } else {
+        pdf.text(`2. Kepala Pool${namaPoolStr ? ` (${namaPoolStr})` : ''}`, marginLeft, y);
+    } 
+    // Jika Sub Regional Head KOSONG
+    else {
         y += lineSpacing15 * 0.8;
-        pdf.text(`1. ${poolLabel}`, marginLeft, y);
+        pdf.text(`1. Kepala Pool${namaPoolStr ? ` (${namaPoolStr})` : ''}`, marginLeft, y);
     }
 
     logActivity("Penomoran Dokumen", "Cetak Surat Tugas (Print Window)", doc.noSPP);
