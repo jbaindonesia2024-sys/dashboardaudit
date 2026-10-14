@@ -1361,10 +1361,21 @@ function downloadSuratTugas(id) {
     pdf.text("Kepada Yth.", marginLeft, y);
     
     y += lineSpacing15;
-    pdf.setFont("helvetica", "bold");
-    pdf.text(doc.jabatanRegionalHead || "Regional Head", marginLeft, y);
+    let jabRH = doc.jabatanRegionalHead || "Regional Head";
+    if (jabRH.includes("Regional Head")) {
+        let parts = jabRH.split("Regional Head");
+        pdf.setFont("helvetica", "bolditalic");
+        pdf.text("Regional Head", marginLeft, y);
+        let rhWidth = pdf.getTextWidth("Regional Head");
+        pdf.setFont("helvetica", "bold");
+        pdf.text(parts[1] || "", marginLeft + rhWidth, y);
+    } else {
+        pdf.setFont("helvetica", "bold");
+        pdf.text(jabRH, marginLeft, y);
+    }
     
     y += lineSpacing15;
+    pdf.setFont("helvetica", "bold");
     pdf.text(doc.regionalHead || "-", marginLeft, y);
     
     y += lineSpacing15;
@@ -1409,7 +1420,7 @@ function downloadSuratTugas(id) {
     pdf.text("Kegiatan Operasional Pool", colValX, y);
 
     y += lineSpacing15;
-    pdf.text("Cabang / Hub", colLabelX, y);
+    pdf.text("Pool", colLabelX, y);
     pdf.text(":", colColonX, y);
     pdf.setFont("helvetica", "bold");
     pdf.text(doc.judul || "-", colValX, y);
@@ -1425,10 +1436,18 @@ function downloadSuratTugas(id) {
     pdf.text(":", colColonX, y);
     pdf.text(doc.periodeAudit || "-", colValX, y);
 
+    // Format Pemisah Tanggal Menggunakan "-"
+    let formattedTglPemeriksaan = doc.tglPelaksanaan || "-";
+    if (doc.tglMulai && doc.tglSelesai) {
+        formattedTglPemeriksaan = `${formatIndonesianDate(new Date(doc.tglMulai))} - ${formatIndonesianDate(new Date(doc.tglSelesai))}`;
+    } else {
+        formattedTglPemeriksaan = formattedTglPemeriksaan.replace(/\ss\.d\s/g, " - ");
+    }
+
     y += lineSpacing15;
     pdf.text("Tanggal Pemeriksaan", colLabelX, y);
     pdf.text(":", colColonX, y);
-    pdf.text(doc.tglPelaksanaan || "-", colValX, y);
+    pdf.text(formattedTglPemeriksaan, colValX, y);
 
     // PENUTUP
     y += lineSpacing15 * 1.3;
@@ -1455,28 +1474,34 @@ function downloadSuratTugas(id) {
     pdf.text("Chief Executive Officer", marginLeft, y);
 
     // =========================================================
-    // SECTION CC DENGAN FORMAT FORMAT: Nama (Jabatan)
+    // SECTION CC DENGAN FORMAT: Nama (Jabatan Italic)
     // =========================================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
 
-    // Format label Kepala Pool: Nama (Kepala Pool) atau Kepala Pool (jika nama kosong)
     const poolLabel = (doc.namaKepalaPool && doc.namaKepalaPool.trim() !== "") 
         ? `${doc.namaKepalaPool} (Kepala Pool)` 
         : "Kepala Pool";
 
-    // Jika Sub Regional Head dipilih/diisi: Nama (Sub Regional Head)
     if (doc.subRegionalHead && doc.subRegionalHead.trim() !== "") {
         y += lineSpacing15 * 0.8;
-        pdf.text(`1. ${doc.subRegionalHead} (Sub Regional Head)`, marginLeft, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`1. ${doc.subRegionalHead} (`, marginLeft, y);
+        let prefixWidth = pdf.getTextWidth(`1. ${doc.subRegionalHead} (`);
+        
+        pdf.setFont("helvetica", "italic");
+        pdf.text("Sub Regional Head", marginLeft + prefixWidth, y);
+        let srhWidth = pdf.getTextWidth("Sub Regional Head");
+        
+        pdf.setFont("helvetica", "normal");
+        pdf.text(")", marginLeft + prefixWidth + srhWidth, y);
         
         y += lineSpacing15 * 0.8;
         pdf.text(`2. ${poolLabel}`, marginLeft, y);
-    } 
-    // Jika Sub Regional Head KOSONG
-    else {
+    } else {
         y += lineSpacing15 * 0.8;
+        pdf.setFont("helvetica", "normal");
         pdf.text(`1. ${poolLabel}`, marginLeft, y);
     }
 
