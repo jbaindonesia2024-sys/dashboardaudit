@@ -448,17 +448,23 @@ function sendSignedSPP_Email(id) {
     }
     let ccEmail = ccList.join(", ");
 
+    // Format Tanggal Mulai Audit
+    const tglMulaiFormatted = doc.tglMulai 
+        ? formatIndonesianDate(new Date(doc.tglMulai)) 
+        : "-";
+
+    // Format Tanggal Hari Ini (Tanggal Kirim Email)
+    const tglKirimFormatted = formatIndonesianDate(new Date());
+
     let subject = encodeURIComponent(`[SURAT PENUGASAN INTERNAL AUDIT] ${doc.judul} - ${doc.noSPP}`);
     let body = encodeURIComponent(
-        `Yth. Bapak/Ibu ${doc.regionalHead} (${doc.jabatanRegionalHead}),\n\n` +
-        `Bersama email ini kami sampaikan Surat Perintah Penugasan Internal Audit resmi yang telah ditandatangani:\n\n` +
-        ` Nomor Surat        : ${doc.noSPP}\n` +
-        ` Cabang / Hub       : ${doc.judul}\n` +
-        ` Periode Audit      : ${doc.periodeAudit}\n` +
-        ` Tanggal Pemeriksaan: ${doc.tglPelaksanaan}\n` +
-        ` Lead Auditor       : ${doc.auditor}\n\n` +
-        `Mohon dapat memproses dan memfasilitasi kebutuhan data audit terkait.\n\n` +
-        `Terima Kasih,\nInternal Audit Department`
+        `Dear Bapak ${doc.regionalHead || '-'},\n\n` +
+        `Sesuai dengan arahan manajemen terkait pelaksanaan audit rutin tahunan, kami dari Tim Audit akan melakukan audit di seluruh pool JBA sesuai dengan surat tugas terlampir.\n` +
+        `Pelaksanaan audit telah dimulai pada tanggal ${tglMulaiFormatted} melalui proses profiling di Head Office, di mana tim audit akan melakukan analisis dan pemeriksaan dokumen sebagai bagian dari proses audit.\n` +
+        `Selanjutnya, kunjungan ke pool akan dilaksanakan mulai ${tglKirimFormatted} hingga selesai.\n\n` +
+        `Mohon dukungan dan kerja sama dari Bapak beserta tim selama proses audit berlangsung agar pelaksanaan audit dapat berjalan dengan lancar dan sesuai dengan rencana\n\n\n` +
+        `Demikian disampaikan. Terima kasih.\n` +
+        `Internal Audit Department`
     );
 
     let mailtoUrl = `mailto:${toEmail}?subject=${subject}&body=${body}`;
