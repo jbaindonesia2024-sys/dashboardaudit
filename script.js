@@ -473,6 +473,7 @@ function sendSignedSPP_Email(id) {
     }
 
     logActivity("Penomoran Dokumen", "Pengiriman Email Surat Tugas (Outlook)", doc.noSPP);
+
     window.location.href = mailtoUrl;
 }
 
@@ -1179,10 +1180,7 @@ function renderPenomoranRows(dataList) {
                 <div style="display: flex; gap: 4px; flex-wrap: nowrap; justify-content: center;">
                     <button class="btn-tbl-icon btn-tbl-edit" onclick="editDocumentNumber(${item.id})" title="Edit Data & Nomor Dokumen">✏️</button>
                     <button class="btn-tbl-icon btn-tbl-print" onclick="downloadSuratTugas(${item.id})" title="Print SPP / Surat Tugas PDF">🖨️</button>
-                    <button class="btn-tbl-icon btn-tbl-upload" onclick="openUploadSppModal(${item.id})" title="${item.hasSignedSPP ? 'Berkas Basah Sudah Ada' : 'Lampirkan File Basah'}">
-                        ${item.hasSignedSPP ? '✅' : '📎'}
-                    </button>
-                    <button class="btn-tbl-icon btn-tbl-send" ${!item.hasSignedSPP ? 'disabled title="Upload Surat Tugas bertanda tangan basah terlebih dahulu"' : 'title="Kirim Surat Tugas via Email"'} onclick="sendSignedSPP_Email(${item.id})">📧</button>
+                    <button class="btn-tbl-icon btn-tbl-send" onclick="sendSignedSPP_Email(${item.id})" title="Kirim Surat Tugas via Email">📧</button>
                     <button class="btn-tbl-icon btn-tbl-delete" onclick="deleteDocumentNumber(${item.id})" title="Hapus Nomor SPP Permanen">🗑️</button>
                 </div>
             </td>
