@@ -1480,37 +1480,40 @@ function handleUserLogin(e) {
 auth.onAuthStateChanged((user) => {
     if (user) {
         currentUserEmail = user.email.toLowerCase();
-        
-        // Formatkan email menjadi Key Firebase (titik diubah jadi garis bawah)
         const firebaseUserKey = currentUserEmail.replace(/\./g, '_');
 
-        // BACA ROLE ASLI DARI FIREBASE REALTIME DATABASE
         database.ref('users/' + firebaseUserKey).once('value').then((snapshot) => {
             const userData = snapshot.val();
             
+            // 1. Baca role spesifik dari Firebase ('admin', 'manager', atau 'auditor')
             if (userData && userData.role) {
-                // Ambil role asli dari database (misal: "manager", "admin", "auditor")
-                const fetchedRole = userData.role.toLowerCase();
-                currentUserRole = (fetchedRole === 'manager' || fetchedRole === 'admin') ? 'manager' : 'auditor';
+                currentUserRole = userData.role.toLowerCase(); 
             } else {
-                // Fallback jika data user belum ada di node users
                 currentUserRole = "auditor";
             }
 
-            // Update timestamp last_login TANPA MENIMPA role di Firebase
-            database.ref('users/' + firebaseUserKey).update({
-                email: currentUserEmail,
-                last_login: new Date().toISOString()
-            });
+            // 2. Update Tampilan Label Header Sesuai Strata Masing-masing
+            let roleLabel = "AUDITOR";
+            if (currentUserRole === "admin") {
+                roleLabel = "ADMINISTRATOR";
+            } else if (currentUserRole === "manager") {
+                roleLabel = "MANAGER";
+            }
 
-            // Update Tampilan Header
             document.getElementById('display-user-email').innerText = user.email;
-            document.getElementById('display-user-role').innerText = currentUserRole === "manager" ? "ADMIN / MANAGER" : "AUDITOR";
+            document.getElementById('display-user-role').innerText = roleLabel;
             document.getElementById('user-badge-header').style.display = 'flex';
             document.getElementById('auth-login-overlay').style.display = 'none';
             
             listenDatabaseRealtime();
         });
+    } else {
+        currentUserEmail = "";
+        currentUserRole = "auditor";
+        document.getElementById('user-badge-header').style.display = 'none';
+        document.getElementById('auth-login-overlay').style.display = 'flex';
+    }
+});
 
     } else {
         currentUserEmail = "";
