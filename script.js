@@ -866,55 +866,49 @@ function sendPICA_Email(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Data project tidak ditemukan!");
 
-    // Menentukan penerima (TO)
     let toEmail = "";
-    if (doc.emailKepalaPool && doc.emailKepalaPool.trim() !== "") {
-        toEmail = doc.emailKepalaPool;
-    } else if (doc.emailSubRegional && doc.emailSubRegional.trim() !== "") {
+    let ccList = ["internal.audit@jba.co.id"];
+
+    // Aturan Penerima Email (TO & CC)
+    if (doc.emailSubRegional && doc.emailSubRegional.trim() !== "") {
         toEmail = doc.emailSubRegional;
+        if (doc.emailRegionalHead) ccList.push(doc.emailRegionalHead);
+    } else if (doc.emailKepalaPool && doc.emailKepalaPool.trim() !== "") {
+        toEmail = doc.emailKepalaPool;
+        if (doc.emailRegionalHead) ccList.push(doc.emailRegionalHead);
     } else {
         toEmail = doc.emailRegionalHead || "regional.head@jba.co.id";
     }
 
-    // Menentukan CC
-    let ccList = ["internal.audit@jba.co.id"];
-    if (doc.emailRegionalHead) ccList.push(doc.emailRegionalHead);
-    if (doc.emailSubRegional && toEmail !== doc.emailSubRegional) {
-        ccList.push(doc.emailSubRegional);
-    }
-    let ccEmail = ccList.join(", ");
+    const ccEmail = ccList.join(", ");
 
-    // Format Tanggal & Bulan
     const dateObj = doc.tglMulai ? new Date(doc.tglMulai) : new Date();
     const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
     const bulanMulai = months[dateObj.getMonth()];
     const tahunAudit = dateObj.getFullYear();
 
-    // Link PICA Auditee (Tautan Halaman Auditee Portal)
     const baseUrl = window.location.origin + window.location.pathname.replace("index.html", "");
     const auditeeLink = `${baseUrl}auditee.html?spp=${encodeURIComponent(doc.noSPP)}`;
 
-    // Format Subject
     const subject = encodeURIComponent(`PICA ${doc.judul} - ${bulanMulai} ${tahunAudit}`);
 
-    // Format Body
-    const namaKepalaPool = doc.namaKepalaPool || "Bapak/Ibu";
-    let bodyText = `Selamat Pagi Bapak ${namaKepalaPool}\n\n` +
+    const namaPenerima = (doc.emailSubRegional && doc.emailSubRegional.trim() !== "") 
+        ? (doc.subRegionalHead || "Bapak/Ibu") 
+        : (doc.namaKepalaPool || "Bapak/Ibu");
+
+    let bodyText = `Selamat Pagi Bapak ${namaPenerima}\n\n` +
         `Terima kasih atas supportnya dalam proses audit ${doc.judul}. Berikut saya lampirkan PICA untuk penyelesaian rekomendasi yang telah disetujui pada meeting Pre Closing Audit.\n\n` +
         `${auditeeLink}\n\n` +
         `Password untuk membuka summary audit :\n` +
-        `1. Email Regional Head\n` +
-        `2. Email Sub Regional Head (Jika ada)\n` +
-        `3. Nama Kepala Pool\n\n` +
+        `1. Nomor Project / SPP\n` +
+        `2. Nama Kepala Pool / Sub Regional Head\n\n` +
         `Mohon untuk melampirkan bukti foto dan melampirkan detail dari rekomendasi yang telah dilakukan oleh pihak auditee.\n\n` +
         `Mohon untuk feedback nya diselesaikan sebelum due date penyelesaian PICA.\n\n` +
         `Untuk pertanyaan lebih lanjut bisa menghubungi team Internal Audit melalui email atau nomor pribadi.\n\n` +
         `Best Regards,\n` +
         `Internal Audit Department`;
 
-    const body = encodeURIComponent(bodyText);
-
-    let mailtoUrl = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+    let mailtoUrl = `mailto:${toEmail}?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
     if (ccEmail.trim() !== "") {
         mailtoUrl += `&cc=${encodeURIComponent(ccEmail)}`;
     }
@@ -922,7 +916,6 @@ function sendPICA_Email(noSPP) {
     logActivity("Summary Audit", "Pengiriman Email PICA Auditee (Outlook)", doc.noSPP);
     window.location.href = mailtoUrl;
 }
-
 function toggleFindingStatus(id, noSPP) {
     const idx = auditDatabase.findIndex(x => x.id === id);
     if (idx !== -1) {
@@ -1578,4 +1571,105 @@ function downloadSuratTugas(id) {
 
     pdf.autoPrint();
     window.open(pdf.output('bloburl'), '_blank');
+}
+
+function handleFileUpload(event, jenisCategory) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Ambil project yang dipilih dari dropdown
+    const selectEl = document.getElementById(jenisCategory === 'Investigasi' ? 'fraud-select-nomor' : 'audit-select-nomor');
+    const selectedIdx = selectEl.value;
+
+    if (selectedIdx === "" || selectedIdx === null) {
+        alert("⚠️ Silakan pilih Target Project Audit terlebih dahulu sebelum meng-upload!");
+        event.target.value = "";
+        return;
+    }
+
+    // Filter list project sesuai kategori
+    const targetList = dbPenomoran.filter(x => jenisCategory === 'Investigasi' ? x.jenis === 'Investigasi' : x.jenis !== 'Investigasi');
+    const selectedProject = targetList[selectedIdx];
+
+    if (!selectedProject) {
+        alert("⚠️ Target Project tidak valid!");
+        event.target.value = "";
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+
+            if (jsonRows.length === 0) {
+                alert("⚠️ File upload kosong!");
+                return;
+            }
+
+            // Hapus temuan lama untuk project ini agar tersinkron ulang tanpa duplikat
+            if (jenisCategory === 'Investigasi') {
+                fraudDatabase = fraudDatabase.filter(x => x.noSPP !== selectedProject.noSPP);
+            } else {
+                auditDatabase = auditDatabase.filter(x => x.noSPP !== selectedProject.noSPP);
+            }
+
+            // Map data dari file Excel/CSV ke dalam struktur database
+            const newFindings = jsonRows.map((row, idx) => {
+                const findVal = (keywords) => {
+                    const keys = Object.keys(row);
+                    const matchedKey = keys.find(k => keywords.some(kw => k.toLowerCase().trim().includes(kw)));
+                    return matchedKey ? String(row[matchedKey]).trim() : "";
+                };
+
+                return {
+                    id: Date.now() + idx,
+                    noSPP: selectedProject.noSPP,
+                    judul: selectedProject.judul,
+                    area: findVal(['area', 'proses', 'kategori']) || "Operasional",
+                    fakta: findVal(['fakta', 'temuan', 'kalimat', 'description']) || "-",
+                    rootCause: findVal(['root', 'cause', 'akar', 'penyebab']) || "-",
+                    rekomendasi: findVal(['rekomendasi', 'saran', 'action']) || "-",
+                    status: "Open",
+                    keteranganCabang: "",
+                    files: []
+                };
+            });
+
+            // Simpan ke database
+            if (jenisCategory === 'Investigasi') {
+                fraudDatabase.push(...newFindings);
+                syncFraudDbToFirebase();
+            } else {
+                auditDatabase.push(...newFindings);
+                syncAuditDbToFirebase();
+            }
+
+            logActivity("Summary Audit", `Upload Summary Audit (${newFindings.length} temuan)`, selectedProject.noSPP);
+            refreshUI();
+
+            // Update info badge
+            const infoFileName = document.getElementById(jenisCategory === 'Investigasi' ? 'info-file-name-fraud' : 'info-file-name-reguler');
+            const infoFileRows = document.getElementById(jenisCategory === 'Investigasi' ? 'info-file-rows-fraud' : 'info-file-rows-reguler');
+            const infoBadge = document.getElementById(jenisCategory === 'Investigasi' ? 'file-info-badge-fraud' : 'file-info-badge-reguler');
+
+            if (infoFileName && infoFileRows && infoBadge) {
+                infoFileName.innerText = file.name;
+                infoFileRows.innerText = newFindings.length;
+                infoBadge.style.display = 'block';
+            }
+
+            alert(`✅ Berhasil meng-upload ${newFindings.length} temuan untuk project: ${selectedProject.judul} (${selectedProject.noSPP})`);
+
+        } catch (err) {
+            alert("⚠️ Gagal memproses file summary audit: " + err.message);
+        }
+        event.target.value = "";
+    };
+
+    reader.readAsArrayBuffer(file);
 }
