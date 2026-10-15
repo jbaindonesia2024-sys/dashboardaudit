@@ -770,13 +770,13 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <td>${fileInfo}</td>
                 <td id="ket-${f.id}">${f.keteranganCabang || f.auditeeAction || '-'}</td>
                 <td style="text-align: center;">
-                    <button id="btn-status-${f.id}" onclick="triggerStatusChange(${f.id}, '${noSPP}')" 
+                    <button id="btn-status-${f.id}" onclick="postAction('toggleStatus', { id: ${f.id}, noSPP: '${noSPP}' })" 
                             style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
                         ${statusText}
                     </button>
                 </td>
                 <td style="text-align: center;">
-                    <button onclick="triggerEditFinding(${f.id}, '${noSPP}')" 
+                    <button onclick="postAction('editFinding', { id: ${f.id}, noSPP: '${noSPP}' })" 
                             style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;" title="Edit / Revisi Temuan">
                         ✏️ Edit
                     </button>
@@ -817,21 +817,20 @@ function openAuditDetailWindow(noSPP, jenis) {
             </div>
 
             <div class="btn-export-group">
-                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="if(window.opener) window.opener.exportPICA_Single('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="postAction('exportPICA', { noSPP: '${doc.noSPP}' })">
                     📊 Generate PICA (Excel)
                 </button>
-                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="if(window.opener) window.opener.exportLHA_Single('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="postAction('exportLHA', { noSPP: '${doc.noSPP}' })">
                     📄 Generate LHA (PDF)
                 </button>
-                <button class="btn-exp" style="background: #2563eb;" onclick="if(window.opener) window.opener.sendPICA_Email('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #2563eb;" onclick="postAction('sendPICA', { noSPP: '${doc.noSPP}' })">
                     ✉️ Kirim PICA
                 </button>
                 <a href="${auditeePreviewLink}" target="_blank" class="btn-exp" style="background: #8b5cf6;">
                     👁️ Preview Auditee View
                 </a>
                 
-                <!-- TOMBOL HAPUS SUMMARY AUDIT -->
-                <button class="btn-exp" style="background: #ef4444; margin-left: auto;" ${!hasFindings ? 'disabled' : ''} onclick="if(window.opener) window.opener.deleteProjectSummary('${doc.noSPP}')">
+                <button class="btn-exp" style="background: #ef4444; margin-left: auto;" ${!hasFindings ? 'disabled' : ''} onclick="postAction('deleteSummary', { noSPP: '${doc.noSPP}' })">
                     🗑️ Hapus Summary
                 </button>
             </div>
@@ -871,31 +870,51 @@ function openAuditDetailWindow(noSPP, jenis) {
         </div>
 
         <script>
-            function triggerStatusChange(id, noSPP) {
-                if (window.opener && window.opener.toggleFindingStatus) {
-                    const newStatus = window.opener.toggleFindingStatus(id, noSPP);
-                    if (newStatus) {
-                        const btn = document.getElementById('btn-status-' + id);
-                        if (btn) {
-                            btn.innerText = newStatus;
-                            btn.style.background = newStatus === 'Closed' ? '#10b981' : '#ef4444';
-                        }
-                    }
+            function postAction(actionType, payload) {
+                if (window.opener) {
+                    window.opener.postMessage({ action: actionType, data: payload }, '*');
+                } else {
+                    alert("⚠️ Komunikasi jendela terputus.");
                 }
             }
 
-            function triggerEditFinding(id, noSPP) {
-                if (window.opener && window.opener.editFindingItem) {
-                    window.opener.editFindingItem(id, noSPP, function(updatedFinding) {
-                        if (updatedFinding) {
-                            document.getElementById('area-' + id).innerText = updatedFinding.area;
-                            document.getElementById('fakta-' + id).innerText = updatedFinding.fakta;
-                            document.getElementById('root-' + id).innerText = updatedFinding.rootCause;
-                            document.getElementById('rekomendasi-' + id).innerText = updatedFinding.rekomendasi;
+            window.addEventListener('message', function(event) {
+                const data = event.data;
+                if (!data || !data.action) return;
+            
+                const sourceWindow = event.source;
+            
+                // 1. Toggle Status Temuan
+                if (data.action === 'toggleStatus') {
+                    const newStatus = toggleFindingStatus(data.data.id, data.data.noSPP);
+                    if (newStatus && sourceWindow) {
+                        sourceWindow.postMessage({ type: 'STATUS_UPDATED', id: data.data.id, status: newStatus }, '*');
+                    }
+                } 
+                // 2. Edit Item Temuan
+                else if (data.action === 'editFinding') {
+                    editFindingItem(data.data.id, data.data.noSPP, function(updatedFinding) {
+                        if (updatedFinding && sourceWindow) {
+                            sourceWindow.postMessage({ type: 'FINDING_EDITED', data: updatedFinding }, '*');
                         }
                     });
+                } 
+                // 3. Hapus Summary Audit
+                else if (data.action === 'deleteSummary') {
+                    const deleted = deleteProjectSummary(data.data.noSPP);
+                    if (deleted && sourceWindow) {
+                        sourceWindow.postMessage({ type: 'SUMMARY_DELETED' }, '*');
+                    }
                 }
-            }
+                // 4. Export & Kirim PICA
+                else if (data.action === 'exportPICA') {
+                    exportPICA_Single(data.data.noSPP);
+                } else if (data.action === 'exportLHA') {
+                    exportLHA_Single(data.data.noSPP);
+                } else if (data.action === 'sendPICA') {
+                    sendPICA_Email(data.data.noSPP);
+                }
+            });
         </script>
     </body>
     </html>
@@ -987,22 +1006,21 @@ function deleteProjectSummary(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     const count = auditDatabase.filter(x => x.noSPP === noSPP).length;
 
-    if (count === 0) return alert("Tidak ada data summary audit untuk dihapus.");
+    if (count === 0) {
+        alert("Tidak ada data summary audit untuk dihapus.");
+        return false;
+    }
 
     if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN seluruh summary audit (${count} temuan) untuk project:\n\n${doc ? doc.judul : noSPP}?`)) {
-        // Filter out temuan dari project ini
         auditDatabase = auditDatabase.filter(x => x.noSPP !== noSPP);
 
-        // Update ke Firebase & Refresh UI
         syncAuditDbToFirebase();
         logActivity("Summary Audit", "Hapus Summary Audit Project", noSPP);
         refreshUI();
 
-        alert("🗑️ Seluruh data summary audit untuk project ini telah berhasil dihapus dari database!");
-        
-        // Tutup window detail setelah hapus
-        window.close();
+        return true; // Berhasil dihapus
     }
+    return false;
 }
 
 function editFindingItem(id, noSPP, callback) {
