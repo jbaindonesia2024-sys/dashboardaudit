@@ -1481,25 +1481,37 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         currentUserEmail = user.email.toLowerCase();
         
-        const isAuthorized = listAdminManagerEmails.includes(currentUserEmail) || 
-                             currentUserEmail.includes('manager') || 
-                             currentUserEmail.includes('head') || 
-                             currentUserEmail.includes('admin');
+        // Formatkan email menjadi Key Firebase (titik diubah jadi garis bawah)
+        const firebaseUserKey = currentUserEmail.replace(/\./g, '_');
 
-        currentUserRole = isAuthorized ? "manager" : "auditor";
+        // BACA ROLE ASLI DARI FIREBASE REALTIME DATABASE
+        database.ref('users/' + firebaseUserKey).once('value').then((snapshot) => {
+            const userData = snapshot.val();
+            
+            if (userData && userData.role) {
+                // Ambil role asli dari database (misal: "manager", "admin", "auditor")
+                const fetchedRole = userData.role.toLowerCase();
+                currentUserRole = (fetchedRole === 'manager' || fetchedRole === 'admin') ? 'manager' : 'auditor';
+            } else {
+                // Fallback jika data user belum ada di node users
+                currentUserRole = "auditor";
+            }
 
-        database.ref('users/' + user.uid).update({
-            email: currentUserEmail,
-            role: currentUserRole === "manager" ? "admin" : "auditor",
-            last_login: new Date().toISOString()
+            // Update timestamp last_login TANPA MENIMPA role di Firebase
+            database.ref('users/' + firebaseUserKey).update({
+                email: currentUserEmail,
+                last_login: new Date().toISOString()
+            });
+
+            // Update Tampilan Header
+            document.getElementById('display-user-email').innerText = user.email;
+            document.getElementById('display-user-role').innerText = currentUserRole === "manager" ? "ADMIN / MANAGER" : "AUDITOR";
+            document.getElementById('user-badge-header').style.display = 'flex';
+            document.getElementById('auth-login-overlay').style.display = 'none';
+            
+            listenDatabaseRealtime();
         });
 
-        document.getElementById('display-user-email').innerText = user.email;
-        document.getElementById('display-user-role').innerText = currentUserRole === "manager" ? "ADMIN / MANAGER" : "AUDITOR";
-        document.getElementById('user-badge-header').style.display = 'flex';
-        document.getElementById('auth-login-overlay').style.display = 'none';
-        
-        listenDatabaseRealtime();
     } else {
         currentUserEmail = "";
         currentUserRole = "auditor";
