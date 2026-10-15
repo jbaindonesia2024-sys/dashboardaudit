@@ -14,29 +14,25 @@
 </head>
 <body>
 
-    <!-- GERBANG VERIFIKASI (3 KUNCI) -->
+    <!-- GERBANG VERIFIKASI (2 KUNCI: NOMOR SPP & NAMA PEJABAT) -->
     <div id="gate-verification" class="auth-card">
         <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 6px; text-align: center;">🔒 Akses Portal PICA Auditee</h2>
-        <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukan kredensial otorisasi untuk membuka summary temuan proyek</p>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukan otorisasi password untuk membuka summary temuan proyek</p>
         
         <form onsubmit="verifyPicaAccess(event)">
             <div class="form-group">
-                <label>1. Email Regional Head (Wajib)</label>
-                <input type="email" id="gate-email-rh" class="form-control" placeholder="regional.head@jba.co.id" required>
+                <label>1. Nomor Project / SPP (Wajib)</label>
+                <input type="text" id="gate-no-spp" class="form-control" placeholder="Contoh: 001/SPP/JBA-IA/X/2026" required>
             </div>
             <div class="form-group">
-                <label>2. Email Sub Regional Head (Opsional)</label>
-                <input type="email" id="gate-email-srh" class="form-control" placeholder="sub.regional@jba.co.id">
-            </div>
-            <div class="form-group">
-                <label>3. Nama Kepala Pool (Wajib)</label>
-                <input type="text" id="gate-nama-pool" class="form-control" placeholder="Contoh: Budi Santoso" required>
+                <label>2. Nama Kepala Pool / Sub Regional Head (Wajib)</label>
+                <input type="text" id="gate-nama-pejabat" class="form-control" placeholder="Contoh: Budi Santoso / Abdul Rozzaq" required>
             </div>
             <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">🔑 Buka Form PICA</button>
         </form>
     </div>
 
-    <!-- HALAMAN UTAMA AUDITEE -->
+    <!-- HALAMAN ISIAN AUDITEE -->
     <div id="pica-content" class="pica-card" style="display: none;">
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
             <h2 style="color: #0f172a; margin: 0;">Portal Tindak Lanjut Temuan Audit (PICA)</h2>
@@ -84,34 +80,33 @@
         let currentDoc = null;
         let currentFindings = [];
 
-        // Parsing SPP dari Query Param URL
+        // Autofill No. SPP dari parameter URL jika ada
         const urlParams = new URLSearchParams(window.location.search);
         const targetSPP = urlParams.get('spp');
+        if (targetSPP) {
+            document.getElementById('gate-no-spp').value = targetSPP;
+        }
 
         function verifyPicaAccess(e) {
             e.preventDefault();
-            const emailRH = document.getElementById('gate-email-rh').value.trim().toLowerCase();
-            const emailSRH = document.getElementById('gate-email-srh').value.trim().toLowerCase();
-            const namaPool = document.getElementById('gate-nama-pool').value.trim().toLowerCase();
+            const inputSPP = document.getElementById('gate-no-spp').value.trim().toLowerCase();
+            const inputPejabat = document.getElementById('gate-nama-pejabat').value.trim().toLowerCase();
 
-            currentDoc = dbPenomoran.find(x => x.noSPP === targetSPP);
-            if (!currentDoc) return alert("Proyek tidak ditemukan di database!");
+            currentDoc = dbPenomoran.find(x => (x.noSPP || "").toLowerCase().trim() === inputSPP);
+            if (!currentDoc) return alert("⛔ Nomor Project / SPP tidak ditemukan!");
 
-            const docRH = (currentDoc.emailRegionalHead || "").toLowerCase();
-            const docSRH = (currentDoc.emailSubRegional || "").toLowerCase();
-            const docPool = (currentDoc.namaKepalaPool || "").toLowerCase();
+            const docSubReg = (currentDoc.subRegionalHead || "").toLowerCase().trim();
+            const docPool = (currentDoc.namaKepalaPool || "").toLowerCase().trim();
 
-            // Check 3 Kunci
-            const isRHMatch = (emailRH === docRH);
-            const isSRHMatch = !docSRH || (emailSRH === docSRH);
-            const isPoolMatch = (namaPool === docPool);
+            // Matching Kunci 2 (Nama Kepala Pool atau Sub Regional Head)
+            const isPejabatMatch = (inputPejabat === docPool || (docSubReg !== "" && inputPejabat === docSubReg));
 
-            if (isRHMatch && isSRHMatch && isPoolMatch) {
+            if (isPejabatMatch) {
                 document.getElementById('gate-verification').style.display = 'none';
                 document.getElementById('pica-content').style.display = 'block';
                 loadPicaData();
             } else {
-                alert("⛔ Kombinasi Password/Kredensial Salah! Silakan periksa kembali email RH, SRH, atau nama Kepala Pool.");
+                alert("⛔ Nama Kepala Pool / Sub Regional Head tidak cocok dengan data project!");
             }
         }
 
