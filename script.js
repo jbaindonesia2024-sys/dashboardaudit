@@ -744,16 +744,21 @@ function openAuditDetailWindow(noSPP, jenis) {
     if (!doc) return alert("Dokumen project tidak ditemukan!");
 
     const projectFindings = auditDatabase.filter(x => x.noSPP === noSPP);
-    const otherProjects = dbPenomoran.filter(x => x.noSPP !== noSPP && x.jenis !== 'Investigasi');
 
     let rowsHTML = "";
     if (projectFindings.length === 0) {
-        rowsHTML = `<tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan ringkasan audit yang di-upload untuk project ini.</td></tr>`;
+        rowsHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan ringkasan audit yang di-upload untuk project ini.</td></tr>`;
     } else {
         rowsHTML = projectFindings.map((f, idx) => {
             const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
             const btnColor = isClosed ? '#10b981' : '#ef4444';
             const statusText = isClosed ? 'Closed' : 'Open';
+
+            // Menampilkan info file/foto jika di-upload oleh auditee
+            let fileInfo = "-";
+            if (f.files && Array.isArray(f.files) && f.files.length > 0) {
+                fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
+            }
 
             return `
             <tr>
@@ -762,6 +767,8 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <td>${f.fakta || '-'}</td>
                 <td>${f.rootCause || '-'}</td>
                 <td>${f.rekomendasi || '-'}</td>
+                <td>${fileInfo}</td>
+                <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
                 <td style="text-align: center;">
                     <button onclick="if(window.opener && window.opener.toggleFindingStatus){ window.opener.toggleFindingStatus(${f.id}, '${noSPP}'); location.reload(); }" 
                             style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
@@ -773,7 +780,6 @@ function openAuditDetailWindow(noSPP, jenis) {
         }).join('');
     }
 
-    const otherProjectOptions = otherProjects.map(p => `<option value="${p.noSPP}">[${p.noSPP}] ${p.judul}</option>`).join('');
     const tglSelesaiFormatted = doc.tglSelesai ? formatIndonesianDate(new Date(doc.tglSelesai)) : '-';
 
     const detailHTML = `
@@ -790,7 +796,6 @@ function openAuditDetailWindow(noSPP, jenis) {
             .btn-export-group { display: flex; gap: 10px; margin-top: 15px; align-items: center; flex-wrap: wrap; }
             .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; }
             .btn-exp:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed; }
-            .ppt-combine-wrapper { display: inline-flex; align-items: center; gap: 6px; background: #fef3c7; padding: 4px 8px; border-radius: 6px; border: 1px dashed #f59e0b; }
         </style>
     </head>
     <body>
@@ -810,20 +815,9 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="if(window.opener) window.opener.exportLHA_Single('${doc.noSPP}')">
                     📄 Generate LHA (PDF)
                 </button>
-                <button class="btn-exp" style="background: #d97706;" onclick="if(window.opener) window.opener.exportPPT_Single('${doc.noSPP}')">
-                    💻 Generate PPT
+                <button class="btn-exp" style="background: #2563eb;" onclick="if(window.opener) window.opener.sendPICA_Email('${doc.noSPP}')">
+                    ✉️ Kirim PICA
                 </button>
-
-                <div class="ppt-combine-wrapper">
-                    <span style="font-weight: bold; font-size: 14px; color: #b45309;">➕ Gabung PPT:</span>
-                    <select id="select-combine-project" style="font-size: 11px; padding: 4px; border-radius: 4px; border: 1px solid #d97706;">
-                        <option value="">-- Pilih Project Lain --</option>
-                        ${otherProjectOptions}
-                    </select>
-                    <button onclick="combineSelectedFromTab('${doc.noSPP}')" style="background: #b45309; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 11px; cursor: pointer;">
-                        Gabung & Generate Slide
-                    </button>
-                </div>
             </div>
 
             <div class="meta-grid">
@@ -843,11 +837,13 @@ function openAuditDetailWindow(noSPP, jenis) {
                     <thead>
                         <tr>
                             <th style="width: 40px; text-align: center;">No</th>
-                            <th style="width: 160px;">Area Pemeriksaan</th>
+                            <th style="width: 150px;">Area Pemeriksaan</th>
                             <th>Kalimat Fakta</th>
                             <th>Root Cause</th>
                             <th>Rekomendasi</th>
-                            <th style="width: 100px; text-align: center;">Status Action</th>
+                            <th style="width: 100px;">View File</th>
+                            <th style="width: 180px;">Keterangan Auditee</th>
+                            <th style="width: 100px; text-align: center;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -856,16 +852,6 @@ function openAuditDetailWindow(noSPP, jenis) {
                 </table>
             </div>
         </div>
-
-        <script>
-            function combineSelectedFromTab(primarySPP) {
-                const targetSPP = document.getElementById('select-combine-project').value;
-                if (!targetSPP) return alert("Pilih project lain yang ingin digabungkan!");
-                if (window.opener && window.opener.combineTwoProjectsPPT) {
-                    window.opener.combineTwoProjectsPPT(primarySPP, targetSPP);
-                }
-            }
-        </script>
     </body>
     </html>
     `;
@@ -873,6 +859,78 @@ function openAuditDetailWindow(noSPP, jenis) {
     const win = window.open('', '_blank');
     win.document.write(detailHTML);
     win.document.close();
+}
+
+// Fungsi Mengirim Email PICA via Outlook
+function sendPICA_Email(noSPP) {
+    const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+    if (!doc) return alert("Data project tidak ditemukan!");
+
+    // Menentukan penerima (TO)
+    let toEmail = "";
+    if (doc.emailKepalaPool && doc.emailKepalaPool.trim() !== "") {
+        toEmail = doc.emailKepalaPool;
+    } else if (doc.emailSubRegional && doc.emailSubRegional.trim() !== "") {
+        toEmail = doc.emailSubRegional;
+    } else {
+        toEmail = doc.emailRegionalHead || "regional.head@jba.co.id";
+    }
+
+    // Menentukan CC
+    let ccList = ["internal.audit@jba.co.id"];
+    if (doc.emailRegionalHead) ccList.push(doc.emailRegionalHead);
+    if (doc.emailSubRegional && toEmail !== doc.emailSubRegional) {
+        ccList.push(doc.emailSubRegional);
+    }
+    let ccEmail = ccList.join(", ");
+
+    // Format Tanggal & Bulan
+    const dateObj = doc.tglMulai ? new Date(doc.tglMulai) : new Date();
+    const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const bulanMulai = months[dateObj.getMonth()];
+    const tahunAudit = dateObj.getFullYear();
+
+    // Link PICA Auditee (Tautan Halaman Auditee Portal)
+    const baseUrl = window.location.origin + window.location.pathname.replace("index.html", "");
+    const auditeeLink = `${baseUrl}auditee.html?spp=${encodeURIComponent(doc.noSPP)}`;
+
+    // Format Subject
+    const subject = encodeURIComponent(`PICA ${doc.judul} - ${bulanMulai} ${tahunAudit}`);
+
+    // Format Body
+    const namaKepalaPool = doc.namaKepalaPool || "Bapak/Ibu";
+    let bodyText = `Selamat Pagi Bapak ${namaKepalaPool}\n\n` +
+        `Terima kasih atas supportnya dalam proses audit ${doc.judul}. Berikut saya lampirkan PICA untuk penyelesaian rekomendasi yang telah disetujui pada meeting Pre Closing Audit.\n\n` +
+        `${auditeeLink}\n\n` +
+        `Password untuk membuka summary audit :\n` +
+        `1. Email Regional Head\n` +
+        `2. Email Sub Regional Head (Jika ada)\n` +
+        `3. Nama Kepala Pool\n\n` +
+        `Mohon untuk melampirkan bukti foto dan melampirkan detail dari rekomendasi yang telah dilakukan oleh pihak auditee.\n\n` +
+        `Mohon untuk feedback nya diselesaikan sebelum due date penyelesaian PICA.\n\n` +
+        `Untuk pertanyaan lebih lanjut bisa menghubungi team Internal Audit melalui email atau nomor pribadi.\n\n` +
+        `Best Regards,\n` +
+        `Internal Audit Department`;
+
+    const body = encodeURIComponent(bodyText);
+
+    let mailtoUrl = `mailto:${toEmail}?subject=${subject}&body=${body}`;
+    if (ccEmail.trim() !== "") {
+        mailtoUrl += `&cc=${encodeURIComponent(ccEmail)}`;
+    }
+
+    logActivity("Summary Audit", "Pengiriman Email PICA Auditee (Outlook)", doc.noSPP);
+    window.location.href = mailtoUrl;
+}
+
+function toggleFindingStatus(id, noSPP) {
+    const idx = auditDatabase.findIndex(x => x.id === id);
+    if (idx !== -1) {
+        const currentStatus = (auditDatabase[idx].status || 'Open').toLowerCase();
+        auditDatabase[idx].status = currentStatus === 'open' ? 'Closed' : 'Open';
+        syncAuditDbToFirebase();
+        logActivity("Summary Audit", `Ubah Status Temuan (${auditDatabase[idx].status})`, noSPP);
+    }
 }
 
 function exportPICA_Single(noSPP) {
