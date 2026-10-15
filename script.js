@@ -1278,6 +1278,14 @@ auth.onAuthStateChanged((user) => {
 
         currentUserRole = isAuthorized ? "manager" : "auditor";
 
+        // --- TAMBAHAN WAJIB: Sync User Role ke Firebase Realtime Database ---
+        database.ref('users/' + user.uid).update({
+            email: currentUserEmail,
+            role: currentUserRole === "manager" ? "admin" : "auditor",
+            last_login: new Date().toISOString()
+        });
+        // ---------------------------------------------------------------------
+
         document.getElementById('display-user-email').innerText = user.email;
         document.getElementById('display-user-role').innerText = currentUserRole === "manager" ? "ADMIN / MANAGER" : "AUDITOR";
         document.getElementById('user-badge-header').style.display = 'flex';
@@ -1291,7 +1299,6 @@ auth.onAuthStateChanged((user) => {
         document.getElementById('auth-login-overlay').style.display = 'flex';
     }
 });
-
 function handleUserLogout() {
     if (confirm("Apakah Anda yakin ingin keluar dari akun?")) {
         auth.signOut();
