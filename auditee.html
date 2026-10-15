@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal PICA Auditee - Internal Audit</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { background: #f8fafc; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .auth-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; max-width: 480px; margin: 40px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .pica-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; max-width: 1000px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; background: #f1f5f9; padding: 14px; border-radius: 6px; margin: 16px 0; }
+    </style>
+</head>
+<body>
+
+    <!-- GERBANG VERIFIKASI (3 KUNCI) -->
+    <div id="gate-verification" class="auth-card">
+        <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 6px; text-align: center;">🔒 Akses Portal PICA Auditee</h2>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukan kredensial otorisasi untuk membuka summary temuan proyek</p>
+        
+        <form onsubmit="verifyPicaAccess(event)">
+            <div class="form-group">
+                <label>1. Email Regional Head (Wajib)</label>
+                <input type="email" id="gate-email-rh" class="form-control" placeholder="regional.head@jba.co.id" required>
+            </div>
+            <div class="form-group">
+                <label>2. Email Sub Regional Head (Opsional)</label>
+                <input type="email" id="gate-email-srh" class="form-control" placeholder="sub.regional@jba.co.id">
+            </div>
+            <div class="form-group">
+                <label>3. Nama Kepala Pool (Wajib)</label>
+                <input type="text" id="gate-nama-pool" class="form-control" placeholder="Contoh: Budi Santoso" required>
+            </div>
+            <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">🔑 Buka Form PICA</button>
+        </form>
+    </div>
+
+    <!-- HALAMAN UTAMA AUDITEE -->
+    <div id="pica-content" class="pica-card" style="display: none;">
+        <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
+            <h2 style="color: #0f172a; margin: 0;">Portal Tindak Lanjut Temuan Audit (PICA)</h2>
+            <small style="color: #64748b;">Project: <b id="view-judul">-</b></small>
+        </div>
+
+        <div class="meta-grid">
+            <div><small style="color: #64748b; font-weight: bold;">NO. SPP</small><br><b id="view-spp" style="color: #0284c7;">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">LEAD AUDITOR</small><br><b id="view-auditor">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">REGIONAL HEAD</small><br><b id="view-rh">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">KEPALA POOL</small><br><b id="view-pool">-</b></div>
+        </div>
+
+        <h3 style="font-size: 15px; margin: 20px 0 10px 0;">📋 Daftar Temuan & Form Action Plan Cabang</h3>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">No</th>
+                        <th style="width: 150px;">Area Pemeriksaan</th>
+                        <th>Kalimat Temuan</th>
+                        <th>Root Cause</th>
+                        <th>Rekomendasi</th>
+                        <th style="width: 180px;">Upload File / Foto</th>
+                        <th>Keterangan Cabang</th>
+                    </tr>
+                </thead>
+                <tbody id="table-pica-body"></tbody>
+            </table>
+        </div>
+
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+            <button onclick="saveAuditeePica()" class="btn btn-success" style="width: auto; padding: 10px 24px;">
+                💾 Simpan Action Plan PICA
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="script.js"></script>
+    
+    <script>
+        let currentDoc = null;
+        let currentFindings = [];
+
+        // Parsing SPP dari Query Param URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetSPP = urlParams.get('spp');
+
+        function verifyPicaAccess(e) {
+            e.preventDefault();
+            const emailRH = document.getElementById('gate-email-rh').value.trim().toLowerCase();
+            const emailSRH = document.getElementById('gate-email-srh').value.trim().toLowerCase();
+            const namaPool = document.getElementById('gate-nama-pool').value.trim().toLowerCase();
+
+            currentDoc = dbPenomoran.find(x => x.noSPP === targetSPP);
+            if (!currentDoc) return alert("Proyek tidak ditemukan di database!");
+
+            const docRH = (currentDoc.emailRegionalHead || "").toLowerCase();
+            const docSRH = (currentDoc.emailSubRegional || "").toLowerCase();
+            const docPool = (currentDoc.namaKepalaPool || "").toLowerCase();
+
+            // Check 3 Kunci
+            const isRHMatch = (emailRH === docRH);
+            const isSRHMatch = !docSRH || (emailSRH === docSRH);
+            const isPoolMatch = (namaPool === docPool);
+
+            if (isRHMatch && isSRHMatch && isPoolMatch) {
+                document.getElementById('gate-verification').style.display = 'none';
+                document.getElementById('pica-content').style.display = 'block';
+                loadPicaData();
+            } else {
+                alert("⛔ Kombinasi Password/Kredensial Salah! Silakan periksa kembali email RH, SRH, atau nama Kepala Pool.");
+            }
+        }
+
+        function loadPicaData() {
+            document.getElementById('view-judul').innerText = currentDoc.judul || "-";
+            document.getElementById('view-spp').innerText = currentDoc.noSPP || "-";
+            document.getElementById('view-auditor').innerText = currentDoc.auditor || "-";
+            document.getElementById('view-rh').innerText = currentDoc.regionalHead || "-";
+            document.getElementById('view-pool').innerText = currentDoc.namaKepalaPool || "-";
+
+            currentFindings = auditDatabase.filter(x => x.noSPP === currentDoc.noSPP);
+            const tbody = document.getElementById('table-pica-body');
+
+            if (currentFindings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang terdaftar.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = currentFindings.map((f, idx) => `
+                <tr data-id="${f.id}">
+                    <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                    <td><b>${f.area || '-'}</b></td>
+                    <td>${f.fakta || '-'}</td>
+                    <td>${f.rootCause || '-'}</td>
+                    <td>${f.rekomendasi || '-'}</td>
+                    <td>
+                        <input type="file" class="input-file-pica" multiple accept="image/*, .pdf, .doc, .docx" style="font-size: 11px; width: 100%;">
+                    </td>
+                    <td>
+                        <textarea class="form-control input-keterangan" style="min-height: 60px;" placeholder="Isi penjelasan / tindakan perbaikan...">${f.keteranganCabang || ''}</textarea>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function saveAuditeePica() {
+            const rows = document.querySelectorAll('#table-pica-body tr[data-id]');
+            rows.forEach(row => {
+                const id = row.getAttribute('data-id');
+                const ket = row.querySelector('.input-keterangan').value;
+                
+                const idx = auditDatabase.findIndex(x => x.id == id);
+                if (idx !== -1) {
+                    auditDatabase[idx].keteranganCabang = ket;
+                    auditDatabase[idx].updatedAt = new Date().toLocaleString('id-ID');
+                }
+            });
+
+            syncAuditDbToFirebase();
+            alert("🎉 Action Plan & Keterangan Cabang Berhasil Disimpan!");
+        }
+    </script>
+</body>
+</html>
