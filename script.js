@@ -781,7 +781,9 @@ function openAuditDetailWindow(noSPP, jenis) {
     }
 
     const tglSelesaiFormatted = doc.tglSelesai ? formatIndonesianDate(new Date(doc.tglSelesai)) : '-';
-
+    const baseUrl = window.location.origin + window.location.pathname.replace("index.html", "");
+    const auditeePreviewLink = `${baseUrl}auditee.html?spp=${encodeURIComponent(doc.noSPP)}`;
+ 
     const detailHTML = `
     <!DOCTYPE html>
     <html lang="id">
@@ -818,6 +820,9 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <button class="btn-exp" style="background: #2563eb;" onclick="if(window.opener) window.opener.sendPICA_Email('${doc.noSPP}')">
                     ✉️ Kirim PICA
                 </button>
+                <a href="${auditeePreviewLink}" target="_blank" class="btn-exp" style="background: #8b5cf6; text-decoration: none;">
+                    👁️ Preview Auditee View
+                </a>
             </div>
 
             <div class="meta-grid">
