@@ -744,35 +744,41 @@ function openAuditDetailWindow(noSPP, jenis) {
     if (!doc) return alert("Dokumen project tidak ditemukan!");
 
     const projectFindings = auditDatabase.filter(x => x.noSPP === noSPP);
+    const hasFindings = projectFindings.length > 0;
 
     let rowsHTML = "";
-    if (projectFindings.length === 0) {
-        rowsHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan ringkasan audit yang di-upload untuk project ini.</td></tr>`;
+    if (!hasFindings) {
+        rowsHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan ringkasan audit yang di-upload untuk project ini.</td></tr>`;
     } else {
         rowsHTML = projectFindings.map((f, idx) => {
             const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
             const btnColor = isClosed ? '#10b981' : '#ef4444';
             const statusText = isClosed ? 'Closed' : 'Open';
 
-            // Menampilkan info file/foto jika di-upload oleh auditee
             let fileInfo = "-";
             if (f.files && Array.isArray(f.files) && f.files.length > 0) {
                 fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
             }
 
             return `
-            <tr>
+            <tr id="finding-row-${f.id}">
                 <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                <td><b>${f.area || '-'}</b></td>
-                <td>${f.fakta || '-'}</td>
-                <td>${f.rootCause || '-'}</td>
-                <td>${f.rekomendasi || '-'}</td>
+                <td><b id="area-${f.id}">${f.area || '-'}</b></td>
+                <td id="fakta-${f.id}">${f.fakta || '-'}</td>
+                <td id="root-${f.id}">${f.rootCause || '-'}</td>
+                <td id="rekomendasi-${f.id}">${f.rekomendasi || '-'}</td>
                 <td>${fileInfo}</td>
-                <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
+                <td id="ket-${f.id}">${f.keteranganCabang || f.auditeeAction || '-'}</td>
                 <td style="text-align: center;">
-                    <button onclick="if(window.opener && window.opener.toggleFindingStatus){ window.opener.toggleFindingStatus(${f.id}, '${noSPP}'); location.reload(); }" 
+                    <button id="btn-status-${f.id}" onclick="triggerStatusChange(${f.id}, '${noSPP}')" 
                             style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
                         ${statusText}
+                    </button>
+                </td>
+                <td style="text-align: center;">
+                    <button onclick="triggerEditFinding(${f.id}, '${noSPP}')" 
+                            style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;" title="Edit / Revisi Temuan">
+                        ✏️ Edit
                     </button>
                 </td>
             </tr>
@@ -783,7 +789,7 @@ function openAuditDetailWindow(noSPP, jenis) {
     const tglSelesaiFormatted = doc.tglSelesai ? formatIndonesianDate(new Date(doc.tglSelesai)) : '-';
     const baseUrl = window.location.origin + window.location.pathname.replace("index.html", "");
     const auditeePreviewLink = `${baseUrl}auditee.html?spp=${encodeURIComponent(doc.noSPP)}`;
- 
+
     const detailHTML = `
     <!DOCTYPE html>
     <html lang="id">
@@ -796,7 +802,7 @@ function openAuditDetailWindow(noSPP, jenis) {
             .detail-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
             .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f1f5f9; padding: 16px; border-radius: 6px; margin: 16px 0; }
             .btn-export-group { display: flex; gap: 10px; margin-top: 15px; align-items: center; flex-wrap: wrap; }
-            .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; }
+            .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
             .btn-exp:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed; }
         </style>
     </head>
@@ -820,9 +826,14 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <button class="btn-exp" style="background: #2563eb;" onclick="if(window.opener) window.opener.sendPICA_Email('${doc.noSPP}')">
                     ✉️ Kirim PICA
                 </button>
-                <a href="${auditeePreviewLink}" target="_blank" class="btn-exp" style="background: #8b5cf6; text-decoration: none;">
+                <a href="${auditeePreviewLink}" target="_blank" class="btn-exp" style="background: #8b5cf6;">
                     👁️ Preview Auditee View
                 </a>
+                
+                <!-- TOMBOL HAPUS SUMMARY AUDIT -->
+                <button class="btn-exp" style="background: #ef4444; margin-left: auto;" ${!hasFindings ? 'disabled' : ''} onclick="if(window.opener) window.opener.deleteProjectSummary('${doc.noSPP}')">
+                    🗑️ Hapus Summary
+                </button>
             </div>
 
             <div class="meta-grid">
@@ -842,13 +853,14 @@ function openAuditDetailWindow(noSPP, jenis) {
                     <thead>
                         <tr>
                             <th style="width: 40px; text-align: center;">No</th>
-                            <th style="width: 150px;">Area Pemeriksaan</th>
+                            <th style="width: 140px;">Area Pemeriksaan</th>
                             <th>Kalimat Fakta</th>
                             <th>Root Cause</th>
                             <th>Rekomendasi</th>
-                            <th style="width: 100px;">View File</th>
-                            <th style="width: 180px;">Keterangan Auditee</th>
-                            <th style="width: 100px; text-align: center;">Status</th>
+                            <th style="width: 90px;">View File</th>
+                            <th style="width: 150px;">Keterangan Auditee</th>
+                            <th style="width: 80px; text-align: center;">Status</th>
+                            <th style="width: 70px; text-align: center;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -857,6 +869,34 @@ function openAuditDetailWindow(noSPP, jenis) {
                 </table>
             </div>
         </div>
+
+        <script>
+            function triggerStatusChange(id, noSPP) {
+                if (window.opener && window.opener.toggleFindingStatus) {
+                    const newStatus = window.opener.toggleFindingStatus(id, noSPP);
+                    if (newStatus) {
+                        const btn = document.getElementById('btn-status-' + id);
+                        if (btn) {
+                            btn.innerText = newStatus;
+                            btn.style.background = newStatus === 'Closed' ? '#10b981' : '#ef4444';
+                        }
+                    }
+                }
+            }
+
+            function triggerEditFinding(id, noSPP) {
+                if (window.opener && window.opener.editFindingItem) {
+                    window.opener.editFindingItem(id, noSPP, function(updatedFinding) {
+                        if (updatedFinding) {
+                            document.getElementById('area-' + id).innerText = updatedFinding.area;
+                            document.getElementById('fakta-' + id).innerText = updatedFinding.fakta;
+                            document.getElementById('root-' + id).innerText = updatedFinding.rootCause;
+                            document.getElementById('rekomendasi-' + id).innerText = updatedFinding.rekomendasi;
+                        }
+                    });
+                }
+            }
+        </script>
     </body>
     </html>
     `;
@@ -925,11 +965,81 @@ function toggleFindingStatus(id, noSPP) {
     const idx = auditDatabase.findIndex(x => x.id === id);
     if (idx !== -1) {
         const currentStatus = (auditDatabase[idx].status || 'Open').toLowerCase();
-        auditDatabase[idx].status = currentStatus === 'open' ? 'Closed' : 'Open';
+        
+        if (currentStatus === 'open') {
+            const confirmed = confirm("Apakah perbaikan telah selesai?");
+            if (!confirmed) return null;
+            auditDatabase[idx].status = 'Closed';
+        } else {
+            auditDatabase[idx].status = 'Open';
+        }
+
         syncAuditDbToFirebase();
         logActivity("Summary Audit", `Ubah Status Temuan (${auditDatabase[idx].status})`, noSPP);
+        refreshUI();
+
+        return auditDatabase[idx].status;
+    }
+    return null;
+}
+
+function deleteProjectSummary(noSPP) {
+    const doc = dbPenomoran.find(x => x.noSPP === noSPP);
+    const count = auditDatabase.filter(x => x.noSPP === noSPP).length;
+
+    if (count === 0) return alert("Tidak ada data summary audit untuk dihapus.");
+
+    if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN seluruh summary audit (${count} temuan) untuk project:\n\n${doc ? doc.judul : noSPP}?`)) {
+        // Filter out temuan dari project ini
+        auditDatabase = auditDatabase.filter(x => x.noSPP !== noSPP);
+
+        // Update ke Firebase & Refresh UI
+        syncAuditDbToFirebase();
+        logActivity("Summary Audit", "Hapus Summary Audit Project", noSPP);
+        refreshUI();
+
+        alert("🗑️ Seluruh data summary audit untuk project ini telah berhasil dihapus dari database!");
+        
+        // Tutup window detail setelah hapus
+        window.close();
     }
 }
+
+function editFindingItem(id, noSPP, callback) {
+    const finding = auditDatabase.find(x => x.id === id);
+    if (!finding) return alert("Data temuan tidak ditemukan!");
+
+    const newArea = prompt("Edit Area Pemeriksaan:", finding.area || "");
+    if (newArea === null) return;
+
+    const newFakta = prompt("Edit Kalimat Temuan / Fakta:", finding.fakta || "");
+    if (newFakta === null) return;
+
+    const newRoot = prompt("Edit Root Cause:", finding.rootCause || "");
+    if (newRoot === null) return;
+
+    const newRekomendasi = prompt("Edit Rekomendasi:", finding.rekomendasi || "");
+    if (newRekomendasi === null) return;
+
+    // Update objek di auditDatabase
+    finding.area = newArea.trim();
+    finding.fakta = newFakta.trim();
+    finding.rootCause = newRoot.trim();
+    finding.rekomendasi = newRekomendasi.trim();
+    finding.updatedAt = new Date().toLocaleString('id-ID');
+
+    // Sync ke Firebase & Dashboard
+    syncAuditDbToFirebase();
+    logActivity("Summary Audit", "Revisi Item Temuan Audit", noSPP);
+    refreshUI();
+
+    alert("✅ Data temuan berhasil diperbarui!");
+
+    if (typeof callback === 'function') {
+        callback(finding);
+    }
+}
+
 
 function exportPICA_Single(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
