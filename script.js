@@ -878,41 +878,26 @@ function openAuditDetailWindow(noSPP, jenis) {
                 }
             }
 
+            // Menerima balasan UI update dari Dashboard Utama
             window.addEventListener('message', function(event) {
-                const data = event.data;
-                if (!data || !data.action) return;
-            
-                const sourceWindow = event.source;
-            
-                // 1. Toggle Status Temuan
-                if (data.action === 'toggleStatus') {
-                    const newStatus = toggleFindingStatus(data.data.id, data.data.noSPP);
-                    if (newStatus && sourceWindow) {
-                        sourceWindow.postMessage({ type: 'STATUS_UPDATED', id: data.data.id, status: newStatus }, '*');
+                const msg = event.data;
+                if (!msg || !msg.type) return;
+
+                if (msg.type === 'STATUS_UPDATED') {
+                    const btn = document.getElementById('btn-status-' + msg.id);
+                    if (btn) {
+                        btn.innerText = msg.status;
+                        btn.style.background = msg.status === 'Closed' ? '#10b981' : '#ef4444';
                     }
-                } 
-                // 2. Edit Item Temuan
-                else if (data.action === 'editFinding') {
-                    editFindingItem(data.data.id, data.data.noSPP, function(updatedFinding) {
-                        if (updatedFinding && sourceWindow) {
-                            sourceWindow.postMessage({ type: 'FINDING_EDITED', data: updatedFinding }, '*');
-                        }
-                    });
-                } 
-                // 3. Hapus Summary Audit
-                else if (data.action === 'deleteSummary') {
-                    const deleted = deleteProjectSummary(data.data.noSPP);
-                    if (deleted && sourceWindow) {
-                        sourceWindow.postMessage({ type: 'SUMMARY_DELETED' }, '*');
-                    }
-                }
-                // 4. Export & Kirim PICA
-                else if (data.action === 'exportPICA') {
-                    exportPICA_Single(data.data.noSPP);
-                } else if (data.action === 'exportLHA') {
-                    exportLHA_Single(data.data.noSPP);
-                } else if (data.action === 'sendPICA') {
-                    sendPICA_Email(data.data.noSPP);
+                } else if (msg.type === 'FINDING_EDITED') {
+                    const f = msg.data;
+                    if (document.getElementById('area-' + f.id)) document.getElementById('area-' + f.id).innerText = f.area;
+                    if (document.getElementById('fakta-' + f.id)) document.getElementById('fakta-' + f.id).innerText = f.fakta;
+                    if (document.getElementById('root-' + f.id)) document.getElementById('root-' + f.id).innerText = f.rootCause;
+                    if (document.getElementById('rekomendasi-' + f.id)) document.getElementById('rekomendasi-' + f.id).innerText = f.rekomendasi;
+                } else if (msg.type === 'SUMMARY_DELETED') {
+                    alert("🗑️ Summary audit telah berhasil dihapus.");
+                    window.close();
                 }
             });
         </script>
@@ -1018,7 +1003,7 @@ function deleteProjectSummary(noSPP) {
         logActivity("Summary Audit", "Hapus Summary Audit Project", noSPP);
         refreshUI();
 
-        return true; // Berhasil dihapus
+        return true; // Mengembalikan status sukses
     }
     return false;
 }
@@ -1058,6 +1043,43 @@ function editFindingItem(id, noSPP, callback) {
     }
 }
 
+window.addEventListener('message', function(event) {
+    const data = event.data;
+    if (!data || !data.action) return;
+
+    const sourceWindow = event.source;
+
+    // 1. Ubah Status Temuan
+    if (data.action === 'toggleStatus') {
+        const newStatus = toggleFindingStatus(data.data.id, data.data.noSPP);
+        if (newStatus && sourceWindow) {
+            sourceWindow.postMessage({ type: 'STATUS_UPDATED', id: data.data.id, status: newStatus }, '*');
+        }
+    } 
+    // 2. Edit Item Temuan
+    else if (data.action === 'editFinding') {
+        editFindingItem(data.data.id, data.data.noSPP, function(updatedFinding) {
+            if (updatedFinding && sourceWindow) {
+                sourceWindow.postMessage({ type: 'FINDING_EDITED', data: updatedFinding }, '*');
+            }
+        });
+    } 
+    // 3. Hapus Summary Audit Project
+    else if (data.action === 'deleteSummary') {
+        const deleted = deleteProjectSummary(data.data.noSPP);
+        if (deleted && sourceWindow) {
+            sourceWindow.postMessage({ type: 'SUMMARY_DELETED' }, '*');
+        }
+    }
+    // 4. Export PICA / LHA / Kirim Email
+    else if (data.action === 'exportPICA') {
+        exportPICA_Single(data.data.noSPP);
+    } else if (data.action === 'exportLHA') {
+        exportLHA_Single(data.data.noSPP);
+    } else if (data.action === 'sendPICA') {
+        sendPICA_Email(data.data.noSPP);
+    }
+});
 
 function exportPICA_Single(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
