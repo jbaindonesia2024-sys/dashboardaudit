@@ -42,6 +42,9 @@ let activityLogs = [];
 let currentUserEmail = "";
 let currentUserRole = "auditor"; // auditor | manager
 
+// Referensi jendela pop-up detail yang aktif
+let currentDetailWindow = null;
+
 // State Sorting Penomoran
 let currentSortColumn = 'noSPP';
 let currentSortDirection = 'desc';
@@ -739,12 +742,19 @@ function toggleManagerApproval(id) {
     }
 }
 
+// =========================================================================
+// MODUL SUMMARY AUDIT & DETAIL FINDING MANAGEMENT
+// =========================================================================
+
 function openAuditDetailWindow(noSPP, jenis) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Dokumen project tidak ditemukan!");
 
     const projectFindings = auditDatabase.filter(x => x.noSPP === noSPP);
     const hasFindings = projectFindings.length > 0;
+
+    // Enkoding URL aman untuk parameter di HTML onclick
+    const safeSPP = encodeURIComponent(noSPP);
 
     let rowsHTML = "";
     if (!hasFindings) {
@@ -770,13 +780,13 @@ function openAuditDetailWindow(noSPP, jenis) {
                 <td>${fileInfo}</td>
                 <td id="ket-${f.id}">${f.keteranganCabang || f.auditeeAction || '-'}</td>
                 <td style="text-align: center;">
-                    <button id="btn-status-${f.id}" onclick="postAction('toggleStatus', { id: ${f.id}, noSPP: '${noSPP}' })" 
+                    <button id="btn-status-${f.id}" onclick="sendParentAction('toggleStatus', ${f.id}, '${safeSPP}')" 
                             style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
                         ${statusText}
                     </button>
                 </td>
                 <td style="text-align: center;">
-                    <button onclick="postAction('editFinding', { id: ${f.id}, noSPP: '${noSPP}' })" 
+                    <button onclick="sendParentAction('editFinding', ${f.id}, '${safeSPP}')" 
                             style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;" title="Edit / Revisi Temuan">
                         ✏️ Edit
                     </button>
@@ -817,20 +827,20 @@ function openAuditDetailWindow(noSPP, jenis) {
             </div>
 
             <div class="btn-export-group">
-                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="postAction('exportPICA', { noSPP: '${doc.noSPP}' })">
+                <button class="btn-exp" style="background: #16a34a;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="sendParentAction('exportPICA', null, '${safeSPP}')">
                     📊 Generate PICA (Excel)
                 </button>
-                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="postAction('exportLHA', { noSPP: '${doc.noSPP}' })">
+                <button class="btn-exp" style="background: #dc2626;" ${doc.statusManager !== "Approved by Manager" ? 'disabled title="Wajib diapprove terlebih dahulu"' : ''} onclick="sendParentAction('exportLHA', null, '${safeSPP}')">
                     📄 Generate LHA (PDF)
                 </button>
-                <button class="btn-exp" style="background: #2563eb;" onclick="postAction('sendPICA', { noSPP: '${doc.noSPP}' })">
+                <button class="btn-exp" style="background: #2563eb;" onclick="sendParentAction('sendPICA', null, '${safeSPP}')">
                     ✉️ Kirim PICA
                 </button>
                 <a href="${auditeePreviewLink}" target="_blank" class="btn-exp" style="background: #8b5cf6;">
                     👁️ Preview Auditee View
                 </a>
                 
-                <button class="btn-exp" style="background: #ef4444; margin-left: auto;" ${!hasFindings ? 'disabled' : ''} onclick="postAction('deleteSummary', { noSPP: '${doc.noSPP}' })">
+                <button class="btn-exp" style="background: #ef4444; margin-left: auto;" ${!hasFindings ? 'disabled' : ''} onclick="sendParentAction('deleteSummary', null, '${safeSPP}')">
                     🗑️ Hapus Summary
                 </button>
             </div>
@@ -870,15 +880,15 @@ function openAuditDetailWindow(noSPP, jenis) {
         </div>
 
         <script>
-            function postAction(actionType, payload) {
-                if (window.opener) {
-                    window.opener.postMessage({ action: actionType, data: payload }, '*');
+            function sendParentAction(actionType, id, encodedSPP) {
+                const noSPP = decodeURIComponent(encodedSPP);
+                if (window.opener && !window.opener.closed) {
+                    window.opener.postMessage({ action: actionType, id: id, noSPP: noSPP }, '*');
                 } else {
-                    alert("⚠️ Komunikasi jendela terputus.");
+                    alert("⚠️ Jendela utama dashboard tidak terhubung.");
                 }
             }
 
-            // Menerima balasan UI update dari Dashboard Utama
             window.addEventListener('message', function(event) {
                 const msg = event.data;
                 if (!msg || !msg.type) return;
@@ -905,12 +915,11 @@ function openAuditDetailWindow(noSPP, jenis) {
     </html>
     `;
 
-    const win = window.open('', '_blank');
-    win.document.write(detailHTML);
-    win.document.close();
+    currentDetailWindow = window.open('', '_blank');
+    currentDetailWindow.document.write(detailHTML);
+    currentDetailWindow.document.close();
 }
 
-// Fungsi Mengirim Email PICA via Outlook
 function sendPICA_Email(noSPP) {
     const doc = dbPenomoran.find(x => x.noSPP === noSPP);
     if (!doc) return alert("Data project tidak ditemukan!");
@@ -965,6 +974,7 @@ function sendPICA_Email(noSPP) {
     logActivity("Summary Audit", "Pengiriman Email PICA Auditee (Outlook)", doc.noSPP);
     window.location.href = mailtoUrl;
 }
+
 function toggleFindingStatus(id, noSPP) {
     const idx = auditDatabase.findIndex(x => x.id === id);
     if (idx !== -1) {
@@ -1003,7 +1013,7 @@ function deleteProjectSummary(noSPP) {
         logActivity("Summary Audit", "Hapus Summary Audit Project", noSPP);
         refreshUI();
 
-        return true; // Mengembalikan status sukses
+        return true;
     }
     return false;
 }
@@ -1043,41 +1053,35 @@ function editFindingItem(id, noSPP, callback) {
     }
 }
 
+// Listener Pesan dari Jendela Pop-up Detail
 window.addEventListener('message', function(event) {
     const data = event.data;
     if (!data || !data.action) return;
 
-    const sourceWindow = event.source;
+    const sourceWin = event.source || currentDetailWindow;
 
-    // 1. Ubah Status Temuan
     if (data.action === 'toggleStatus') {
-        const newStatus = toggleFindingStatus(data.data.id, data.data.noSPP);
-        if (newStatus && sourceWindow) {
-            sourceWindow.postMessage({ type: 'STATUS_UPDATED', id: data.data.id, status: newStatus }, '*');
+        const newStatus = toggleFindingStatus(data.id, data.noSPP);
+        if (newStatus && sourceWin) {
+            sourceWin.postMessage({ type: 'STATUS_UPDATED', id: data.id, status: newStatus }, '*');
         }
-    } 
-    // 2. Edit Item Temuan
-    else if (data.action === 'editFinding') {
-        editFindingItem(data.data.id, data.data.noSPP, function(updatedFinding) {
-            if (updatedFinding && sourceWindow) {
-                sourceWindow.postMessage({ type: 'FINDING_EDITED', data: updatedFinding }, '*');
+    } else if (data.action === 'editFinding') {
+        editFindingItem(data.id, data.noSPP, function(updatedFinding) {
+            if (updatedFinding && sourceWin) {
+                sourceWin.postMessage({ type: 'FINDING_EDITED', data: updatedFinding }, '*');
             }
         });
-    } 
-    // 3. Hapus Summary Audit Project
-    else if (data.action === 'deleteSummary') {
-        const deleted = deleteProjectSummary(data.data.noSPP);
-        if (deleted && sourceWindow) {
-            sourceWindow.postMessage({ type: 'SUMMARY_DELETED' }, '*');
+    } else if (data.action === 'deleteSummary') {
+        const deleted = deleteProjectSummary(data.noSPP);
+        if (deleted && sourceWin) {
+            sourceWin.postMessage({ type: 'SUMMARY_DELETED' }, '*');
         }
-    }
-    // 4. Export PICA / LHA / Kirim Email
-    else if (data.action === 'exportPICA') {
-        exportPICA_Single(data.data.noSPP);
+    } else if (data.action === 'exportPICA') {
+        exportPICA_Single(data.noSPP);
     } else if (data.action === 'exportLHA') {
-        exportLHA_Single(data.data.noSPP);
+        exportLHA_Single(data.noSPP);
     } else if (data.action === 'sendPICA') {
-        sendPICA_Email(data.data.noSPP);
+        sendPICA_Email(data.noSPP);
     }
 });
 
@@ -1484,13 +1488,11 @@ auth.onAuthStateChanged((user) => {
 
         currentUserRole = isAuthorized ? "manager" : "auditor";
 
-        // --- TAMBAHAN WAJIB: Sync User Role ke Firebase Realtime Database ---
         database.ref('users/' + user.uid).update({
             email: currentUserEmail,
             role: currentUserRole === "manager" ? "admin" : "auditor",
             last_login: new Date().toISOString()
         });
-        // ---------------------------------------------------------------------
 
         document.getElementById('display-user-email').innerText = user.email;
         document.getElementById('display-user-role').innerText = currentUserRole === "manager" ? "ADMIN / MANAGER" : "AUDITOR";
@@ -1505,6 +1507,7 @@ auth.onAuthStateChanged((user) => {
         document.getElementById('auth-login-overlay').style.display = 'flex';
     }
 });
+
 function handleUserLogout() {
     if (confirm("Apakah Anda yakin ingin keluar dari akun?")) {
         auth.signOut();
@@ -1653,7 +1656,6 @@ function downloadSuratTugas(id) {
     pdf.text(":", colColonX, y);
     pdf.text(doc.periodeAudit || "-", colValX, y);
 
-    // Format Pemisah Tanggal Menggunakan "-"
     let formattedTglPemeriksaan = doc.tglPelaksanaan || "-";
     if (doc.tglMulai && doc.tglSelesai) {
         formattedTglPemeriksaan = `${formatIndonesianDate(new Date(doc.tglMulai))} - ${formatIndonesianDate(new Date(doc.tglSelesai))}`;
@@ -1690,9 +1692,7 @@ function downloadSuratTugas(id) {
     pdf.setFont("helvetica", "bolditalic");
     pdf.text("Chief Executive Officer", marginLeft, y);
 
-    // =========================================================
     // SECTION CC DENGAN FORMAT: Nama (Jabatan Italic)
-    // =========================================================
     y += lineSpacing15 * 1.5;
     pdf.setFont("helvetica", "normal");
     pdf.text("CC :", marginLeft, y);
@@ -1732,7 +1732,6 @@ function handleFileUpload(event, jenisCategory) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Ambil project yang dipilih dari dropdown
     const selectEl = document.getElementById(jenisCategory === 'Investigasi' ? 'fraud-select-nomor' : 'audit-select-nomor');
     const selectedIdx = selectEl.value;
 
@@ -1742,7 +1741,6 @@ function handleFileUpload(event, jenisCategory) {
         return;
     }
 
-    // Filter list project sesuai kategori
     const targetList = dbPenomoran.filter(x => jenisCategory === 'Investigasi' ? x.jenis === 'Investigasi' : x.jenis !== 'Investigasi');
     const selectedProject = targetList[selectedIdx];
 
@@ -1766,14 +1764,12 @@ function handleFileUpload(event, jenisCategory) {
                 return;
             }
 
-            // Hapus temuan lama untuk project ini agar tersinkron ulang tanpa duplikat
             if (jenisCategory === 'Investigasi') {
                 fraudDatabase = fraudDatabase.filter(x => x.noSPP !== selectedProject.noSPP);
             } else {
                 auditDatabase = auditDatabase.filter(x => x.noSPP !== selectedProject.noSPP);
             }
 
-            // Map data dari file Excel/CSV ke dalam struktur database
             const newFindings = jsonRows.map((row, idx) => {
                 const findVal = (keywords) => {
                     const keys = Object.keys(row);
@@ -1795,7 +1791,6 @@ function handleFileUpload(event, jenisCategory) {
                 };
             });
 
-            // Simpan ke database
             if (jenisCategory === 'Investigasi') {
                 fraudDatabase.push(...newFindings);
                 syncFraudDbToFirebase();
@@ -1807,7 +1802,6 @@ function handleFileUpload(event, jenisCategory) {
             logActivity("Summary Audit", `Upload Summary Audit (${newFindings.length} temuan)`, selectedProject.noSPP);
             refreshUI();
 
-            // Update info badge
             const infoFileName = document.getElementById(jenisCategory === 'Investigasi' ? 'info-file-name-fraud' : 'info-file-name-reguler');
             const infoFileRows = document.getElementById(jenisCategory === 'Investigasi' ? 'info-file-rows-fraud' : 'info-file-rows-reguler');
             const infoBadge = document.getElementById(jenisCategory === 'Investigasi' ? 'file-info-badge-fraud' : 'file-info-badge-reguler');
