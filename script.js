@@ -46,6 +46,12 @@ function isHighPrivilegeUser() {
     return currentUserRole === "admin" || currentUserRole === "manager";
 }
 
+function canUserEditProject(docCreatedBy) {
+    if (isHighPrivilegeUser()) return true; // Admin & Manager bebas edit semua
+    if (!docCreatedBy || !currentUserEmail) return false;
+    return docCreatedBy.toLowerCase() === currentUserEmail.toLowerCase();
+}
+
 // Referensi jendela pop-up detail yang aktif
 let currentDetailWindow = null;
 
@@ -1627,9 +1633,11 @@ function handleFileUpload(event, jenisCategory) {
 
             if (jsonRows.length === 0) {
                 alert("⚠️ File upload kosong!");
+                event.target.value = "";
                 return;
             }
 
+            // Hapus temuan lama untuk project yang dipilih agar tidak duplikat saat re-upload
             if (jenisCategory === 'Investigasi') {
                 fraudDatabase = fraudDatabase.filter(x => x.noSPP !== selectedProject.noSPP);
             } else {
@@ -1653,6 +1661,7 @@ function handleFileUpload(event, jenisCategory) {
                     rekomendasi: findVal(['rekomendasi', 'saran', 'action']) || "-",
                     status: "Open",
                     keteranganCabang: "",
+                    uploadedBy: currentUserEmail,
                     files: []
                 };
             });
