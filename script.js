@@ -42,6 +42,10 @@ let activityLogs = [];
 let currentUserEmail = "";
 let currentUserRole = "auditor"; // auditor | manager
 
+function isHighPrivilegeUser() {
+    return currentUserRole === "admin" || currentUserRole === "manager";
+}
+
 // Referensi jendela pop-up detail yang aktif
 let currentDetailWindow = null;
 
@@ -691,7 +695,8 @@ function renderAuditSummaryRows(regulerProjects) {
 }
 
 function toggleManagerApproval(id) {
-    if (currentUserRole !== "manager") {
+    // Mengecek apakah user adalah Admin atau Manager
+    if (!isHighPrivilegeUser()) {
         return alert("⛔ OTORISASI DITOLAK:\nHanya user dengan Role Admin / Manager yang dapat melakukan approval laporan!");
     }
 
@@ -1481,50 +1486,49 @@ auth.onAuthStateChanged((user) => {
     if (user) {
         currentUserEmail = user.email.toLowerCase();
         
-        // Formatkan email menjadi Key Firebase (titik diubah jadi garis bawah)
+        // Convert email ke Key Firebase (mengubah titik '.' jadi '_')
         const firebaseUserKey = currentUserEmail.replace(/\./g, '_');
 
-        // BACA ROLE DARI FIREBASE DATABASE
+        // BACA ROLE REALTIME DARI FIREBASE
         database.ref('users/' + firebaseUserKey).once('value')
             .then((snapshot) => {
                 const userData = snapshot.val();
                 
                 if (userData && userData.role) {
-                    currentUserRole = userData.role.toLowerCase(); 
+                    currentUserRole = userData.role.toLowerCase().trim(); // Membaca "admin", "manager", atau "auditor"
                 } else {
-                    currentUserRole = "auditor"; // Fallback default
+                    currentUserRole = "auditor"; // Fallback default jika role tidak ditemukan
                 }
 
-                // Update timestamp last_login tanpa menimpa role
+                // Update timestamp last_login tanpa menimpa role di Firebase
                 database.ref('users/' + firebaseUserKey).update({
                     email: currentUserEmail,
                     last_login: new Date().toISOString()
                 }).catch(err => console.warn("Gagal update last_login:", err));
 
-                // Tentukan Label Tampilan di Header
+                // Label Tampilan Header
                 let roleLabel = "AUDITOR";
-                if (currentUserRole === "admin") roleLabel = "ADMINISTRATOR";
-                else if (currentUserRole === "manager") roleLabel = "MANAGER";
+                if (currentUserRole === "admin") {
+                    roleLabel = "ADMINISTRATOR";
+                } else if (currentUserRole === "manager") {
+                    roleLabel = "MANAGER";
+                }
 
-                // Update UI Header & Sembunyikan Overlay Login
+                // Update UI Header
                 document.getElementById('display-user-email').innerText = user.email;
                 document.getElementById('display-user-role').innerText = roleLabel;
                 document.getElementById('user-badge-header').style.display = 'flex';
                 document.getElementById('auth-login-overlay').style.display = 'none';
                 
-                // Jalankan Listener Realtime
                 listenDatabaseRealtime();
             })
             .catch((error) => {
-                console.error("Error reading role from Firebase:", error);
-                
-                // Fallback jika pembacaan database error: Tetap izinkan login sebagai auditor
+                console.error("Error reading role:", error);
                 currentUserRole = "auditor";
                 document.getElementById('display-user-email').innerText = user.email;
                 document.getElementById('display-user-role').innerText = "AUDITOR";
                 document.getElementById('user-badge-header').style.display = 'flex';
                 document.getElementById('auth-login-overlay').style.display = 'none';
-                
                 listenDatabaseRealtime();
             });
 
