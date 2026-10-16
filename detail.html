@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detail Summary Audit & Temuan</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { padding: 30px; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .detail-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #f1f5f9; padding: 16px; border-radius: 6px; margin: 16px 0; }
+        .btn-export-group { display: flex; gap: 10px; margin-top: 15px; align-items: center; flex-wrap: wrap; }
+        .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+        .btn-exp:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="detail-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+            <div>
+                <h2 style="color: #0f172a; margin-bottom: 4px;">Detail Summary Audit & Temuan</h2>
+                <span style="font-size: 12px; color: #64748b;">Project: <b id="view-judul">-</b></span>
+            </div>
+            <span id="view-jenis-badge" class="badge bg-progress" style="font-size: 13px; padding: 6px 12px;">-</span>
+        </div>
+
+        <div class="btn-export-group">
+            <button id="btn-gen-pica" class="btn-exp" style="background: #16a34a;" onclick="exportPICA()">📊 Generate PICA (Excel)</button>
+            <button id="btn-gen-lha" class="btn-exp" style="background: #dc2626;" onclick="exportLHA()">📄 Generate LHA (PDF)</button>
+            <button class="btn-exp" style="background: #2563eb;" onclick="sendPICAEmail()">✉️ Kirim PICA</button>
+            <a id="link-auditee-preview" href="#" target="_blank" class="btn-exp" style="background: #8b5cf6;">👁️ Preview Auditee View</a>
+            <button id="btn-delete-summary" class="btn-exp" style="background: #ef4444; margin-left: auto;" onclick="deleteSummary()">🗑️ Hapus Summary</button>
+        </div>
+
+        <div class="meta-grid">
+            <div><small style="color: #64748b; font-weight: bold;">NO. SURAT TUGAS / SPP</small><br><b id="view-spp" style="color: #0284c7;">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">NO. LHA</small><br><b id="view-lha" style="color: #dc2626;">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">NO. PICA</small><br><b id="view-pica" style="color: #16a34a;">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">LEAD AUDITOR</small><br><b id="view-auditor">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">REGIONAL HEAD</small><br><b id="view-rh">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">SUB REGIONAL HEAD</small><br><b id="view-subrh">-</b></div>
+            <div><small style="color: #64748b; font-weight: bold;">TANGGAL SELESAI AUDIT</small><br><b id="view-tgl-selesai" style="color: #ef4444;">-</b></div>
+        </div>
+
+        <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; color: #0f172a;">📋 Ringkasan Daftar Temuan (Summary Findings)</h3>
+        
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px; text-align: center;">No</th>
+                        <th style="width: 140px;">Area Pemeriksaan</th>
+                        <th>Kalimat Fakta</th>
+                        <th>Root Cause</th>
+                        <th>Rekomendasi</th>
+                        <th style="width: 90px;">View File</th>
+                        <th style="width: 150px;">Keterangan Auditee</th>
+                        <th style="width: 80px; text-align: center;">Status</th>
+                        <th style="width: 70px; text-align: center;">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="table-findings-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+
+    <script>
+        let currentSPP = "";
+        let currentDocData = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawSPP = urlParams.get('spp');
+
+            if (!rawSPP) {
+                alert("Nomor SPP tidak ditemukan pada URL!");
+                return;
+            }
+
+            currentSPP = decodeURIComponent(rawSPP);
+            
+            // Tunggu sync data dari Firebase
+            setTimeout(() => {
+                loadDetailContent();
+            }, 1000);
+        });
+
+        function loadDetailContent() {
+            currentDocData = dbPenomoran.find(x => x.noSPP === currentSPP);
+            if (!currentDocData) {
+                alert("Data project tidak ditemukan di database!");
+                return;
+            }
+
+            document.getElementById('view-judul').innerText = currentDocData.judul || "-";
+            document.getElementById('view-spp').innerText = currentDocData.noSPP || "-";
+            document.getElementById('view-lha').innerText = currentDocData.noLHA || "-";
+            document.getElementById('view-pica').innerText = currentDocData.noPICA || "-";
+            document.getElementById('view-auditor').innerText = currentDocData.auditor || "-";
+            document.getElementById('view-rh').innerText = currentDocData.regionalHead || "-";
+            document.getElementById('view-subrh').innerText = currentDocData.subRegionalHead || "-";
+            document.getElementById('view-tgl-selesai').innerText = currentDocData.tglSelesai || "-";
+            
+            const badgeEl = document.getElementById('view-jenis-badge');
+            badgeEl.innerText = currentDocData.jenis || "Reguler";
+            badgeEl.className = `badge ${currentDocData.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}`;
+
+            // Auditee Link
+            const baseUrl = window.location.origin + window.location.pathname.replace("detail.html", "");
+            document.getElementById('link-auditee-preview').href = `${baseUrl}auditee.html?spp=${encodeURIComponent(currentDocData.noSPP)}`;
+
+            // Tombol Disable jika belum approved
+            const isApproved = currentDocData.statusManager === "Approved by Manager";
+            document.getElementById('btn-gen-pica').disabled = !isApproved;
+            document.getElementById('btn-gen-lha').disabled = !isApproved;
+
+            renderFindingsTable();
+        }
+
+        function renderFindingsTable() {
+            const projectFindings = auditDatabase.filter(x => x.noSPP === currentSPP);
+            const tbody = document.getElementById('table-findings-body');
+
+            if (projectFindings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan yang di-upload untuk project ini.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = projectFindings.map((f, idx) => {
+                const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
+                const btnColor = isClosed ? '#10b981' : '#ef4444';
+                const statusText = isClosed ? 'Closed' : 'Open';
+
+                let fileInfo = "-";
+                if (f.files && Array.isArray(f.files) && f.files.length > 0) {
+                    fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
+                }
+
+                return `
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                    <td><b>${f.area || '-'}</b></td>
+                    <td>${f.fakta || '-'}</td>
+                    <td>${f.rootCause || '-'}</td>
+                    <td>${f.rekomendasi || '-'}</td>
+                    <td>${fileInfo}</td>
+                    <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
+                    <td style="text-align: center;">
+                        <button onclick="handleDetailToggleStatus(${f.id})" style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
+                            ${statusText}
+                        </button>
+                    </td>
+                    <td style="text-align: center;">
+                        <button onclick="handleDetailEditFinding(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">
+                            ✏️ Edit
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+
+        function handleDetailToggleStatus(id) {
+            const newStatus = toggleFindingStatus(id, currentSPP);
+            if (newStatus) renderFindingsTable();
+        }
+
+        function handleDetailEditFinding(id) {
+            editFindingItem(id, currentSPP, function() {
+                renderFindingsTable();
+            });
+        }
+
+        function deleteSummary() {
+            if (deleteProjectSummary(currentSPP)) {
+                alert("Summary berhasil dihapus.");
+                window.close();
+            }
+        }
+
+        function exportPICA() { exportPICA_Single(currentSPP); }
+        function exportLHA() { exportLHA_Single(currentSPP); }
+        function sendPICAEmail() { sendPICA_Email(currentSPP); }
+    </script>
+</body>
+</html>
