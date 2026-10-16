@@ -143,7 +143,47 @@
     
             renderFindingsTable();
         }
-    
+
+        // Pemicu Mode Edit Baris (Inline Edit)
+        function enableInlineEdit(id) {
+            if (!canUserEditProject(currentDocData?.created_by)) {
+                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat mengedit temuan ini!");
+            }
+            activeEditingId = id;
+            renderFindingsTable();
+        }
+        
+        // Simpan Hasil Edit Baris Ke Firebase & Log Activity
+        function saveInlineEdit(id) {
+            const idx = auditDatabase.findIndex(x => x.id === id);
+            if (idx === -1) return;
+        
+            const newArea = document.getElementById(`inline-area-${id}`).value.trim();
+            const newFakta = document.getElementById(`inline-fakta-${id}`).value.trim();
+            const newRoot = document.getElementById(`inline-root-${id}`).value.trim();
+            const newRekomendasi = document.getElementById(`inline-rekomendasi-${id}`).value.trim();
+        
+            // Update Objek Data
+            auditDatabase[idx].area = newArea;
+            auditDatabase[idx].fakta = newFakta;
+            auditDatabase[idx].rootCause = newRoot;
+            auditDatabase[idx].rekomendasi = newRekomendasi;
+            auditDatabase[idx].updatedAt = new Date().toLocaleString('id-ID');
+            auditDatabase[idx].updatedBy = currentUserEmail;
+        
+            // Synchronize ke Firebase Database
+            syncAuditDbToFirebase();
+        
+            // Catat ke Log Activity System
+            logActivity("Summary Audit", "Revisi Item Temuan Audit (Inline Edit)", currentSPP);
+        
+            // Kembalikan Mode Tampilan Normal
+            activeEditingId = null;
+            renderFindingsTable();
+            
+            alert("✅ Perubahan temuan berhasil disimpan!");
+        }
+        
         // Variable temporary untuk menyimpan ID temuan yang sedang di-edit
         let activeEditingId = null;
         
