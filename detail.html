@@ -74,31 +74,45 @@
     <script>
         let currentSPP = "";
         let currentDocData = null;
-
+    
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
             const rawSPP = urlParams.get('spp');
-
+    
             if (!rawSPP) {
                 alert("Nomor SPP tidak ditemukan pada URL!");
                 return;
             }
-
-            currentSPP = decodeURIComponent(rawSPP);
-            
-            // Tunggu sync data dari Firebase
-            setTimeout(() => {
+    
+            // Lakukan double decode untuk mengantisipasi perbedaan encoding
+            currentSPP = decodeURIComponent(decodeURIComponent(rawSPP)).trim();
+    
+            // TUNGGU DATA FIREBASE TERLEBIH DAHULU DARIPADA PAKAI SETTIMEOUT
+            database.ref('dbPenomoran').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (Array.isArray(val)) {
+                    dbPenomoran = val.filter(Boolean);
+                } else if (val && typeof val === 'object') {
+                    dbPenomoran = Object.values(val);
+                } else {
+                    dbPenomoran = [];
+                }
+    
+                // Setelah data dbPenomoran dipastikan ada, baru muat konten detail
                 loadDetailContent();
-            }, 1000);
+            });
         });
-
+    
         function loadDetailContent() {
-            currentDocData = dbPenomoran.find(x => x.noSPP === currentSPP);
+            // Pencarian dengan pencocokan string bersih (tanpa spasi berlebih)
+            currentDocData = dbPenomoran.find(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
+            
             if (!currentDocData) {
+                console.warn("Mencari SPP:", currentSPP, "Di dalam database:", dbPenomoran);
                 alert("Data project tidak ditemukan di database!");
                 return;
             }
-
+    
             document.getElementById('view-judul').innerText = currentDocData.judul || "-";
             document.getElementById('view-spp').innerText = currentDocData.noSPP || "-";
             document.getElementById('view-lha').innerText = currentDocData.noLHA || "-";
@@ -111,83 +125,19 @@
             const badgeEl = document.getElementById('view-jenis-badge');
             badgeEl.innerText = currentDocData.jenis || "Reguler";
             badgeEl.className = `badge ${currentDocData.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}`;
-
+    
             // Auditee Link
             const baseUrl = window.location.origin + window.location.pathname.replace("detail.html", "");
             document.getElementById('link-auditee-preview').href = `${baseUrl}auditee.html?spp=${encodeURIComponent(currentDocData.noSPP)}`;
-
+    
             // Tombol Disable jika belum approved
             const isApproved = currentDocData.statusManager === "Approved by Manager";
             document.getElementById('btn-gen-pica').disabled = !isApproved;
             document.getElementById('btn-gen-lha').disabled = !isApproved;
-
+    
+            // Muat tabel temuan
             renderFindingsTable();
         }
-
-        function renderFindingsTable() {
-            const projectFindings = auditDatabase.filter(x => x.noSPP === currentSPP);
-            const tbody = document.getElementById('table-findings-body');
-
-            if (projectFindings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan yang di-upload untuk project ini.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = projectFindings.map((f, idx) => {
-                const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
-                const btnColor = isClosed ? '#10b981' : '#ef4444';
-                const statusText = isClosed ? 'Closed' : 'Open';
-
-                let fileInfo = "-";
-                if (f.files && Array.isArray(f.files) && f.files.length > 0) {
-                    fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
-                }
-
-                return `
-                <tr>
-                    <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                    <td><b>${f.area || '-'}</b></td>
-                    <td>${f.fakta || '-'}</td>
-                    <td>${f.rootCause || '-'}</td>
-                    <td>${f.rekomendasi || '-'}</td>
-                    <td>${fileInfo}</td>
-                    <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
-                    <td style="text-align: center;">
-                        <button onclick="handleDetailToggleStatus(${f.id})" style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;">
-                            ${statusText}
-                        </button>
-                    </td>
-                    <td style="text-align: center;">
-                        <button onclick="handleDetailEditFinding(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;">
-                            ✏️ Edit
-                        </button>
-                    </td>
-                </tr>
-                `;
-            }).join('');
-        }
-
-        function handleDetailToggleStatus(id) {
-            const newStatus = toggleFindingStatus(id, currentSPP);
-            if (newStatus) renderFindingsTable();
-        }
-
-        function handleDetailEditFinding(id) {
-            editFindingItem(id, currentSPP, function() {
-                renderFindingsTable();
-            });
-        }
-
-        function deleteSummary() {
-            if (deleteProjectSummary(currentSPP)) {
-                alert("Summary berhasil dihapus.");
-                window.close();
-            }
-        }
-
-        function exportPICA() { exportPICA_Single(currentSPP); }
-        function exportLHA() { exportLHA_Single(currentSPP); }
-        function sendPICAEmail() { sendPICA_Email(currentSPP); }
     </script>
 </body>
 </html>
