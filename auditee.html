@@ -50,22 +50,76 @@
         </div>
 
         <h3 style="font-size: 15px; margin: 20px 0 10px 0;">📋 Daftar Temuan & Form Action Plan Cabang</h3>
+      <!-- TABEL PICA AUDITEE -->
         <div class="table-responsive">
             <table>
                 <thead>
                     <tr>
                         <th style="width: 40px; text-align: center;">No</th>
-                        <th style="width: 150px;">Area Pemeriksaan</th>
-                        <th>Kalimat Temuan</th>
+                        <th style="width: 140px;">Area Pemeriksaan</th>
+                        <th>Fakta</th>
                         <th>Root Cause</th>
                         <th>Rekomendasi</th>
-                        <th style="width: 180px;">Upload File / Foto</th>
-                        <th>Keterangan Cabang</th>
+                        <th style="width: 160px;">Bukti (Upload File)</th>
+                        <th>Keterangan Auditee</th>
+                        <th style="width: 80px; text-align: center;">Status</th>
                     </tr>
                 </thead>
                 <tbody id="table-pica-body"></tbody>
             </table>
         </div>
+        
+        <script>
+            // Memantau perubahan Realtime dari Firebase (Status akan berubah otomatis)
+            database.ref('auditDatabase').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (Array.isArray(val)) auditDatabase = val.filter(Boolean);
+                else if (val && typeof val === 'object') auditDatabase = Object.values(val);
+                else auditDatabase = [];
+        
+                if (currentDoc) loadPicaData();
+            });
+        
+            function loadPicaData() {
+                document.getElementById('view-judul').innerText = currentDoc.judul || "-";
+                document.getElementById('view-spp').innerText = currentDoc.noSPP || "-";
+                document.getElementById('view-auditor').innerText = currentDoc.auditor || "-";
+                document.getElementById('view-rh').innerText = currentDoc.regionalHead || "-";
+                document.getElementById('view-pool').innerText = currentDoc.namaKepalaPool || "-";
+        
+                currentFindings = auditDatabase.filter(x => x.noSPP === currentDoc.noSPP);
+                const tbody = document.getElementById('table-pica-body');
+        
+                if (currentFindings.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang terdaftar.</td></tr>`;
+                    return;
+                }
+        
+                tbody.innerHTML = currentFindings.map((f, idx) => {
+                    const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
+                    const statusBadge = isClosed 
+                        ? `<span class="badge bg-approved">Closed</span>` 
+                        : `<span class="badge bg-high">Open</span>`;
+        
+                    return `
+                    <tr data-id="${f.id}">
+                        <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                        <td><b>${f.area || '-'}</b></td>
+                        <td>${f.fakta || '-'}</td>
+                        <td>${f.rootCause || '-'}</td>
+                        <td>${f.rekomendasi || '-'}</td>
+                        <td>
+                            <input type="file" class="input-file-pica" multiple accept="image/*, .pdf, .doc, .docx" style="font-size: 11px; width: 100%;">
+                        </td>
+                        <td>
+                            <textarea class="form-control input-keterangan" style="min-height: 50px; font-size: 12px;" placeholder="Penjelasan / Tindakan Perbaikan...">${f.keteranganCabang || ''}</textarea>
+                        </td>
+                        <td style="text-align: center;">${statusBadge}</td>
+                    </tr>
+                    `;
+                }).join('');
+            }
+        </script>
 
         <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
             <button onclick="saveAuditeePica()" class="btn btn-success" style="width: auto; padding: 10px 24px;">
