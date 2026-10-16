@@ -84,34 +84,33 @@
                 return;
             }
     
-            // Lakukan double decode untuk mengantisipasi perbedaan encoding
             currentSPP = decodeURIComponent(decodeURIComponent(rawSPP)).trim();
     
-            // TUNGGU DATA FIREBASE TERLEBIH DAHULU DARIPADA PAKAI SETTIMEOUT
+            // 1. Listen Data Penomoran Project
             database.ref('dbPenomoran').on('value', (snapshot) => {
                 const val = snapshot.val();
-                if (Array.isArray(val)) {
-                    dbPenomoran = val.filter(Boolean);
-                } else if (val && typeof val === 'object') {
-                    dbPenomoran = Object.values(val);
-                } else {
-                    dbPenomoran = [];
-                }
+                if (Array.isArray(val)) dbPenomoran = val.filter(Boolean);
+                else if (val && typeof val === 'object') dbPenomoran = Object.values(val);
+                else dbPenomoran = [];
     
-                // Setelah data dbPenomoran dipastikan ada, baru muat konten detail
                 loadDetailContent();
+            });
+    
+            // 2. Listen Data Audit Database secara Realtime (Agar temuan hasil upload langsung muncul)
+            database.ref('auditDatabase').on('value', (snapshot) => {
+                const val = snapshot.val();
+                if (Array.isArray(val)) auditDatabase = val.filter(Boolean);
+                else if (val && typeof val === 'object') auditDatabase = Object.values(val);
+                else auditDatabase = [];
+    
+                renderFindingsTable();
             });
         });
     
         function loadDetailContent() {
-            // Pencarian dengan pencocokan string bersih (tanpa spasi berlebih)
             currentDocData = dbPenomoran.find(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
             
-            if (!currentDocData) {
-                console.warn("Mencari SPP:", currentSPP, "Di dalam database:", dbPenomoran);
-                alert("Data project tidak ditemukan di database!");
-                return;
-            }
+            if (!currentDocData) return;
     
             document.getElementById('view-judul').innerText = currentDocData.judul || "-";
             document.getElementById('view-spp').innerText = currentDocData.noSPP || "-";
@@ -126,18 +125,107 @@
             badgeEl.innerText = currentDocData.jenis || "Reguler";
             badgeEl.className = `badge ${currentDocData.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}`;
     
-            // Auditee Link
+            // Link Preview Auditee
             const baseUrl = window.location.origin + window.location.pathname.replace("detail.html", "");
             document.getElementById('link-auditee-preview').href = `${baseUrl}auditee.html?spp=${encodeURIComponent(currentDocData.noSPP)}`;
     
-            // Tombol Disable jika belum approved
+            // Status Otorisasi
             const isApproved = currentDocData.statusManager === "Approved by Manager";
             document.getElementById('btn-gen-pica').disabled = !isApproved;
             document.getElementById('btn-gen-lha').disabled = !isApproved;
     
-            // Muat tabel temuan
+            // Proteksi Tombol Hapus Summary (Hanya Admin, Manager, atau Pembuat Project)
+            const canEdit = canUserEditProject(currentDocData.created_by);
+            const btnDelete = document.getElementById('btn-delete-summary');
+            if (btnDelete) {
+                btnDelete.style.display = canEdit ? "inline-flex" : "none";
+            }
+    
             renderFindingsTable();
         }
+    
+        function renderFindingsTable() {
+            if (!currentSPP) return;
+    
+            const projectFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
+            const tbody = document.getElementById('table-findings-body');
+            if (!tbody) return;
+    
+            if (projectFindings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan yang di-upload untuk project ini.</td></tr>`;
+                return;
+            }
+    
+            // Cek apakah user berhak mengedit temuan ini (Admin, Manager, atau Generator Project)
+            const canEdit = currentDocData ? canUserEditProject(currentDocData.created_by) : false;
+    
+            tbody.innerHTML = projectFindings.map((f, idx) => {
+                const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
+                const btnColor = isClosed ? '#10b981' : '#ef4444';
+                const statusText = isClosed ? 'Closed' : 'Open';
+    
+                let fileInfo = "-";
+                if (f.files && Array.isArray(f.files) && f.files.length > 0) {
+                    fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
+                }
+    
+                // Jika tidak berhak edit, tombol dimatikan/disabled
+                const disabledAttr = !canEdit ? 'disabled style="opacity: 0.5; cursor: not-allowed; background: #94a3b8;" title="Hanya Pembuat Project, Manager, atau Admin yang dapat mengubah temuan ini"' : '';
+    
+                return `
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                    <td><b>${f.area || '-'}</b></td>
+                    <td>${f.fakta || '-'}</td>
+                    <td>${f.rootCause || '-'}</td>
+                    <td>${f.rekomendasi || '-'}</td>
+                    <td>${fileInfo}</td>
+                    <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
+                    <td style="text-align: center;">
+                        <button ${disabledAttr} ${canEdit ? `onclick="handleDetailToggleStatus(${f.id})" style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''}>
+                            ${statusText}
+                        </button>
+                    </td>
+                    <td style="text-align: center;">
+                        <button ${disabledAttr} ${canEdit ? `onclick="handleDetailEditFinding(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''}>
+                            ✏️ Edit
+                        </button>
+                    </td>
+                </tr>
+                `;
+            }).join('');
+        }
+    
+        function handleDetailToggleStatus(id) {
+            if (!canUserEditProject(currentDocData?.created_by)) {
+                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat mengubah status temuan ini!");
+            }
+            const newStatus = toggleFindingStatus(id, currentSPP);
+            if (newStatus) renderFindingsTable();
+        }
+    
+        function handleDetailEditFinding(id) {
+            if (!canUserEditProject(currentDocData?.created_by)) {
+                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat mengedit temuan ini!");
+            }
+            editFindingItem(id, currentSPP, function() {
+                renderFindingsTable();
+            });
+        }
+    
+        function deleteSummary() {
+            if (!canUserEditProject(currentDocData?.created_by)) {
+                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat menghapus summary ini!");
+            }
+            if (deleteProjectSummary(currentSPP)) {
+                alert("Summary berhasil dihapus.");
+                window.close();
+            }
+        }
+    
+        function exportPICA() { exportPICA_Single(currentSPP); }
+        function exportLHA() { exportLHA_Single(currentSPP); }
+        function sendPICAEmail() { sendPICA_Email(currentSPP); }
     </script>
 </body>
 </html>
