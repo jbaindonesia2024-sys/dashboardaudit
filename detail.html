@@ -71,9 +71,30 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="script.js"></script>
 
+    <!-- TABEL DETAIL TEMUAN -->
+    <div class="table-responsive">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 40px; text-align: center;">No</th>
+                    <th style="width: 140px;">Area Pemeriksaan</th>
+                    <th>Fakta</th>
+                    <th>Root Cause</th>
+                    <th>Rekomendasi</th>
+                    <th style="width: 90px;">Bukti</th>
+                    <th style="width: 150px;">Keterangan Auditee</th>
+                    <th style="width: 80px; text-align: center;">Status</th>
+                    <th style="width: 90px; text-align: center;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="table-findings-body"></tbody>
+        </table>
+    </div>
+
     <script>
         let currentSPP = "";
         let currentDocData = null;
+        let activeEditingId = null;
     
         document.addEventListener('DOMContentLoaded', function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -86,7 +107,6 @@
     
             currentSPP = decodeURIComponent(decodeURIComponent(rawSPP)).trim();
     
-            // 1. Listen Data Penomoran Project
             database.ref('dbPenomoran').on('value', (snapshot) => {
                 const val = snapshot.val();
                 if (Array.isArray(val)) dbPenomoran = val.filter(Boolean);
@@ -96,7 +116,6 @@
                 loadDetailContent();
             });
     
-            // 2. Listen Data Audit Database secara Realtime (Agar temuan hasil upload langsung muncul)
             database.ref('auditDatabase').on('value', (snapshot) => {
                 const val = snapshot.val();
                 if (Array.isArray(val)) auditDatabase = val.filter(Boolean);
@@ -109,7 +128,6 @@
     
         function loadDetailContent() {
             currentDocData = dbPenomoran.find(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
-            
             if (!currentDocData) return;
     
             document.getElementById('view-judul').innerText = currentDocData.judul || "-";
@@ -120,124 +138,61 @@
             document.getElementById('view-rh').innerText = currentDocData.regionalHead || "-";
             document.getElementById('view-subrh').innerText = currentDocData.subRegionalHead || "-";
             document.getElementById('view-tgl-selesai').innerText = currentDocData.tglSelesai || "-";
-            
-            const badgeEl = document.getElementById('view-jenis-badge');
-            badgeEl.innerText = currentDocData.jenis || "Reguler";
-            badgeEl.className = `badge ${currentDocData.jenis === 'Investigasi' ? 'bg-high' : 'bg-progress'}`;
     
-            // Link Preview Auditee
             const baseUrl = window.location.origin + window.location.pathname.replace("detail.html", "");
             document.getElementById('link-auditee-preview').href = `${baseUrl}auditee.html?spp=${encodeURIComponent(currentDocData.noSPP)}`;
     
-            // Status Otorisasi
-            const isApproved = currentDocData.statusManager === "Approved by Manager";
-            document.getElementById('btn-gen-pica').disabled = !isApproved;
-            document.getElementById('btn-gen-lha').disabled = !isApproved;
+            renderFindingsTable();
+        }
     
-            // Proteksi Tombol Hapus Summary (Hanya Admin, Manager, atau Pembuat Project)
-            const canEdit = canUserEditProject(currentDocData.created_by);
-            const btnDelete = document.getElementById('btn-delete-summary');
-            if (btnDelete) {
-                btnDelete.style.display = canEdit ? "inline-flex" : "none";
-            }
-    
-            renderFindingsTable();
-        }
-
-        // Pemicu Mode Edit Baris (Inline Edit)
-        function enableInlineEdit(id) {
-            if (!canUserEditProject(currentDocData?.created_by)) {
-                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat mengedit temuan ini!");
-            }
-            activeEditingId = id;
-            renderFindingsTable();
-        }
-        
-        // Simpan Hasil Edit Baris Ke Firebase & Log Activity
-        function saveInlineEdit(id) {
-            const idx = auditDatabase.findIndex(x => x.id === id);
-            if (idx === -1) return;
-        
-            const newArea = document.getElementById(`inline-area-${id}`).value.trim();
-            const newFakta = document.getElementById(`inline-fakta-${id}`).value.trim();
-            const newRoot = document.getElementById(`inline-root-${id}`).value.trim();
-            const newRekomendasi = document.getElementById(`inline-rekomendasi-${id}`).value.trim();
-        
-            // Update Objek Data
-            auditDatabase[idx].area = newArea;
-            auditDatabase[idx].fakta = newFakta;
-            auditDatabase[idx].rootCause = newRoot;
-            auditDatabase[idx].rekomendasi = newRekomendasi;
-            auditDatabase[idx].updatedAt = new Date().toLocaleString('id-ID');
-            auditDatabase[idx].updatedBy = currentUserEmail;
-        
-            // Synchronize ke Firebase Database
-            syncAuditDbToFirebase();
-        
-            // Catat ke Log Activity System
-            logActivity("Summary Audit", "Revisi Item Temuan Audit (Inline Edit)", currentSPP);
-        
-            // Kembalikan Mode Tampilan Normal
-            activeEditingId = null;
-            renderFindingsTable();
-            
-            alert("✅ Perubahan temuan berhasil disimpan!");
-        }
-        
-        // Variable temporary untuk menyimpan ID temuan yang sedang di-edit
-        let activeEditingId = null;
-        
         function renderFindingsTable() {
             if (!currentSPP) return;
-        
+    
             const projectFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
             const tbody = document.getElementById('table-findings-body');
             if (!tbody) return;
-        
+    
             if (projectFindings.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan yang di-upload untuk project ini.</td></tr>`;
                 return;
             }
-        
+    
             const canEdit = currentDocData ? canUserEditProject(currentDocData.created_by) : false;
-        
+    
             tbody.innerHTML = projectFindings.map((f, idx) => {
                 const isEditing = activeEditingId === f.id;
                 const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
                 const btnColor = isClosed ? '#10b981' : '#ef4444';
                 const statusText = isClosed ? 'Closed' : 'Open';
-        
+    
                 let fileInfo = "-";
                 if (f.files && Array.isArray(f.files) && f.files.length > 0) {
-                    fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
+                    fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 Bukti ${i+1}</a>`).join("<br>");
                 }
-        
-                const disabledAttr = !canEdit ? 'disabled style="opacity: 0.5; cursor: not-allowed; background: #94a3b8;" title="Otorisasi Ditolak"' : '';
-        
-                // JIKA BARIS SEDANG DALAM MODE EDIT (INLINE EDITING)
+    
+                const disabledAttr = !canEdit ? 'disabled style="opacity: 0.5; cursor: not-allowed;" title="Otorisasi Ditolak"' : '';
+    
+                // MODE EDIT INLINE
                 if (isEditing) {
                     return `
-                    <tr id="row-edit-${f.id}" style="background-color: #fefce8;">
+                    <tr style="background-color: #fefce8;">
                         <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
                         <td><input type="text" id="inline-area-${f.id}" class="form-control" style="font-size: 11px; padding: 4px;" value="${f.area || ''}"></td>
-                        <td><textarea id="inline-fakta-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 60px;">${f.fakta || ''}</textarea></td>
-                        <td><textarea id="inline-root-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 60px;">${f.rootCause || ''}</textarea></td>
-                        <td><textarea id="inline-rekomendasi-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 60px;">${f.rekomendasi || ''}</textarea></td>
+                        <td><textarea id="inline-fakta-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 50px;">${f.fakta || ''}</textarea></td>
+                        <td><textarea id="inline-root-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 50px;">${f.rootCause || ''}</textarea></td>
+                        <td><textarea id="inline-rekomendasi-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 50px;">${f.rekomendasi || ''}</textarea></td>
                         <td>${fileInfo}</td>
-                        <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
-                        <td style="text-align: center;">
-                            <span class="badge ${isClosed ? 'bg-approved' : 'bg-high'}">${statusText}</span>
-                        </td>
-                        <td style="text-align: center;">
-                            <button onclick="saveInlineEdit(${f.id})" style="background: #16a34a; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;" title="Simpan Perubahan">
-                                💾 Simpan
-                            </button>
+                        <td>${f.keteranganCabang || '-'}</td>
+                        <td style="text-align: center;"><span class="badge ${isClosed ? 'bg-approved' : 'bg-high'}">${statusText}</span></td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button onclick="saveInlineEdit(${f.id})" style="background: #16a34a; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;" title="Simpan Perubahan">💾</button>
+                            <button onclick="deleteSingleFinding(${f.id})" style="background: #ef4444; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 2px;" title="Hapus Temuan">🗑️</button>
                         </td>
                     </tr>
                     `;
                 }
-        
-                // JIKA BARIS DALAM MODE NORMAL (VIEW MODE)
+    
+                // MODE TAMPIL NORMAL
                 return `
                 <tr>
                     <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
@@ -246,52 +201,55 @@
                     <td>${f.rootCause || '-'}</td>
                     <td>${f.rekomendasi || '-'}</td>
                     <td>${fileInfo}</td>
-                    <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
+                    <td>${f.keteranganCabang || '-'}</td>
                     <td style="text-align: center;">
-                        <button ${disabledAttr} ${canEdit ? `onclick="handleDetailToggleStatus(${f.id})" style="background: ${btnColor}; color: white; border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''}>
+                        <button ${disabledAttr} ${canEdit ? `onclick="handleDetailToggleStatus(${f.id})" style="background: ${btnColor}; color: white; border: none; padding: 6px 12px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''}>
                             ${statusText}
                         </button>
                     </td>
-                    <td style="text-align: center;">
-                        <button ${disabledAttr} ${canEdit ? `onclick="enableInlineEdit(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''} title="Edit Temuan">
-                            ✏️ Edit
-                        </button>
+                    <td style="text-align: center; white-space: nowrap;">
+                        <button ${disabledAttr} ${canEdit ? `onclick="enableInlineEdit(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;"` : ''} title="Edit Temuan">✏️</button>
+                        <button ${disabledAttr} ${canEdit ? `onclick="deleteSingleFinding(${f.id})" style="background: #ef4444; color: white; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 2px;"` : ''} title="Hapus Temuan">🗑️</button>
                     </td>
                 </tr>
                 `;
             }).join('');
         }
     
-        function handleDetailToggleStatus(id) {
-            if (!canUserEditProject(currentDocData?.created_by)) {
-                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat mengubah status temuan ini!");
-            }
-            const newStatus = toggleFindingStatus(id, currentSPP);
-            if (newStatus) renderFindingsTable();
+        function enableInlineEdit(id) {
+            if (!canUserEditProject(currentDocData?.created_by)) return alert("⛔ Otorisasi ditolak!");
+            activeEditingId = id;
+            renderFindingsTable();
         }
     
-        function handleDetailEditFinding(id) {
-            if (!canUserEditProject(currentDocData?.created_by)) {
-                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat mengedit temuan ini!");
-            }
-            editFindingItem(id, currentSPP, function() {
+        function saveInlineEdit(id) {
+            const idx = auditDatabase.findIndex(x => x.id === id);
+            if (idx === -1) return;
+    
+            auditDatabase[idx].area = document.getElementById(`inline-area-${id}`).value.trim();
+            auditDatabase[idx].fakta = document.getElementById(`inline-fakta-${id}`).value.trim();
+            auditDatabase[idx].rootCause = document.getElementById(`inline-root-${id}`).value.trim();
+            auditDatabase[idx].rekomendasi = document.getElementById(`inline-rekomendasi-${id}`).value.trim();
+            auditDatabase[idx].updatedAt = new Date().toLocaleString('id-ID');
+    
+            syncAuditDbToFirebase();
+            logActivity("Summary Audit", "Revisi Item Temuan Audit", currentSPP);
+    
+            activeEditingId = null;
+            renderFindingsTable();
+        }
+    
+        function deleteSingleFinding(id) {
+            if (!canUserEditProject(currentDocData?.created_by)) return alert("⛔ Otorisasi ditolak!");
+            
+            if (confirm("Apakah Anda yakin ingin menghapus item temuan ini secara permanen?")) {
+                auditDatabase = auditDatabase.filter(x => x.id !== id);
+                syncAuditDbToFirebase();
+                logActivity("Summary Audit", "Hapus Single Item Temuan", currentSPP);
+                activeEditingId = null;
                 renderFindingsTable();
-            });
-        }
-    
-        function deleteSummary() {
-            if (!canUserEditProject(currentDocData?.created_by)) {
-                return alert("⛔ OTORISASI DITOLAK:\nHanya Pembuat Project, Manager, atau Admin yang dapat menghapus summary ini!");
-            }
-            if (deleteProjectSummary(currentSPP)) {
-                alert("Summary berhasil dihapus.");
-                window.close();
             }
         }
-    
-        function exportPICA() { exportPICA_Single(currentSPP); }
-        function exportLHA() { exportLHA_Single(currentSPP); }
-        function sendPICAEmail() { sendPICA_Email(currentSPP); }
     </script>
 </body>
 </html>
