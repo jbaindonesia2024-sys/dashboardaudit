@@ -144,34 +144,60 @@
             renderFindingsTable();
         }
     
+        // Variable temporary untuk menyimpan ID temuan yang sedang di-edit
+        let activeEditingId = null;
+        
         function renderFindingsTable() {
             if (!currentSPP) return;
-    
+        
             const projectFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
             const tbody = document.getElementById('table-findings-body');
             if (!tbody) return;
-    
+        
             if (projectFindings.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada data temuan yang di-upload untuk project ini.</td></tr>`;
                 return;
             }
-    
-            // Cek apakah user berhak mengedit temuan ini (Admin, Manager, atau Generator Project)
+        
             const canEdit = currentDocData ? canUserEditProject(currentDocData.created_by) : false;
-    
+        
             tbody.innerHTML = projectFindings.map((f, idx) => {
+                const isEditing = activeEditingId === f.id;
                 const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
                 const btnColor = isClosed ? '#10b981' : '#ef4444';
                 const statusText = isClosed ? 'Closed' : 'Open';
-    
+        
                 let fileInfo = "-";
                 if (f.files && Array.isArray(f.files) && f.files.length > 0) {
                     fileInfo = f.files.map((file, i) => `<a href="${file.url}" target="_blank" style="color: #0284c7; font-size: 11px; text-decoration: underline;">📄 File ${i+1}</a>`).join("<br>");
                 }
-    
-                // Jika tidak berhak edit, tombol dimatikan/disabled
-                const disabledAttr = !canEdit ? 'disabled style="opacity: 0.5; cursor: not-allowed; background: #94a3b8;" title="Hanya Pembuat Project, Manager, atau Admin yang dapat mengubah temuan ini"' : '';
-    
+        
+                const disabledAttr = !canEdit ? 'disabled style="opacity: 0.5; cursor: not-allowed; background: #94a3b8;" title="Otorisasi Ditolak"' : '';
+        
+                // JIKA BARIS SEDANG DALAM MODE EDIT (INLINE EDITING)
+                if (isEditing) {
+                    return `
+                    <tr id="row-edit-${f.id}" style="background-color: #fefce8;">
+                        <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
+                        <td><input type="text" id="inline-area-${f.id}" class="form-control" style="font-size: 11px; padding: 4px;" value="${f.area || ''}"></td>
+                        <td><textarea id="inline-fakta-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 60px;">${f.fakta || ''}</textarea></td>
+                        <td><textarea id="inline-root-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 60px;">${f.rootCause || ''}</textarea></td>
+                        <td><textarea id="inline-rekomendasi-${f.id}" class="form-control" style="font-size: 11px; padding: 4px; min-height: 60px;">${f.rekomendasi || ''}</textarea></td>
+                        <td>${fileInfo}</td>
+                        <td>${f.keteranganCabang || f.auditeeAction || '-'}</td>
+                        <td style="text-align: center;">
+                            <span class="badge ${isClosed ? 'bg-approved' : 'bg-high'}">${statusText}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <button onclick="saveInlineEdit(${f.id})" style="background: #16a34a; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;" title="Simpan Perubahan">
+                                💾 Simpan
+                            </button>
+                        </td>
+                    </tr>
+                    `;
+                }
+        
+                // JIKA BARIS DALAM MODE NORMAL (VIEW MODE)
                 return `
                 <tr>
                     <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
@@ -187,7 +213,7 @@
                         </button>
                     </td>
                     <td style="text-align: center;">
-                        <button ${disabledAttr} ${canEdit ? `onclick="handleDetailEditFinding(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''}>
+                        <button ${disabledAttr} ${canEdit ? `onclick="enableInlineEdit(${f.id})" style="background: #f59e0b; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 11px;"` : ''} title="Edit Temuan">
                             ✏️ Edit
                         </button>
                     </td>
