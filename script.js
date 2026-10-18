@@ -47,7 +47,7 @@ function isHighPrivilegeUser() {
 }
 
 function canUserEditProject(docCreatedBy) {
-    if (isHighPrivilegeUser()) return true; // Admin & Manager bebas edit semua
+    if (isHighPrivilegeUser()) return true;
     if (!docCreatedBy || !currentUserEmail) return false;
     return docCreatedBy.toLowerCase() === currentUserEmail.toLowerCase();
 }
