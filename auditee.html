@@ -6,8 +6,8 @@
     <title>Portal PICA Auditee - Internal Audit</title>
     
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    
     <link rel="stylesheet" href="style.css">
+    
     <style>
         body { background: #f8fafc; padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .auth-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; max-width: 480px; margin: 40px auto; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
@@ -17,19 +17,15 @@
 </head>
 <body>
 
-    <!-- GERBANG VERIFIKASI (2 KUNCI: NOMOR SPP & NAMA PEJABAT) -->
+    <!-- GERBANG VERIFIKASI (HANYA MENGGUNAKAN NOMOR PROJECT / SPP) -->
     <div id="gate-verification" class="auth-card">
         <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 6px; text-align: center;">🔒 Akses Portal PICA Auditee</h2>
-        <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukan otorisasi password untuk membuka summary temuan proyek</p>
+        <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukkan Nomor Project / SPP untuk membuka summary temuan</p>
         
         <form onsubmit="verifyPicaAccess(event)">
             <div class="form-group">
-                <label>1. Nomor Project / SPP (Wajib)</label>
+                <label>Nomor Project / SPP</label>
                 <input type="text" id="gate-no-spp" class="form-control" placeholder="Contoh: 001/SPP/JBA-IA/X/2026" required>
-            </div>
-            <div class="form-group">
-                <label>2. Nama Kepala Pool / Sub Regional Head (Wajib)</label>
-                <input type="text" id="gate-nama-pejabat" class="form-control" placeholder="Contoh: Budi Santoso / Abdul Rozzaq" required>
             </div>
             <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">🔑 Buka Form PICA</button>
         </form>
@@ -50,7 +46,8 @@
         </div>
 
         <h3 style="font-size: 15px; margin: 20px 0 10px 0;">📋 Daftar Temuan & Form Action Plan Cabang</h3>
-      <!-- TABEL PICA AUDITEE -->
+
+        <!-- TABEL PICA AUDITEE -->
         <div class="table-responsive">
             <table>
                 <thead>
@@ -68,58 +65,6 @@
                 <tbody id="table-pica-body"></tbody>
             </table>
         </div>
-        
-        <script>
-            // Memantau perubahan Realtime dari Firebase (Status akan berubah otomatis)
-            database.ref('auditDatabase').on('value', (snapshot) => {
-                const val = snapshot.val();
-                if (Array.isArray(val)) auditDatabase = val.filter(Boolean);
-                else if (val && typeof val === 'object') auditDatabase = Object.values(val);
-                else auditDatabase = [];
-        
-                if (currentDoc) loadPicaData();
-            });
-        
-            function loadPicaData() {
-                document.getElementById('view-judul').innerText = currentDoc.judul || "-";
-                document.getElementById('view-spp').innerText = currentDoc.noSPP || "-";
-                document.getElementById('view-auditor').innerText = currentDoc.auditor || "-";
-                document.getElementById('view-rh').innerText = currentDoc.regionalHead || "-";
-                document.getElementById('view-pool').innerText = currentDoc.namaKepalaPool || "-";
-        
-                currentFindings = auditDatabase.filter(x => x.noSPP === currentDoc.noSPP);
-                const tbody = document.getElementById('table-pica-body');
-        
-                if (currentFindings.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang terdaftar.</td></tr>`;
-                    return;
-                }
-        
-                tbody.innerHTML = currentFindings.map((f, idx) => {
-                    const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
-                    const statusBadge = isClosed 
-                        ? `<span class="badge bg-approved">Closed</span>` 
-                        : `<span class="badge bg-high">Open</span>`;
-        
-                    return `
-                    <tr data-id="${f.id}">
-                        <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
-                        <td><b>${f.area || '-'}</b></td>
-                        <td>${f.fakta || '-'}</td>
-                        <td>${f.rootCause || '-'}</td>
-                        <td>${f.rekomendasi || '-'}</td>
-                        <td>
-                            <input type="file" class="input-file-pica" multiple accept="image/*, .pdf, .doc, .docx" style="font-size: 11px; width: 100%;">
-                        </td>
-                        <td>
-                            <textarea class="form-control input-keterangan" style="min-height: 50px; font-size: 12px;" placeholder="Penjelasan / Tindakan Perbaikan...">${f.keteranganCabang || ''}</textarea>
-                        </td>
-                        <td style="text-align: center;">${statusBadge}</td>
-                    </tr>
-                    `;
-                }).join('');
-            }
-        </script>
 
         <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
             <button onclick="saveAuditeePica()" class="btn btn-success" style="width: auto; padding: 10px 24px;">
@@ -137,35 +82,53 @@
         let currentDoc = null;
         let currentFindings = [];
 
-        // Autofill No. SPP dari parameter URL jika ada
+        // Autofill No. SPP & AUTO-OPEN jika dipanggil dari Preview Auditee View
         const urlParams = new URLSearchParams(window.location.search);
         const targetSPP = urlParams.get('spp');
-        if (targetSPP) {
-            document.getElementById('gate-no-spp').value = targetSPP;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (targetSPP) {
+                const decodedSPP = decodeURIComponent(decodeURIComponent(targetSPP)).trim();
+                document.getElementById('gate-no-spp').value = decodedSPP;
+                
+                // Beri jeda sebentar menunggu Firebase membaca data, lalu otomatis buka
+                setTimeout(() => {
+                    attemptAutoLogin(decodedSPP);
+                }, 800);
+            }
+        });
+
+        function attemptAutoLogin(sppVal) {
+            currentDoc = dbPenomoran.find(x => (x.noSPP || "").toLowerCase().trim() === sppVal.toLowerCase());
+            if (currentDoc) {
+                document.getElementById('gate-verification').style.display = 'none';
+                document.getElementById('pica-content').style.display = 'block';
+                loadPicaData();
+            }
         }
 
+        // Verifikasi manual dari tombol
         function verifyPicaAccess(e) {
             e.preventDefault();
             const inputSPP = document.getElementById('gate-no-spp').value.trim().toLowerCase();
-            const inputPejabat = document.getElementById('gate-nama-pejabat').value.trim().toLowerCase();
 
             currentDoc = dbPenomoran.find(x => (x.noSPP || "").toLowerCase().trim() === inputSPP);
             if (!currentDoc) return alert("⛔ Nomor Project / SPP tidak ditemukan!");
 
-            const docSubReg = (currentDoc.subRegionalHead || "").toLowerCase().trim();
-            const docPool = (currentDoc.namaKepalaPool || "").toLowerCase().trim();
-
-            // Matching Kunci 2 (Nama Kepala Pool atau Sub Regional Head)
-            const isPejabatMatch = (inputPejabat === docPool || (docSubReg !== "" && inputPejabat === docSubReg));
-
-            if (isPejabatMatch) {
-                document.getElementById('gate-verification').style.display = 'none';
-                document.getElementById('pica-content').style.display = 'block';
-                loadPicaData();
-            } else {
-                alert("⛔ Nama Kepala Pool / Sub Regional Head tidak cocok dengan data project!");
-            }
+            document.getElementById('gate-verification').style.display = 'none';
+            document.getElementById('pica-content').style.display = 'block';
+            loadPicaData();
         }
+
+        // Memantau perubahan Realtime dari Firebase
+        database.ref('auditDatabase').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if (Array.isArray(val)) auditDatabase = val.filter(Boolean);
+            else if (val && typeof val === 'object') auditDatabase = Object.values(val);
+            else auditDatabase = [];
+
+            if (currentDoc) loadPicaData();
+        });
 
         function loadPicaData() {
             document.getElementById('view-judul').innerText = currentDoc.judul || "-";
@@ -178,11 +141,17 @@
             const tbody = document.getElementById('table-pica-body');
 
             if (currentFindings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang terdaftar.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang terdaftar.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = currentFindings.map((f, idx) => `
+            tbody.innerHTML = currentFindings.map((f, idx) => {
+                const isClosed = (f.status || 'Open').toLowerCase() === 'closed';
+                const statusBadge = isClosed 
+                    ? `<span class="badge bg-approved">Closed</span>` 
+                    : `<span class="badge bg-high">Open</span>`;
+
+                return `
                 <tr data-id="${f.id}">
                     <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
                     <td><b>${f.area || '-'}</b></td>
@@ -193,10 +162,12 @@
                         <input type="file" class="input-file-pica" multiple accept="image/*, .pdf, .doc, .docx" style="font-size: 11px; width: 100%;">
                     </td>
                     <td>
-                        <textarea class="form-control input-keterangan" style="min-height: 60px;" placeholder="Isi penjelasan / tindakan perbaikan...">${f.keteranganCabang || ''}</textarea>
+                        <textarea class="form-control input-keterangan" style="min-height: 50px; font-size: 12px;" placeholder="Penjelasan / Tindakan Perbaikan...">${f.keteranganCabang || ''}</textarea>
                     </td>
+                    <td style="text-align: center;">${statusBadge}</td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function saveAuditeePica() {
