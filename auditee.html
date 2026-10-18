@@ -17,7 +17,7 @@
 </head>
 <body>
 
-    <!-- GERBANG VERIFIKASI (HANYA MENGGUNAKAN NOMOR PROJECT / SPP) -->
+    <!-- GERBANG VERIFIKASI -->
     <div id="gate-verification" class="auth-card">
         <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 6px; text-align: center;">🔒 Akses Portal PICA Auditee</h2>
         <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukkan Nomor Project / SPP untuk membuka summary temuan</p>
@@ -25,9 +25,9 @@
         <form onsubmit="verifyPicaAccess(event)">
             <div class="form-group">
                 <label>Nomor Project / SPP</label>
-                <input type="text" id="gate-no-spp" class="form-control" placeholder="Contoh: 001/SPP/JBA-IA/X/2026" required>
+                <input type="text" id="gate-no-spp" class="form-control" placeholder="Contoh: 025/SPP/JBA-IA/IX/2026" required>
             </div>
-            <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 10px;">🔑 Buka Form PICA</button>
+            <button type="submit" id="btn-submit-gate" class="btn btn-success" style="width: 100%; margin-top: 10px;">🔑 Buka Form PICA</button>
         </form>
     </div>
 
@@ -47,7 +47,6 @@
 
         <h3 style="font-size: 15px; margin: 20px 0 10px 0;">📋 Daftar Temuan & Form Action Plan Cabang</h3>
 
-        <!-- TABEL PICA AUDITEE -->
         <div class="table-responsive">
             <table>
                 <thead>
@@ -81,46 +80,31 @@
     <script>
         let currentDoc = null;
         let currentFindings = [];
+        let isDataLoaded = false;
 
-        // Autofill No. SPP & AUTO-OPEN jika dipanggil dari Preview Auditee View
         const urlParams = new URLSearchParams(window.location.search);
-        const targetSPP = urlParams.get('spp');
+        const rawTargetSPP = urlParams.get('spp');
+        const targetSPP = rawTargetSPP ? decodeURIComponent(decodeURIComponent(rawTargetSPP)).trim() : "";
 
-        document.addEventListener('DOMContentLoaded', function() {
-            if (targetSPP) {
-                const decodedSPP = decodeURIComponent(decodeURIComponent(targetSPP)).trim();
-                document.getElementById('gate-no-spp').value = decodedSPP;
-                
-                // Beri jeda sebentar menunggu Firebase membaca data, lalu otomatis buka
-                setTimeout(() => {
-                    attemptAutoLogin(decodedSPP);
-                }, 800);
+        if (targetSPP) {
+            document.getElementById('gate-no-spp').value = targetSPP;
+        }
+
+        // BACA REALTIME DATABASE PENOMORAN & AUDIT DATABASE
+        database.ref('dbPenomoran').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if (Array.isArray(val)) dbPenomoran = val.filter(Boolean);
+            else if (val && typeof val === 'object') dbPenomoran = Object.values(val);
+            else dbPenomoran = [];
+
+            isDataLoaded = true;
+
+            // Auto verification jika dibuka via link dengan URL parameter ?spp=
+            if (targetSPP && !currentDoc) {
+                attemptAutoLogin(targetSPP);
             }
         });
 
-        function attemptAutoLogin(sppVal) {
-            currentDoc = dbPenomoran.find(x => (x.noSPP || "").toLowerCase().trim() === sppVal.toLowerCase());
-            if (currentDoc) {
-                document.getElementById('gate-verification').style.display = 'none';
-                document.getElementById('pica-content').style.display = 'block';
-                loadPicaData();
-            }
-        }
-
-        // Verifikasi manual dari tombol
-        function verifyPicaAccess(e) {
-            e.preventDefault();
-            const inputSPP = document.getElementById('gate-no-spp').value.trim().toLowerCase();
-
-            currentDoc = dbPenomoran.find(x => (x.noSPP || "").toLowerCase().trim() === inputSPP);
-            if (!currentDoc) return alert("⛔ Nomor Project / SPP tidak ditemukan!");
-
-            document.getElementById('gate-verification').style.display = 'none';
-            document.getElementById('pica-content').style.display = 'block';
-            loadPicaData();
-        }
-
-        // Memantau perubahan Realtime dari Firebase
         database.ref('auditDatabase').on('value', (snapshot) => {
             const val = snapshot.val();
             if (Array.isArray(val)) auditDatabase = val.filter(Boolean);
@@ -130,18 +114,49 @@
             if (currentDoc) loadPicaData();
         });
 
+        function attemptAutoLogin(sppVal) {
+            const searchVal = sppVal.toLowerCase().trim();
+            currentDoc = dbPenomoran.find(x => x && x.noSPP && x.noSPP.toLowerCase().trim() === searchVal);
+            if (currentDoc) {
+                document.getElementById('gate-verification').style.display = 'none';
+                document.getElementById('pica-content').style.display = 'block';
+                loadPicaData();
+            }
+        }
+
+        function verifyPicaAccess(e) {
+            if (e) e.preventDefault();
+            const inputSPP = document.getElementById('gate-no-spp').value.trim().toLowerCase();
+
+            if (!isDataLoaded && dbPenomoran.length === 0) {
+                alert("Sedang menghubungkan ke server, silakan coba 2 detik lagi...");
+                return;
+            }
+
+            currentDoc = dbPenomoran.find(x => x && x.noSPP && x.noSPP.toLowerCase().trim() === inputSPP);
+            if (!currentDoc) {
+                return alert(`⛔ Nomor Project / SPP ("${document.getElementById('gate-no-spp').value}") tidak ditemukan di database!`);
+            }
+
+            document.getElementById('gate-verification').style.display = 'none';
+            document.getElementById('pica-content').style.display = 'block';
+            loadPicaData();
+        }
+
         function loadPicaData() {
+            if (!currentDoc) return;
+
             document.getElementById('view-judul').innerText = currentDoc.judul || "-";
             document.getElementById('view-spp').innerText = currentDoc.noSPP || "-";
             document.getElementById('view-auditor').innerText = currentDoc.auditor || "-";
             document.getElementById('view-rh').innerText = currentDoc.regionalHead || "-";
             document.getElementById('view-pool').innerText = currentDoc.namaKepalaPool || "-";
 
-            currentFindings = auditDatabase.filter(x => x.noSPP === currentDoc.noSPP);
+            currentFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentDoc.noSPP.trim());
             const tbody = document.getElementById('table-pica-body');
 
             if (currentFindings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang terdaftar.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #94a3b8; padding: 20px;">Belum ada temuan yang di-upload untuk project ini.</td></tr>`;
                 return;
             }
 
