@@ -14,8 +14,7 @@ const subRegionalMap = {
 // Daftar email yang berhak melakukan Approval (Admin & Manager ke atas)
 const listAdminManagerEmails = [
     'ahmad.shobri@jba.co.id',
-    'manager@jba.co.id',
-    'head@jba.co.id'
+    'muhammad.afif@jba.co.id'
 ];
 
 function toRoman(num) {
@@ -43,7 +42,15 @@ let currentUserEmail = "";
 let currentUserRole = "auditor"; // auditor | manager
 
 function isHighPrivilegeUser() {
-    return currentUserRole === "admin" || currentUserRole === "manager";
+    if (!currentUserEmail) return false;
+    
+    // Check 1: Berdasarkan role dari Firebase Realtime Database
+    const isRoleOK = currentUserRole === "admin" || currentUserRole === "manager";
+    
+    // Check 2: Berdasarkan verifikasi email resmi Manager / Admin
+    const isEmailOK = listAdminManagerEmails.some(e => e.toLowerCase() === currentUserEmail.toLowerCase().trim());
+
+    return isRoleOK || isEmailOK;
 }
 
 function canUserEditProject(docCreatedBy) {
