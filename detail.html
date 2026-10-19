@@ -361,13 +361,24 @@
         // =========================================================================
         // GENERATE DOKUMEN PICA VERSI DOCX (PRESERVE TEMPLATE ASLI)
         // =========================================================================
-function generatePicaDocx() {
+        function generatePicaDocx() {
             if (!currentDocData) return alert("Data project tidak valid!");
         
             const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP.trim());
             if (findings.length === 0) return alert("Belum ada temuan untuk di-generate!");
         
-            // Array opsi path file untuk mengatasi perbedaan huruf besar/kecil di GitHub Pages
+            // Pastikan Library PizZip & Docxtemplater terload dengan benar
+            const PizZipLib = window.PizZip || (typeof PizZip !== 'undefined' ? PizZip : null);
+            const DocxtemplaterLib = window.docxtemplater || (typeof docxtemplater !== 'undefined' ? docxtemplater : null);
+        
+            if (!PizZipLib) {
+                return alert("⚠️ Library PizZip belum siap/gagal dimuat. Silakan muat ulang halaman (Refresh).");
+            }
+            if (!DocxtemplaterLib) {
+                return alert("⚠️ Library Docxtemplater belum siap/gagal dimuat. Silakan muat ulang halaman (Refresh).");
+            }
+        
+            // Opsi path file untuk menangani kepekaan huruf besar/kecil (case sensitivity) di GitHub Pages
             const templatePaths = [
                 'Template_PICA.docx',
                 'template_pica.docx',
@@ -386,7 +397,7 @@ function generatePicaDocx() {
                         return response.arrayBuffer();
                     })
                     .then(buffer => {
-                        processAndDownloadDocx(buffer);
+                        processAndDownloadDocx(buffer, PizZipLib, DocxtemplaterLib);
                     })
                     .catch(err => {
                         console.warn(`Gagal memuat ${templatePaths[index]}, mencoba path berikutnya...`);
@@ -394,11 +405,18 @@ function generatePicaDocx() {
                     });
             }
         
-            function processAndDownloadDocx(buffer) {
+            function processAndDownloadDocx(buffer, PizZipClass, DocxClass) {
                 try {
-                    const zip = new PizZip(buffer);
-                    const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+                    // 1. Unzip berkas docx menggunakan PizZip
+                    const zip = new PizZipClass(buffer);
         
+                    // 2. Inisialisasi Docxtemplater
+                    const doc = new DocxClass(zip, {
+                        paragraphLoop: true,
+                        linebreaks: true
+                    });
+        
+                    // 3. Kalkulasi Statistik & Grading PICA
                     const totalRec = findings.length;
                     const implementedCount = findings.filter(x => (x.status || '').toLowerCase() === 'closed').length;
                     const notImplementedCount = totalRec - implementedCount;
@@ -408,6 +426,7 @@ function generatePicaDocx() {
                     if ((implementedCount / totalRec) >= 0.9) grading = "Significant Satisfactory";
                     else if ((implementedCount / totalRec) >= 0.7) grading = "Satisfactory";
         
+                    // 4. Pemetaan Array Findings untuk Loop Tabel Word
                     const findingsMapped = findings.map((f, i) => ({
                         NO: String(i + 1),
                         JUDUL_PEMERIKSAAN: f.area || "-",
@@ -420,12 +439,13 @@ function generatePicaDocx() {
                         STATUS: (f.status || 'Open').toLowerCase() === 'closed' ? 'I' : 'NI'
                     }));
         
+                    // 5. Inject Data ke Anchor Template
                     doc.render({
                         LOKASI_PROJECT: currentDocData.judul || "-",
                         PERIODE_PICA: currentDocData.periodeAudit || "-",
                         LEAD_AUDITOR: currentDocData.auditor || "-",
                         NOMOR_LHA: currentDocData.noLHA || "-",
-                        TANGGAL_GENERATE_PICA: formatIndonesianDate(new Date()),
+                        TANGGAL_GENERATE_PICA: typeof formatIndonesianDate === 'function' ? formatIndonesianDate(new Date()) : new Date().toLocaleDateString('id-ID'),
                         NOMOR_PICA: currentDocData.noPICA || "-",
                         TANGGAL_MULAI_SAMPAI_SELESAI_AUDIT: currentDocData.tglPelaksanaan || "-",
                         JUMLAH_REKOMENDASI: String(totalRec),
@@ -439,22 +459,32 @@ function generatePicaDocx() {
                         FINDINGS: findingsMapped
                     });
         
+                    // 6. Generate File Blob
                     const out = doc.getZip().generate({
                         type: "blob",
                         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     });
         
+                    // 7. Download File ke Komputer User
                     const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") 
                         ? currentDocData.noPICA 
-                        : currentDocData.noSPP;
+                        : (currentDocData.noSPP || "PICA");
         
-                    saveAs(out, `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+                    if (typeof saveAs !== 'undefined') {
+                        saveAs(out, `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+                    } else {
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(out);
+                        link.download = `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+                        link.click();
+                    }
+        
                     if (typeof logActivity === 'function') {
                         logActivity("Summary Audit", "Generate Document PICA (Word)", fileName);
                     }
                 } catch (error) {
-                    console.error(error);
-                    alert("⚠️ Terjadi kesalahan saat mengisi data ke template Word: " + error.message);
+                    console.error("Docxtemplater Render Error:", error);
+                    alert("⚠️ Terjadi kesalahan saat mengisi data ke template Word:\n" + error.message);
                 }
             }
         
