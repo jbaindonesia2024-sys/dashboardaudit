@@ -1322,63 +1322,79 @@ function handleUserLogin(e) {
         .catch((error) => alert("Gagal Login: " + error.message));
 }
 
-auth.onAuthStateChanged((user) => {
-    if (user) {
-        currentUserEmail = user.email.toLowerCase();
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                currentUserEmail = user.email.toLowerCase();
+                
+                // Convert email ke Key Firebase (mengubah titik '.' jadi '_')
+                const firebaseUserKey = currentUserEmail.replace(/\./g, '_');
         
-        // Convert email ke Key Firebase (mengubah titik '.' jadi '_')
-        const firebaseUserKey = currentUserEmail.replace(/\./g, '_');
-
-        // BACA ROLE REALTIME DARI FIREBASE
-        database.ref('users/' + firebaseUserKey).once('value')
-            .then((snapshot) => {
-                const userData = snapshot.val();
-                
-                if (userData && userData.role) {
-                    currentUserRole = userData.role.toLowerCase().trim(); // Membaca "admin", "manager", atau "auditor"
-                } else {
-                    currentUserRole = "auditor"; // Fallback default jika role tidak ditemukan
-                }
-
-                // Update timestamp last_login tanpa menimpa role di Firebase
-                database.ref('users/' + firebaseUserKey).update({
-                    email: currentUserEmail,
-                    last_login: new Date().toISOString()
-                }).catch(err => console.warn("Gagal update last_login:", err));
-
-                // Label Tampilan Header
-                let roleLabel = "AUDITOR";
-                if (currentUserRole === "admin") {
-                    roleLabel = "ADMINISTRATOR";
-                } else if (currentUserRole === "manager") {
-                    roleLabel = "MANAGER";
-                }
-
-                // Update UI Header
-                document.getElementById('display-user-email').innerText = user.email;
-                document.getElementById('display-user-role').innerText = roleLabel;
-                document.getElementById('user-badge-header').style.display = 'flex';
-                document.getElementById('auth-login-overlay').style.display = 'none';
-                
-                listenDatabaseRealtime();
-            })
-            .catch((error) => {
-                console.error("Error reading role:", error);
+                // BACA ROLE REALTIME DARI FIREBASE
+                database.ref('users/' + firebaseUserKey).once('value')
+                    .then((snapshot) => {
+                        const userData = snapshot.val();
+                        
+                        if (userData && userData.role) {
+                            currentUserRole = userData.role.toLowerCase().trim(); // Membaca "admin", "manager", atau "auditor"
+                        } else {
+                            currentUserRole = "auditor"; // Fallback default jika role tidak ditemukan
+                        }
+        
+                        // Update timestamp last_login tanpa menimpa role di Firebase
+                        database.ref('users/' + firebaseUserKey).update({
+                            email: currentUserEmail,
+                            last_login: new Date().toISOString()
+                        }).catch(err => console.warn("Gagal update last_login:", err));
+        
+                        // Label Tampilan Header
+                        let roleLabel = "AUDITOR";
+                        if (currentUserRole === "admin") {
+                            roleLabel = "ADMINISTRATOR";
+                        } else if (currentUserRole === "manager") {
+                            roleLabel = "MANAGER";
+                        }
+        
+                        // --- PERBAIKAN SAFE GUARD (HANYA UPDATE JIKA ELEMEN TERSEDIA DI DOM) ---
+                        const elEmail = document.getElementById('display-user-email');
+                        const elRole = document.getElementById('display-user-role');
+                        const elHeaderBadge = document.getElementById('user-badge-header');
+                        const elOverlay = document.getElementById('auth-login-overlay');
+        
+                        if (elEmail) elEmail.innerText = user.email;
+                        if (elRole) elRole.innerText = roleLabel;
+                        if (elHeaderBadge) elHeaderBadge.style.display = 'flex';
+                        if (elOverlay) elOverlay.style.display = 'none';
+                        
+                        listenDatabaseRealtime();
+                    })
+                    .catch((error) => {
+                        console.error("Error reading role:", error);
+                        currentUserRole = "auditor";
+        
+                        const elEmail = document.getElementById('display-user-email');
+                        const elRole = document.getElementById('display-user-role');
+                        const elHeaderBadge = document.getElementById('user-badge-header');
+                        const elOverlay = document.getElementById('auth-login-overlay');
+        
+                        if (elEmail) elEmail.innerText = user.email;
+                        if (elRole) elRole.innerText = "AUDITOR";
+                        if (elHeaderBadge) elHeaderBadge.style.display = 'flex';
+                        if (elOverlay) elOverlay.style.display = 'none';
+        
+                        listenDatabaseRealtime();
+                    });
+        
+            } else {
+                currentUserEmail = "";
                 currentUserRole = "auditor";
-                document.getElementById('display-user-email').innerText = user.email;
-                document.getElementById('display-user-role').innerText = "AUDITOR";
-                document.getElementById('user-badge-header').style.display = 'flex';
-                document.getElementById('auth-login-overlay').style.display = 'none';
-                listenDatabaseRealtime();
-            });
-
-    } else {
-        currentUserEmail = "";
-        currentUserRole = "auditor";
-        document.getElementById('user-badge-header').style.display = 'none';
-        document.getElementById('auth-login-overlay').style.display = 'flex';
-    }
-});
+        
+                const elHeaderBadge = document.getElementById('user-badge-header');
+                const elOverlay = document.getElementById('auth-login-overlay');
+        
+                if (elHeaderBadge) elHeaderBadge.style.display = 'none';
+                if (elOverlay) elOverlay.style.display = 'flex';
+            }
+        });
 
 function handleUserLogout() {
     if (confirm("Apakah Anda yakin ingin keluar dari akun?")) {
