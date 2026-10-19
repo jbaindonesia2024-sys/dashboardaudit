@@ -17,9 +17,8 @@
 </head>
 <body>
 
-    <!-- GERBANG VERIFIKASI -->
     <div id="gate-verification" class="auth-card">
-        <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 6px; text-align: center;">🔒 Akses Portal PICA Auditee</h2>
+        <h2 style="font-size: 18px; color: #0f172a; margin-bottom: 6px; text-align: center;">🔑 Akses Portal PICA Auditee</h2>
         <p style="font-size: 12px; color: #64748b; margin-bottom: 20px; text-align: center;">Masukkan Nomor Project / SPP untuk membuka summary temuan</p>
         
         <form onsubmit="verifyPicaAccess(event)">
@@ -27,11 +26,10 @@
                 <label>Nomor Project / SPP</label>
                 <input type="text" id="gate-no-spp" class="form-control" placeholder="Contoh: 025/SPP/JBA-IA/IX/2026" required>
             </div>
-            <button type="submit" id="btn-submit-gate" class="btn btn-success" style="width: 100%; margin-top: 10px;">🔑 Buka Form PICA</button>
+            <button type="submit" id="btn-submit-gate" class="btn btn-success" style="width: 100%; margin-top: 10px;">📂 Buka Form PICA</button>
         </form>
     </div>
 
-    <!-- HALAMAN ISIAN AUDITEE -->
     <div id="pica-content" class="pica-card" style="display: none;">
         <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px;">
             <h2 style="color: #0f172a; margin: 0;">Portal Tindak Lanjut Temuan Audit (PICA)</h2>
@@ -72,7 +70,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDK Compat -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
     <script src="script.js"></script>
@@ -82,15 +79,22 @@
         let currentFindings = [];
         let isDataLoaded = false;
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const rawTargetSPP = urlParams.get('spp');
-        const targetSPP = rawTargetSPP ? decodeURIComponent(decodeURIComponent(rawTargetSPP)).trim() : "";
-
-        if (targetSPP) {
-            document.getElementById('gate-no-spp').value = targetSPP;
+        function cleanSPPString(str) {
+            if (!str) return "";
+            return decodeURIComponent(str)
+                .replace(/\s+/g, '')
+                .toLowerCase()
+                .trim();
         }
 
-        // BACA REALTIME DATABASE PENOMORAN & AUDIT DATABASE
+        const urlParams = new URLSearchParams(window.location.search);
+        const rawTargetSPP = urlParams.get('spp');
+        const targetSPP = rawTargetSPP ? rawTargetSPP.trim() : "";
+
+        if (targetSPP) {
+            document.getElementById('gate-no-spp').value = decodeURIComponent(targetSPP);
+        }
+
         database.ref('dbPenomoran').on('value', (snapshot) => {
             const val = snapshot.val();
             if (Array.isArray(val)) dbPenomoran = val.filter(Boolean);
@@ -99,7 +103,6 @@
 
             isDataLoaded = true;
 
-            // Auto verification jika dibuka via link dengan URL parameter ?spp=
             if (targetSPP && !currentDoc) {
                 attemptAutoLogin(targetSPP);
             }
@@ -115,8 +118,9 @@
         });
 
         function attemptAutoLogin(sppVal) {
-            const searchVal = sppVal.toLowerCase().trim();
-            currentDoc = dbPenomoran.find(x => x && x.noSPP && x.noSPP.toLowerCase().trim() === searchVal);
+            const searchClean = cleanSPPString(sppVal);
+            currentDoc = dbPenomoran.find(x => x && x.noSPP && cleanSPPString(x.noSPP) === searchClean);
+            
             if (currentDoc) {
                 document.getElementById('gate-verification').style.display = 'none';
                 document.getElementById('pica-content').style.display = 'block';
@@ -126,16 +130,17 @@
 
         function verifyPicaAccess(e) {
             if (e) e.preventDefault();
-            const inputSPP = document.getElementById('gate-no-spp').value.trim().toLowerCase();
+            const inputSPP = document.getElementById('gate-no-spp').value;
+            const inputClean = cleanSPPString(inputSPP);
 
             if (!isDataLoaded && dbPenomoran.length === 0) {
                 alert("Sedang menghubungkan ke server, silakan coba 2 detik lagi...");
                 return;
             }
 
-            currentDoc = dbPenomoran.find(x => x && x.noSPP && x.noSPP.toLowerCase().trim() === inputSPP);
+            currentDoc = dbPenomoran.find(x => x && x.noSPP && cleanSPPString(x.noSPP) === inputClean);
             if (!currentDoc) {
-                return alert(`⛔ Nomor Project / SPP ("${document.getElementById('gate-no-spp').value}") tidak ditemukan di database!`);
+                return alert(`Nomor Project / SPP ("${inputSPP}") tidak ditemukan di database!`);
             }
 
             document.getElementById('gate-verification').style.display = 'none';
@@ -152,7 +157,9 @@
             document.getElementById('view-rh').innerText = currentDoc.regionalHead || "-";
             document.getElementById('view-pool').innerText = currentDoc.namaKepalaPool || "-";
 
-            currentFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentDoc.noSPP.trim());
+            const targetClean = cleanSPPString(currentDoc.noSPP);
+            currentFindings = auditDatabase.filter(x => x && x.noSPP && cleanSPPString(x.noSPP) === targetClean);
+            
             const tbody = document.getElementById('table-pica-body');
 
             if (currentFindings.length === 0) {
@@ -199,7 +206,7 @@
             });
 
             syncAuditDbToFirebase();
-            alert("🎉 Action Plan & Keterangan Cabang Berhasil Disimpan!");
+            alert("✅ Action Plan & Keterangan Cabang Berhasil Disimpan!");
         }
     </script>
 </body>
