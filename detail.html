@@ -5,15 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detail Summary Audit & Temuan</title>
     
-    <!-- 1. PizZip Wajib dipanggil PALING AWAL -->
+    <!-- 1. PizZip & Docxtemplater untuk PICA Word -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.4/pizzip.min.js"></script>
-    <!-- 2. Docxtemplater -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.37.11/docxtemplater.js"></script>
-    <!-- 3. FileSaver untuk mentrigger download file -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
+    <!-- 2. jsPDF & autoTable untuk Generate LHA PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
     <link rel="stylesheet" href="style.css">
-    <!-- Rest of your code -->
     <style>
         body { padding: 30px; background: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         .detail-card { background: white; padding: 24px; border-radius: 8px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
@@ -22,33 +23,15 @@
         .btn-exp { padding: 8px 14px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; color: white; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
         .btn-exp:disabled { background: #cbd5e1 !important; color: #94a3b8 !important; cursor: not-allowed; }
 
-        /* Badge Tombol Feedback Pop-Up */
         .btn-feedback-popup {
-            border: none;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 11px;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            color: white;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
+            border: none; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 11px;
+            cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; color: white; display: inline-flex; align-items: center; gap: 4px;
         }
         .btn-feedback-popup:hover { transform: translateY(-1px); box-shadow: 0 2px 5px rgba(0,0,0,0.15); }
         .btn-feedback-red { background: #ef4444; }
         .btn-feedback-green { background: #10b981; }
 
-        /* Styling Modal Pop-Up Feedback */
-        .modal-card-feedback {
-            background: white;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 600px;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
+        .modal-card-feedback { background: white; border-radius: 12px; width: 100%; max-width: 600px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; }
         .feedback-section { background: #f0fdf4; border-left: 4px solid #10b981; padding: 12px 16px; border-radius: 4px; margin-bottom: 12px; }
         .file-box { display: flex; align-items: center; justify-content: space-between; background: #fff; border: 1px solid #cbd5e1; padding: 10px 12px; border-radius: 6px; margin-top: 6px; }
     </style>
@@ -83,7 +66,6 @@
 
         <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 16px; color: #0f172a;">📋 Ringkasan Daftar Temuan (Summary Findings)</h3>
 
-        <!-- TABEL DETAIL TEMUAN -->
         <div class="table-responsive">
             <table>
                 <thead>
@@ -114,19 +96,16 @@
             </div>
 
             <div style="padding: 20px;">
-                <!-- Keterangan / Action Plan Auditee -->
                 <div class="feedback-section">
                     <div style="font-size: 11px; font-weight: 700; color: #166534; text-transform: uppercase; margin-bottom: 6px;">KETERANGAN / ACTION PLAN AUDITEE</div>
                     <div id="modalKeteranganAuditee" style="font-size: 13px; color: #1e293b; line-height: 1.5; white-space: pre-line;">-</div>
                 </div>
 
-                <!-- Dokumen / File Bukti Upload -->
                 <div style="margin-bottom: 16px;">
                     <div style="font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 6px;">DOKUMEN & BUKTI PERBAIKAN</div>
                     <div id="modalBuktiContainer">-</div>
                 </div>
 
-                <!-- Status Temuan Validasi Auditor -->
                 <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 12px; font-weight: 700; color: #334155;">STATUS TEMUAN (VALIDASI AUDITOR):</span>
                     <button id="modalBtnToggleStatus" onclick="toggleStatusFromModal()" style="border: none; padding: 6px 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 12px;">Open</button>
@@ -182,7 +161,7 @@
         });
 
         function loadDetailContent() {
-            currentDocData = dbPenomoran.find(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
+            currentDocData = dbPenomoran.find(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
             if (!currentDocData) return;
 
             document.getElementById('view-judul').innerText = currentDocData.judul || "-";
@@ -203,7 +182,7 @@
         function renderFindingsTable() {
             if (!currentSPP) return;
 
-            const projectFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP);
+            const projectFindings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
             const tbody = document.getElementById('table-findings-body');
             if (!tbody) return;
 
@@ -222,7 +201,6 @@
 
                 const disabledAttr = !canEdit ? 'disabled style="opacity: 0.5; cursor: not-allowed;" title="Otorisasi Ditolak"' : '';
 
-                // MODE EDIT INLINE
                 if (isEditing) {
                     return `
                     <tr style="background-color: #fefce8;">
@@ -242,7 +220,6 @@
                     `;
                 }
 
-                // MODE TAMPIL NORMAL
                 return `
                 <tr>
                     <td style="text-align: center; font-weight: bold;">${idx + 1}</td>
@@ -262,7 +239,6 @@
             }).join('');
         }
 
-        // Buka Pop-Up Feedback Auditee
         function openFeedbackModal(findingId) {
             const finding = auditDatabase.find(x => x.id === findingId);
             if (!finding) return;
@@ -316,7 +292,7 @@
             if (idx !== -1) {
                 auditDatabase[idx].status = newStatus;
                 syncAuditDbToFirebase();
-                logActivity("Summary Audit", `Ubah Status Temuan (${newStatus})`, currentSPP);
+                if (typeof logActivity === 'function') logActivity("Summary Audit", `Ubah Status Temuan (${newStatus})`, currentSPP);
             }
 
             updateModalStatusButton();
@@ -340,7 +316,7 @@
             auditDatabase[idx].updatedAt = new Date().toLocaleString('id-ID');
 
             syncAuditDbToFirebase();
-            logActivity("Summary Audit", "Revisi Item Temuan Audit", currentSPP);
+            if (typeof logActivity === 'function') logActivity("Summary Audit", "Revisi Item Temuan Audit", currentSPP);
 
             activeEditingId = null;
             renderFindingsTable();
@@ -352,81 +328,46 @@
             if (confirm("Apakah Anda yakin ingin menghapus item temuan ini secara permanen?")) {
                 auditDatabase = auditDatabase.filter(x => x.id !== id);
                 syncAuditDbToFirebase();
-                logActivity("Summary Audit", "Hapus Single Item Temuan", currentSPP);
+                if (typeof logActivity === 'function') logActivity("Summary Audit", "Hapus Single Item Temuan", currentSPP);
                 activeEditingId = null;
                 renderFindingsTable();
             }
         }
 
         // =========================================================================
-        // GENERATE DOKUMEN PICA VERSI DOCX (PRESERVE TEMPLATE ASLI)
+        // 1. GENERATE PICA WORD
         // =========================================================================
         function generatePicaDocx() {
             if (!currentDocData) return alert("Data project tidak valid!");
-        
-            const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP.trim());
+
+            const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
             if (findings.length === 0) return alert("Belum ada temuan untuk di-generate!");
-        
-            // Pastikan Library PizZip & Docxtemplater terload dengan benar
+
             const PizZipLib = window.PizZip || (typeof PizZip !== 'undefined' ? PizZip : null);
-            const DocxtemplaterLib = window.docxtemplater || (typeof docxtemplater !== 'undefined' ? docxtemplater : null);
-        
-            if (!PizZipLib) {
-                return alert("⚠️ Library PizZip belum siap/gagal dimuat. Silakan muat ulang halaman (Refresh).");
+            const DocxLib = window.docxtemplater || (typeof docxtemplater !== 'undefined' ? docxtemplater : null);
+
+            if (!PizZipLib || !DocxLib) {
+                return alert("⚠️ Library PizZip / Docxtemplater belum termuat sempurna. Silakan refresh halaman.");
             }
-            if (!DocxtemplaterLib) {
-                return alert("⚠️ Library Docxtemplater belum siap/gagal dimuat. Silakan muat ulang halaman (Refresh).");
-            }
-        
-            // Opsi path file untuk menangani kepekaan huruf besar/kecil (case sensitivity) di GitHub Pages
-            const templatePaths = [
-                'Template_PICA.docx',
-                'template_pica.docx',
-                './Template_PICA.docx'
-            ];
-        
-            function tryFetchTemplate(index) {
-                if (index >= templatePaths.length) {
-                    alert("⚠️ Gagal memuat file template PICA Word.\n\nPastikan file 'Template_PICA.docx' telah di-commit dan di-push ke repository GitHub Pages Anda pada folder yang sama dengan detail.html.");
-                    return;
-                }
-        
-                fetch(templatePaths[index])
-                    .then(response => {
-                        if (!response.ok) throw new Error("HTTP Status " + response.status);
-                        return response.arrayBuffer();
-                    })
-                    .then(buffer => {
-                        processAndDownloadDocx(buffer, PizZipLib, DocxtemplaterLib);
-                    })
-                    .catch(err => {
-                        console.warn(`Gagal memuat ${templatePaths[index]}, mencoba path berikutnya...`);
-                        tryFetchTemplate(index + 1);
-                    });
-            }
-        
-            function processAndDownloadDocx(buffer, PizZipClass, DocxClass) {
-                try {
-                    // 1. Unzip berkas docx menggunakan PizZip
-                    const zip = new PizZipClass(buffer);
-        
-                    // 2. Inisialisasi Docxtemplater
-                    const doc = new DocxClass(zip, {
-                        paragraphLoop: true,
-                        linebreaks: true
-                    });
-        
-                    // 3. Kalkulasi Statistik & Grading PICA
+
+            fetch('Template_PICA.docx')
+                .then(res => {
+                    if (!res.ok) throw new Error("File Template_PICA.docx tidak ditemukan di server.");
+                    return res.arrayBuffer();
+                })
+                .then(buffer => {
+                    const zip = new PizZipLib(buffer);
+                    const doc = new DocxLib(zip, { paragraphLoop: true, linebreaks: true });
+
                     const totalRec = findings.length;
                     const implementedCount = findings.filter(x => (x.status || '').toLowerCase() === 'closed').length;
                     const notImplementedCount = totalRec - implementedCount;
                     const pct = Math.round((implementedCount / totalRec) * 100) + "%";
-        
+
                     let grading = "Unsatisfactory";
                     if ((implementedCount / totalRec) >= 0.9) grading = "Significant Satisfactory";
                     else if ((implementedCount / totalRec) >= 0.7) grading = "Satisfactory";
-        
-                    // 4. Pemetaan Array Findings untuk Loop Tabel Word
+
                     const findingsMapped = findings.map((f, i) => ({
                         NO: String(i + 1),
                         JUDUL_PEMERIKSAAN: f.area || "-",
@@ -438,8 +379,7 @@
                         DUE_DATE: currentDocData.tglSelesai || "-",
                         STATUS: (f.status || 'Open').toLowerCase() === 'closed' ? 'I' : 'NI'
                     }));
-        
-                    // 5. Inject Data ke Anchor Template
+
                     doc.render({
                         LOKASI_PROJECT: currentDocData.judul || "-",
                         PERIODE_PICA: currentDocData.periodeAudit || "-",
@@ -458,37 +398,112 @@
                         WARNA_GRADING_AUDIT: "Hijau",
                         FINDINGS: findingsMapped
                     });
-        
-                    // 6. Generate File Blob
+
                     const out = doc.getZip().generate({
                         type: "blob",
                         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     });
-        
-                    // 7. Download File ke Komputer User
-                    const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") 
-                        ? currentDocData.noPICA 
-                        : (currentDocData.noSPP || "PICA");
-        
-                    if (typeof saveAs !== 'undefined') {
-                        saveAs(out, `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
-                    } else {
-                        const link = document.createElement('a');
-                        link.href = URL.createObjectURL(out);
-                        link.download = `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
-                        link.click();
-                    }
-        
-                    if (typeof logActivity === 'function') {
-                        logActivity("Summary Audit", "Generate Document PICA (Word)", fileName);
-                    }
-                } catch (error) {
-                    console.error("Docxtemplater Render Error:", error);
-                    alert("⚠️ Terjadi kesalahan saat mengisi data ke template Word:\n" + error.message);
-                }
+
+                    const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") ? currentDocData.noPICA : currentDocData.noSPP;
+                    saveAs(out, `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+                    if (typeof logActivity === 'function') logActivity("Summary Audit", "Generate Document PICA (Word)", fileName);
+                })
+                .catch(err => {
+                    alert("⚠️ Gagal memuat template: " + err.message + "\n\nPastikan file Template_PICA.docx sudah di-upload ke GitHub repository.");
+                });
+        }
+
+        // =========================================================================
+        // 2. GENERATE LHA PDF (MENGATASI ERROR: exportLHA is not defined)
+        // =========================================================================
+        function exportLHA() {
+            if (!currentDocData) return alert("Data project tidak valid!");
+
+            const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
+            if (findings.length === 0) return alert("Belum ada temuan untuk di-generate LHA!");
+
+            if (typeof window.jspdf === 'undefined') {
+                return alert("⚠️ Library jsPDF belum termuat sempurna. Silakan refresh halaman!");
             }
-        
-            tryFetchTemplate(0);
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFontSize(16);
+            doc.text("LAPORAN HASIL AUDIT (LHA)", 105, 15, { align: "center" });
+
+            doc.setFontSize(10);
+            doc.text(`Judul Project : ${currentDocData.judul || '-'}`, 14, 25);
+            doc.text(`No. SPP       : ${currentDocData.noSPP || '-'}`, 14, 30);
+            doc.text(`No. LHA       : ${currentDocData.noLHA || '-'}`, 14, 35);
+            doc.text(`Lead Auditor  : ${currentDocData.auditor || '-'}`, 14, 40);
+
+            const tableData = findings.map((f, i) => [
+                i + 1,
+                f.area || '-',
+                f.fakta || '-',
+                f.rootCause || '-',
+                f.rekomendasi || '-'
+            ]);
+
+            doc.autoTable({
+                startY: 45,
+                head: [['No', 'Area', 'Kalimat Fakta', 'Root Cause', 'Rekomendasi']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [220, 38, 38] }
+            });
+
+            const fileName = (currentDocData.noLHA && currentDocData.noLHA !== "-") ? currentDocData.noLHA : currentDocData.noSPP;
+            doc.save(`LHA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+            if (typeof logActivity === 'function') logActivity("Summary Audit", "Generate Document LHA (PDF)", fileName);
+        }
+
+        // =========================================================================
+        // 3. KIRIM EMAIL PICA (MENGATASI ERROR: sendPICAEmail is not defined)
+        // =========================================================================
+        function sendPICAEmail() {
+            if (!currentDocData) return alert("Data project tidak ditemukan!");
+
+            let toEmail = currentDocData.emailKepalaPool || currentDocData.emailRegionalHead || "auditee@jba.co.id";
+            let ccEmail = currentDocData.emailRegionalHead || "";
+
+            const baseUrl = window.location.origin + window.location.pathname.replace("detail.html", "");
+            const auditeeLink = `${baseUrl}auditee.html?spp=${encodeURIComponent(currentDocData.noSPP)}`;
+
+            const subject = encodeURIComponent(`PICA Audit: ${currentDocData.judul} (${currentDocData.noSPP})`);
+            const bodyText = encodeURIComponent(
+                `Dear Bapak/Ibu Auditee,\n\n` +
+                `Berikut disampaikan tautan Portal PICA untuk mengisi tindak lanjut dan bukti perbaikan temuan audit project ${currentDocData.judul}:\n\n` +
+                `${auditeeLink}\n\n` +
+                `Gunakan Nomor SPP berikut untuk mengakses portal: ${currentDocData.noSPP}\n\n` +
+                `Terima kasih,\nInternal Audit Department`
+            );
+
+            let mailtoUrl = `mailto:${toEmail}?subject=${subject}&body=${bodyText}`;
+            if (ccEmail.trim() !== "") mailtoUrl += `&cc=${encodeURIComponent(ccEmail)}`;
+
+            if (typeof logActivity === 'function') logActivity("Summary Audit", "Kirim Email PICA Auditee", currentDocData.noSPP);
+            window.location.href = mailtoUrl;
+        }
+
+        // =========================================================================
+        // 4. HAPUS SUMMARY PROJECT (MENGATASI ERROR: deleteSummary is not defined)
+        // =========================================================================
+        function deleteSummary() {
+            if (!currentDocData) return alert("Data project tidak valid!");
+            if (!canUserEditProject(currentDocData.created_by)) return alert("⛔ Otorisasi ditolak!");
+
+            const count = auditDatabase.filter(x => x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase()).length;
+            if (count === 0) return alert("Tidak ada data temuan untuk dihapus pada project ini.");
+
+            if (confirm(`Apakah Anda yakin ingin MENGHAPUS PERMANEN seluruh temuan (${count} temuan) untuk project ${currentDocData.judul}?`)) {
+                auditDatabase = auditDatabase.filter(x => x.noSPP.trim().toLowerCase() !== currentSPP.toLowerCase());
+                syncAuditDbToFirebase();
+                if (typeof logActivity === 'function') logActivity("Summary Audit", "Hapus Entire Summary Project", currentSPP);
+                alert("🗑️ Seluruh temuan pada project ini telah berhasil dihapus.");
+                renderFindingsTable();
+            }
         }
     </script>
 </body>
