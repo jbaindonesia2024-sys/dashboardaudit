@@ -358,31 +358,53 @@
         // =========================================================================
         // GENERATE DOKUMEN PICA VERSI DOCX (PRESERVE TEMPLATE ASLI)
         // =========================================================================
-        function generatePicaDocx() {
+function generatePicaDocx() {
             if (!currentDocData) return alert("Data project tidak valid!");
-
-            const findings = auditDatabase.filter(x => x.noSPP === currentSPP);
+        
+            const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim() === currentSPP.trim());
             if (findings.length === 0) return alert("Belum ada temuan untuk di-generate!");
-
-            fetch('Template_PICA.docx')
-                .then(response => {
-                    if (!response.ok) throw new Error("Gagal memuat template Word (Template_PICA.docx)");
-                    return response.arrayBuffer();
-                })
-                .then(buffer => {
+        
+            // Array opsi path file untuk mengatasi perbedaan huruf besar/kecil di GitHub Pages
+            const templatePaths = [
+                'Template_PICA.docx',
+                'template_pica.docx',
+                './Template_PICA.docx'
+            ];
+        
+            function tryFetchTemplate(index) {
+                if (index >= templatePaths.length) {
+                    alert("⚠️ Gagal memuat file template PICA Word.\n\nPastikan file 'Template_PICA.docx' telah di-commit dan di-push ke repository GitHub Pages Anda pada folder yang sama dengan detail.html.");
+                    return;
+                }
+        
+                fetch(templatePaths[index])
+                    .then(response => {
+                        if (!response.ok) throw new Error("HTTP Status " + response.status);
+                        return response.arrayBuffer();
+                    })
+                    .then(buffer => {
+                        processAndDownloadDocx(buffer);
+                    })
+                    .catch(err => {
+                        console.warn(`Gagal memuat ${templatePaths[index]}, mencoba path berikutnya...`);
+                        tryFetchTemplate(index + 1);
+                    });
+            }
+        
+            function processAndDownloadDocx(buffer) {
+                try {
                     const zip = new PizZip(buffer);
                     const doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
-
+        
                     const totalRec = findings.length;
                     const implementedCount = findings.filter(x => (x.status || '').toLowerCase() === 'closed').length;
                     const notImplementedCount = totalRec - implementedCount;
                     const pct = Math.round((implementedCount / totalRec) * 100) + "%";
-
+        
                     let grading = "Unsatisfactory";
                     if ((implementedCount / totalRec) >= 0.9) grading = "Significant Satisfactory";
                     else if ((implementedCount / totalRec) >= 0.7) grading = "Satisfactory";
-
-                    // Map temuan ke array anchor loop Template Word
+        
                     const findingsMapped = findings.map((f, i) => ({
                         NO: String(i + 1),
                         JUDUL_PEMERIKSAAN: f.area || "-",
@@ -394,7 +416,7 @@
                         DUE_DATE: currentDocData.tglSelesai || "-",
                         STATUS: (f.status || 'Open').toLowerCase() === 'closed' ? 'I' : 'NI'
                     }));
-
+        
                     doc.render({
                         LOKASI_PROJECT: currentDocData.judul || "-",
                         PERIODE_PICA: currentDocData.periodeAudit || "-",
@@ -413,18 +435,27 @@
                         WARNA_GRADING_AUDIT: "Hijau",
                         FINDINGS: findingsMapped
                     });
-
+        
                     const out = doc.getZip().generate({
                         type: "blob",
                         mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     });
-
-                    saveAs(out, `Laporan_PICA_${currentDocData.noPICA.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
-                    logActivity("Summary Audit", "Generate Document PICA (Word)", currentDocData.noPICA);
-                })
-                .catch(err => {
-                    alert("⚠️ Gagal meng-generate PICA Word: " + err.message + "\n\nPastikan file Template_PICA.docx tersedia di folder root server.");
-                });
+        
+                    const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") 
+                        ? currentDocData.noPICA 
+                        : currentDocData.noSPP;
+        
+                    saveAs(out, `Laporan_PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`);
+                    if (typeof logActivity === 'function') {
+                        logActivity("Summary Audit", "Generate Document PICA (Word)", fileName);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("⚠️ Terjadi kesalahan saat mengisi data ke template Word: " + error.message);
+                }
+            }
+        
+            tryFetchTemplate(0);
         }
     </script>
 </body>
