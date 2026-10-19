@@ -43,12 +43,14 @@ let currentUserRole = "auditor"; // auditor | manager
 
 function isHighPrivilegeUser() {
     if (!currentUserEmail) return false;
-    
+
+    const cleanUserEmail = currentUserEmail.toLowerCase().trim();
+
     // Check 1: Berdasarkan role dari Firebase Realtime Database
-    const isRoleOK = currentUserRole === "admin" || currentUserRole === "manager";
-    
-    // Check 2: Berdasarkan verifikasi email resmi Manager / Admin
-    const isEmailOK = listAdminManagerEmails.some(e => e.toLowerCase() === currentUserEmail.toLowerCase().trim());
+    const isRoleOK = (currentUserRole || "").toLowerCase() === "admin" || (currentUserRole || "").toLowerCase() === "manager";
+
+    // Check 2: Berdasarkan daftar email resmi Manager / Admin di listAdminManagerEmails
+    const isEmailOK = listAdminManagerEmails.some(e => e.toLowerCase().trim() === cleanUserEmail);
 
     return isRoleOK || isEmailOK;
 }
