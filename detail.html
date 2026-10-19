@@ -505,6 +505,53 @@
                 renderFindingsTable();
             }
         }
+
+        function exportPICAPDF() {
+                if (!currentDocData) return alert("Data project tidak valid!");
+            
+                const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
+                if (findings.length === 0) return alert("Belum ada temuan untuk di-generate PICA PDF!");
+            
+                if (typeof window.jspdf === 'undefined') {
+                    return alert("⚠️ Library jsPDF belum termuat sempurna. Silakan refresh halaman!");
+                }
+            
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+            
+                doc.setFontSize(14);
+                doc.text("LOKASI & ACTION PLAN PICA (PREVENTIVE & CORRECTIVE ACTION)", 148, 15, { align: "center" });
+            
+                doc.setFontSize(9);
+                doc.text(`Judul Project : ${currentDocData.judul || '-'}`, 14, 25);
+                doc.text(`No. SPP       : ${currentDocData.noSPP || '-'}`, 14, 30);
+                doc.text(`No. PICA      : ${currentDocData.noPICA || '-'}`, 14, 35);
+                doc.text(`Lead Auditor  : ${currentDocData.auditor || '-'}`, 200, 25);
+                doc.text(`Kepala Pool   : ${currentDocData.namaKepalaPool || '-'}`, 200, 30);
+            
+                const tableData = findings.map((f, i) => [
+                    i + 1,
+                    f.area || '-',
+                    f.fakta || '-',
+                    f.rootCause || '-',
+                    f.rekomendasi || '-',
+                    f.keteranganCabang || '-',
+                    f.status || 'Open'
+                ]);
+            
+                doc.autoTable({
+                    startY: 40,
+                    head: [['No', 'Area Pemeriksaan', 'Fakta / Temuan', 'Root Cause', 'Rekomendasi', 'Action Plan Auditee', 'Status']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [22, 163, 74] }, // Warna hijau untuk PICA
+                    styles: { fontSize: 8, cellPadding: 2 }
+                });
+            
+                const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") ? currentDocData.noPICA : currentDocData.noSPP;
+                doc.save(`PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+                if (typeof logActivity === 'function') logActivity("Summary Audit", "Generate Document PICA (PDF)", fileName);
+            }
     </script>
 </body>
 </html>
