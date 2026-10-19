@@ -46,14 +46,13 @@
             <span id="view-jenis-badge" class="badge bg-progress" style="font-size: 13px; padding: 6px 12px;">-</span>
         </div>
 
-        <div class="btn-export-group">
-            <button id="btn-gen-pica" class="btn-exp" style="background: #16a34a;" onclick="generatePicaDocx()">📄 Generate PICA (Word)</button>
-            <button id="btn-gen-pica-pdf" class="btn-exp" style="background: #0d9488;" onclick="exportPICAPDF()">📄 Generate PICA (PDF)</button>
-            <button id="btn-gen-lha" class="btn-exp" style="background: #dc2626;" onclick="exportLHA()">📄 Generate LHA (PDF)</button>
-            <button class="btn-exp" style="background: #2563eb;" onclick="sendPICAEmail()">✉️ Kirim PICA</button>
-            <a id="link-auditee-preview" href="#" target="_blank" class="btn-exp" style="background: #8b5cf6;">👁️ Preview Auditee View</a>
-            <button id="btn-delete-summary" class="btn-exp" style="background: #ef4444; margin-left: auto;" onclick="deleteSummary()">🗑️ Hapus Summary</button>
-        </div>
+          <div class="btn-export-group">
+                <button id="btn-gen-pica-pdf" class="btn-exp" style="background: #16a34a;" onclick="exportPICAPDF()">📄 Generate PICA (PDF)</button>
+                <button id="btn-gen-lha" class="btn-exp" style="background: #dc2626;" onclick="exportLHA()">📄 Generate LHA (PDF)</button>
+                <button class="btn-exp" style="background: #2563eb;" onclick="sendPICAEmail()">✉️ Kirim PICA</button>
+                <a id="link-auditee-preview" href="#" target="_blank" class="btn-exp" style="background: #8b5cf6;">👁️ Preview Auditee View</a>
+                <button id="btn-delete-summary" class="btn-exp" style="background: #ef4444; margin-left: auto;" onclick="deleteSummary()">🗑️ Hapus Summary</button>
+            </div>
 
         <div class="meta-grid">
             <div><small style="color: #64748b; font-weight: bold;">NO. SURAT TUGAS / SPP</small><br><b id="view-spp" style="color: #0284c7;">-</b></div>
@@ -507,52 +506,107 @@
             }
         }
 
-        function exportPICAPDF() {
-                if (!currentDocData) return alert("Data project tidak valid!");
-            
-                const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
-                if (findings.length === 0) return alert("Belum ada temuan untuk di-generate PICA PDF!");
-            
-                if (typeof window.jspdf === 'undefined') {
-                    return alert("⚠️ Library jsPDF belum termuat sempurna. Silakan refresh halaman!");
-                }
-            
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-            
-                doc.setFontSize(14);
-                doc.text("LOKASI & ACTION PLAN PICA (PREVENTIVE & CORRECTIVE ACTION)", 148, 15, { align: "center" });
-            
-                doc.setFontSize(9);
-                doc.text(`Judul Project : ${currentDocData.judul || '-'}`, 14, 25);
-                doc.text(`No. SPP       : ${currentDocData.noSPP || '-'}`, 14, 30);
-                doc.text(`No. PICA      : ${currentDocData.noPICA || '-'}`, 14, 35);
-                doc.text(`Lead Auditor  : ${currentDocData.auditor || '-'}`, 200, 25);
-                doc.text(`Kepala Pool   : ${currentDocData.namaKepalaPool || '-'}`, 200, 30);
-            
-                const tableData = findings.map((f, i) => [
-                    i + 1,
-                    f.area || '-',
-                    f.fakta || '-',
-                    f.rootCause || '-',
-                    f.rekomendasi || '-',
-                    f.keteranganCabang || '-',
-                    f.status || 'Open'
-                ]);
-            
-                doc.autoTable({
-                    startY: 40,
-                    head: [['No', 'Area Pemeriksaan', 'Fakta / Temuan', 'Root Cause', 'Rekomendasi', 'Action Plan Auditee', 'Status']],
-                    body: tableData,
-                    theme: 'grid',
-                    headStyles: { fillColor: [22, 163, 74] }, // Warna hijau untuk PICA
-                    styles: { fontSize: 8, cellPadding: 2 }
-                });
-            
-                const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") ? currentDocData.noPICA : currentDocData.noSPP;
-                doc.save(`PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-                if (typeof logActivity === 'function') logActivity("Summary Audit", "Generate Document PICA (PDF)", fileName);
+        // Validasi Approval di PICA PDF
+function exportPICAPDF() {
+    if (!currentDocData) return alert("Data project tidak valid!");
+
+    // VALIDASI STATUS APPROVAL MANAGER/ADMIN
+    if (currentDocData.statusManager !== "Approved by Manager") {
+        return alert("⛔ DITOLAK: PICA PDF belum dapat di-generate karena project ini belum di-approve oleh Manager/Admin!");
+    }
+
+    const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
+    if (findings.length === 0) return alert("Belum ada temuan untuk di-generate PICA PDF!");
+
+    if (typeof window.jspdf === 'undefined') {
+        return alert("⚠️ Library jsPDF belum termuat sempurna. Silakan refresh halaman!");
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    doc.setFontSize(14);
+    doc.text("LAPORAN ACTION PLAN PICA (PREVENTIVE & CORRECTIVE ACTION)", 148, 15, { align: "center" });
+
+    doc.setFontSize(9);
+    doc.text(`Judul Project : ${currentDocData.judul || '-'}`, 14, 25);
+    doc.text(`No. SPP       : ${currentDocData.noSPP || '-'}`, 14, 30);
+    doc.text(`No. PICA      : ${currentDocData.noPICA || '-'}`, 14, 35);
+    doc.text(`Lead Auditor  : ${currentDocData.auditor || '-'}`, 200, 25);
+    doc.text(`Kepala Pool   : ${currentDocData.namaKepalaPool || '-'}`, 200, 30);
+
+    const tableData = findings.map((f, i) => [
+        i + 1,
+        f.area || '-',
+        f.fakta || '-',
+        f.rootCause || '-',
+        f.rekomendasi || '-',
+        f.keteranganCabang || '-',
+        f.status || 'Open'
+    ]);
+
+    doc.autoTable({
+        startY: 40,
+        head: [['No', 'Area Pemeriksaan', 'Fakta / Temuan', 'Root Cause', 'Rekomendasi', 'Action Plan Auditee', 'Status']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { fillColor: [22, 163, 74] },
+        styles: { fontSize: 8, cellPadding: 2 }
+    });
+
+    const fileName = (currentDocData.noPICA && currentDocData.noPICA !== "-") ? currentDocData.noPICA : currentDocData.noSPP;
+    doc.save(`PICA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    if (typeof logActivity === 'function') logActivity("Summary Audit", "Generate Document PICA (PDF)", fileName);
+}
+
+        // Validasi Approval di LHA PDF
+        function exportLHA() {
+            if (!currentDocData) return alert("Data project tidak valid!");
+        
+            // VALIDASI STATUS APPROVAL MANAGER/ADMIN
+            if (currentDocData.statusManager !== "Approved by Manager") {
+                return alert("⛔ DITOLAK: LHA PDF belum dapat di-generate karena project ini belum di-approve oleh Manager/Admin!");
             }
+        
+            const findings = auditDatabase.filter(x => x && x.noSPP && x.noSPP.trim().toLowerCase() === currentSPP.toLowerCase());
+            if (findings.length === 0) return alert("Belum ada temuan untuk di-generate LHA!");
+        
+            if (typeof window.jspdf === 'undefined') {
+                return alert("⚠️ Library jsPDF belum termuat sempurna. Silakan refresh halaman!");
+            }
+        
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+        
+            doc.setFontSize(16);
+            doc.text("LAPORAN HASIL AUDIT (LHA)", 105, 15, { align: "center" });
+        
+            doc.setFontSize(10);
+            doc.text(`Judul Project : ${currentDocData.judul || '-'}`, 14, 25);
+            doc.text(`No. SPP       : ${currentDocData.noSPP || '-'}`, 14, 30);
+            doc.text(`No. LHA       : ${currentDocData.noLHA || '-'}`, 14, 35);
+            doc.text(`Lead Auditor  : ${currentDocData.auditor || '-'}`, 14, 40);
+        
+            const tableData = findings.map((f, i) => [
+                i + 1,
+                f.area || '-',
+                f.fakta || '-',
+                f.rootCause || '-',
+                f.rekomendasi || '-'
+            ]);
+        
+            doc.autoTable({
+                startY: 45,
+                head: [['No', 'Area', 'Kalimat Fakta', 'Root Cause', 'Rekomendasi']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: { fillColor: [220, 38, 38] }
+            });
+        
+            const fileName = (currentDocData.noLHA && currentDocData.noLHA !== "-") ? currentDocData.noLHA : currentDocData.noSPP;
+            doc.save(`LHA_${fileName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+            if (typeof logActivity === 'function') logActivity("Summary Audit", "Generate Document LHA (PDF)", fileName);
+        }
     </script>
 </body>
 </html>
